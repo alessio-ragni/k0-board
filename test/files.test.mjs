@@ -53,15 +53,19 @@ check('a zero byte in the name does not get through', safePath(REPO, 'READ\0ME.m
 check('a root that does not exist does not get through', safePath('/no/such/place/at/all', 'x.md'), null)
 
 // A symbolic link is the other way out: the path looks like it is inside, but what would open
-// is outside.
+// is outside. The thing it points at has to be a real file that this test made, somewhere else
+// on the disk — `/etc/passwd` is not a file on Windows, and a link to nothing resolves to
+// nothing, which is not the question being asked.
+const OUTSIDE = fs.mkdtempSync(path.join(os.tmpdir(), 'k0-outside-'))
+fs.writeFileSync(path.join(OUTSIDE, 'secret.md'), 'not yours\n')
 const SYMLINKS = (() => {
   try {
-    fs.symlinkSync('/etc/passwd', path.join(REPO, 'shortcut'))
+    fs.symlinkSync(path.join(OUTSIDE, 'secret.md'), path.join(REPO, 'shortcut'))
     fs.symlinkSync('README.md', path.join(REPO, 'inside-link'))
     return true
   } catch {
-    // Windows needs a privilege for this that a normal account does not have. The guard is
-    // still there; it just cannot be exercised here.
+    // Windows needs a privilege for this that a normal account does not always have. The guard
+    // is still there; it just cannot be exercised here.
     return false
   }
 })()
@@ -448,6 +452,7 @@ check("a file's size is exact", bytes(2048), '2 KB')
 check('and in bytes when it is small', bytes(6), '6 B')
 
 fs.rmSync(REPO, { recursive: true, force: true })
+fs.rmSync(OUTSIDE, { recursive: true, force: true })
 fs.rmSync(FAKE_HOME, { recursive: true, force: true })
 // The handle has to go before the file does: on Windows a file that is still open cannot be
 // deleted, and this line is the whole difference between a green build and a red one there.
