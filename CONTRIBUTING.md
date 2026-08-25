@@ -27,8 +27,8 @@ the macOS menu bar icon, which needs the Xcode Command Line Tools.
 npm test
 ```
 
-They are plain scripts, not a framework: every file builds a list of `check(label, got, want)` and
-prints them. There is nothing to install and nothing to configure, and a failing line tells you
+A quarter of a second, and nothing to install: the runner is the one built into Node. Every file
+is a plain script saying `check(label, got, want)` over and over, and a failing line tells you
 what it expected.
 
 They never touch your real board or your real home: each file points `K0_DB` and `$HOME` at a
@@ -37,6 +37,9 @@ of code runs. If you add a test that reaches the database or the home directory,
 
 `test/clean.test.mjs` is the odd one out: it scans every file for the personal data k0 grew up
 with and fails if any of it comes back. Do not disable it.
+
+The rest — how to run one test, how coverage is measured and what it deliberately leaves out — is
+in [docs/testing.md](docs/testing.md).
 
 ## Adding a platform
 

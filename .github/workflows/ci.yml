@@ -30,3 +30,26 @@ jobs:
         # Never the reason a build fails: it is here so that every run leaves a record of what
         # each platform claims it can do. When a port stops being honest, this is where it shows.
         run: node bin/k0-board.js doctor || true
+
+  # How much of k0 the tests actually go through, and a floor under it. Coverage counts only the
+  # files a test loads, so it is measured on one platform and one Node: the adapter that loads
+  # changes with the operating system, and with it the number, which would turn a floor into a
+  # coin toss. `platform/` is left out of the count altogether — what needs a real machine, a
+  # display and Claude Code cannot be tested here, and pretending otherwise buys nothing.
+  #
+  # The floor is a ratchet: raise it when the number clears it comfortably, and treat lowering it
+  # as a decision to be argued for, not a way of getting a build green.
+  coverage:
+    name: Coverage
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - name: server and web, with a floor under them
+        run: >
+          node --test --experimental-test-coverage
+          --test-coverage-exclude="platform/**" --test-coverage-exclude="test/**"
+          --test-coverage-lines=84 --test-coverage-branches=83
+          "test/*.test.mjs"

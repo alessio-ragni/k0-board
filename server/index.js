@@ -3,6 +3,7 @@ import fs from 'node:fs'
 import path from 'node:path'
 import crypto from 'node:crypto'
 import * as db from './db.js'
+import { allowed } from './guard.js'
 import { ROOT } from './paths.js'
 import { readLiveSessions, deriveStatus, forgetSession, renameSession } from './watcher.js'
 import {
@@ -67,37 +68,6 @@ function tick() {
 /** When somebody last looked at the board. */
 let lastBoard = 0
 setInterval(tick, 1000)
-
-// ── Who is allowed to talk to this server ────────────────────────────────────
-// k0 listens on the loopback interface only, which keeps the rest of the network out. What it
-// does not keep out is a web page open in your browser: any site can make requests to
-// 127.0.0.1, and this API opens terminals and starts sessions.
-//
-// Two checks close that door.
-//
-// The `Host` header must be one we recognise. A page cannot forge it, and requiring it stops
-// DNS rebinding — the trick where a hostile domain resolves to 127.0.0.1 so the browser thinks
-// it is talking to its own site.
-//
-// The `Origin` header, when there is one, must be ours. Browsers attach it to every
-// cross-origin request and to every same-origin POST, so a hostile page is always identified.
-// Things that are not browsers — the menu bar icon, curl, the import skill — send none, and
-// they are let through: they are already running as you, on your machine, and a header would
-// not tell us anything a hostile process could not also write.
-const ALLOWED_HOSTS = new Set(
-  ['127.0.0.1', 'localhost', 'k0.localhost', '[::1]'].map((h) => `${h}:${PORT}`)
-)
-const ALLOWED_ORIGINS = new Set(
-  ['127.0.0.1', 'localhost', 'k0.localhost', '[::1]'].map((h) => `http://${h}:${PORT}`)
-)
-
-function allowed(req) {
-  const host = String(req.headers.host || '')
-  if (!ALLOWED_HOSTS.has(host)) return false
-  const origin = req.headers.origin
-  if (origin && !ALLOWED_ORIGINS.has(origin)) return false
-  return true
-}
 
 // ── API ──────────────────────────────────────────────────────────────────────
 const MIME = {
@@ -595,7 +565,7 @@ function serveStatic(res, pathname) {
 
 http
   .createServer(async (req, res) => {
-    if (!allowed(req)) {
+    if (!allowed(req.headers, PORT)) {
       res.writeHead(403, { 'content-type': 'text/plain; charset=utf-8' })
       res.end('k0 only answers to its own address on this machine.')
       return

@@ -1,3 +1,4 @@
+import { check, section, after } from './harness.mjs'
 import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
@@ -36,10 +37,8 @@ fs.writeFileSync(path.join(REPO, 'node_modules', 'stuff', 'index.js'), 'no')
 fs.writeFileSync(path.join(REPO, '.hidden', 'secret.md'), 'no')
 fs.writeFileSync(path.join(REPO, 'binary.bin'), Buffer.from([0, 1, 2, 3, 0, 255]))
 
-const cases = []
-const check = (label, got, want) => cases.push([label, got, want, got === want])
-
 // ── The path guard ───────────────────────────────────────────────────────────
+section('The path guard')
 // Get this wrong and a hand-written address reads whatever it likes off the disk.
 const rel = (p) => (p ? path.relative(fs.realpathSync(REPO), p) : p)
 
@@ -77,6 +76,7 @@ if (SYMLINKS) {
 }
 
 // ── What kind of file is this ────────────────────────────────────────────────
+section('What kind of file is this')
 check('markdown gets laid out', kindOf('a/b/plan.md', Buffer.from('# x')), 'markdown')
 check('a .js is text you read', kindOf('server/index.js', Buffer.from('const x')), 'text')
 check('a .docx is mush, it is not shown', kindOf('Contract.docx', Buffer.from('PK')), 'binary')
@@ -101,6 +101,7 @@ check('a page is recognised', isPage('report/index.html'), true)
 check('a document is not', isPage('note.md'), false)
 
 // ── The name of what gets downloaded ─────────────────────────────────────────
+section('The name of what gets downloaded')
 // Getting this wrong means an attachment with the wrong name, or a broken header — and with a
 // slash in it, a file written somewhere else entirely.
 check(
@@ -119,6 +120,7 @@ check('quotes do not close the name early', attachment('a"name.md').includes('"n
 check('an empty name does not leave the field empty', attachment('   '), 'attachment; filename="file"; filename*=UTF-8\'\'file')
 
 // ── The lines of git status ──────────────────────────────────────────────────
+section('The lines of git status')
 // The number of fields before the path changes for each kind of line: get it wrong and you
 // show half a path, or none.
 const Z = '\0'
@@ -144,6 +146,7 @@ check('a path with a space in it stays whole', parseChanged(`? docs/my file.md${
 check('empty output, no paths', parseChanged('').length, 0)
 
 // ── The walk over a repository with no git ───────────────────────────────────
+section('The walk over a repository with no git')
 {
   const found = await list(REPO)
   const names = found.files.map((f) => f.p).sort()
@@ -180,6 +183,7 @@ check('empty output, no paths', parseChanged('').length, 0)
 check('with no git there is nothing to say about what changed', (await changed(REPO)).length, 0)
 
 // ── Reading ──────────────────────────────────────────────────────────────────
+section('Reading')
 {
   const md = read(path.join(REPO, 'README.md'))
   check('markdown comes back with its text', md.text.startsWith('# Title'), true)
@@ -190,6 +194,7 @@ check('with no git there is nothing to say about what changed', (await changed(R
 }
 
 // ── The repository list ──────────────────────────────────────────────────────
+section('The repository list')
 // Under your home there are also directories that are only installed software. They stay
 // selectable — a directory you just made has no sign on it yet — but not in the list.
 // `hasDocs` caches its answer for five minutes, so every case needs its own directory:
@@ -241,6 +246,7 @@ check('with no git there is nothing to say about what changed', (await changed(R
 }
 
 // ── The cards of a directory that is gone ────────────────────────────────────
+section('The cards of a directory that is gone')
 // A column is held up by its cards, and the cards by their directory. Without this rule a
 // deleted or renamed directory leaves a column behind forever.
 {
@@ -286,6 +292,7 @@ check('with no git there is nothing to say about what changed', (await changed(R
 }
 
 // ── Documents only ───────────────────────────────────────────────────────────
+section('Documents only')
 // The listing is of things you read and print: in a real repository code is 95% of the files,
 // and among two thousand `.tsx` files the document you were after cannot be found.
 check('a markdown is a document', isDoc('docs/plan.md'), true)
@@ -299,6 +306,7 @@ check('an image is not: it is not a document you read', isDoc('images/x.png'), f
 check('and the extension does not care about case', isDoc('READMEFIRST.MD'), true)
 
 // ── Searching inside the files ───────────────────────────────────────────────
+section('Searching inside the files')
 // The name is almost never what makes you remember a document: what stays with you about a
 // letter is "the one where the strap broke", and the file is called `2026-07-28_note.md`.
 {
@@ -339,6 +347,7 @@ check('and the extension does not care about case', isDoc('READMEFIRST.MD'), tru
 }
 
 // ── The front matter at the top of a document ────────────────────────────────
+section('The front matter at the top of a document')
 // The block between the two rules is not text of the file: it used to end up in the document as
 // a paragraph reading "title: ...", which means nothing to a reader.
 {
@@ -366,6 +375,7 @@ check('a horizontal rule is not front matter', matter('text\n\n---\n\nmore').dat
 }
 
 // ── The icon in the browser tab ──────────────────────────────────────────────
+section('The icon in the browser tab')
 // The same colours as the menu bar icon: if they change over there, they change here too.
 check('a session waiting for you turns it red', icon('ASK').includes('#f04545'), true)
 check('one that is grinding away, blue', icon('WORKING').includes('#3b82f5'), true)
@@ -373,6 +383,7 @@ check('nothing going on: outline only', icon(null).includes('fill="none"'), true
 check('and it is not filled', icon(null).includes('#f04545'), false)
 
 // ── Searching the names ──────────────────────────────────────────────────────
+section('Searching the names')
 check('scattered letters are enough', score('docs/audit-report.md', 'audrep') >= 0, true)
 check('if one letter is missing, nothing', score('docs/audit-report.md', 'audxyz'), -1)
 check('an empty search scores zero for everybody', score('anything', '   '), 0)
@@ -386,6 +397,7 @@ check('letters together beat letters apart', score('board.css', 'board') > score
 }
 
 // ── Markdown ─────────────────────────────────────────────────────────────────
+section('Markdown')
 // These files come off the disk and nobody has looked at them before they are shown.
 check('a tag written in the document does not become a tag', render('<script>alert(1)</script>').includes('&lt;script&gt;'), true)
 check('and no real script is left', render('<script>alert(1)</script>').includes('<script'), false)
@@ -442,6 +454,7 @@ check('the lines of a paragraph join up', render('one\ntwo'), '<p>one\ntwo</p>')
 check('quotes in the text do not break an attribute', esc('he "said"'), 'he &quot;said&quot;')
 
 // ── The measurements ─────────────────────────────────────────────────────────
+section('The measurements')
 // The weight goes into the signature of the round: if it changed on every byte, the board would
 // redraw constantly and the buttons would vanish from under the pointer.
 check('under a gigabyte it rounds to tens of MB', weight(312 * 1048576), '310 MB')
@@ -451,18 +464,14 @@ check('a small session does not become zero', weight(4 * 1048576), '4 MB')
 check("a file's size is exact", bytes(2048), '2 KB')
 check('and in bytes when it is small', bytes(6), '6 B')
 
-fs.rmSync(REPO, { recursive: true, force: true })
-fs.rmSync(OUTSIDE, { recursive: true, force: true })
-fs.rmSync(FAKE_HOME, { recursive: true, force: true })
-// The handle has to go before the file does: on Windows a file that is still open cannot be
-// deleted, and this line is the whole difference between a green build and a red one there.
-;(await import('../server/db.js')).close()
-for (const suffix of ['', '-wal', '-shm']) fs.rmSync(process.env.K0_DB + suffix, { force: true })
+// Tidying up waits until the tests have run, which is what `after` is for. The handle has to go
+// before the file does: on Windows a file that is still open cannot be deleted, and this line is
+// the whole difference between a green build and a red one there.
+after(async () => {
+  fs.rmSync(REPO, { recursive: true, force: true })
+  fs.rmSync(OUTSIDE, { recursive: true, force: true })
+  fs.rmSync(FAKE_HOME, { recursive: true, force: true })
+  ;(await import('../server/db.js')).close()
+  for (const suffix of ['', '-wal', '-shm']) fs.rmSync(process.env.K0_DB + suffix, { force: true })
+})
 
-let bad = 0
-for (const [label, got, want, ok] of cases) {
-  if (!ok) bad++
-  console.log(`${ok ? '  ok  ' : ' FAIL '} ${label} → ${got}${ok ? '' : ` (expected ${want})`}`)
-}
-console.log(`\n${cases.length - bad}/${cases.length} passed`)
-process.exit(bad ? 1 : 0)

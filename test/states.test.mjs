@@ -1,3 +1,4 @@
+import { check, section, after } from './harness.mjs'
 import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
@@ -55,9 +56,6 @@ const live = (sid, status, waitingFor) => new Map([[sid, { sessionId: sid, cwd: 
 // Exactly as Claude Code writes them: checked by opening both dialogs for real.
 const PLAN_DIALOG = 'permission prompt'
 const QUESTION_DIALOG = 'input needed'
-
-const cases = []
-const check = (label, got, want) => cases.push([label, got, want, got === want])
 
 // The slug Claude Code names the transcript directory with: get this wrong and the board finds
 // nothing at all, and every card sits still.
@@ -211,6 +209,7 @@ check(
 fs.rmSync(dir, { recursive: true, force: true })
 
 // ── Importing sessions that already happened ─────────────────────────────────
+section('Importing sessions that already happened')
 // A fake ~/.claude/projects holding real sessions, automated runs and one session done in a
 // worktree: the scan has to keep only the first kind and attribute all of them to the right
 // repository.
@@ -398,6 +397,7 @@ const store = await import('../server/db.js')
 }
 
 // ── The git mark ──────────────────────────────────────────────────────────────
+section('The git mark')
 // The two parts that can be checked without a real repository: how the output of
 // `status --porcelain=v2` is read, and how credit for commits is divided.
 {
@@ -431,18 +431,14 @@ const store = await import('../server/db.js')
   check('with no starting mark there is no knowing', sessionShare(shas, null), null)
 }
 
-// The handle has to go before the file does: on Windows a file that is still open cannot be
-// deleted, and this line is the whole difference between a green build and a red one there.
-;(await import('../server/db.js')).close()
-for (const suffix of ['', '-wal', '-shm']) fs.rmSync(process.env.K0_DB + suffix, { force: true })
-fs.rmSync(TRANSCRIPTS, { recursive: true, force: true })
-fs.rmSync(REPO, { recursive: true, force: true })
-fs.rmSync(FAKE_HOME, { recursive: true, force: true })
+// Tidying up waits until the tests have run, which is what `after` is for. The handle has to go
+// before the file does: on Windows a file that is still open cannot be deleted, and this line is
+// the whole difference between a green build and a red one there.
+after(async () => {
+  ;(await import('../server/db.js')).close()
+  for (const suffix of ['', '-wal', '-shm']) fs.rmSync(process.env.K0_DB + suffix, { force: true })
+  fs.rmSync(TRANSCRIPTS, { recursive: true, force: true })
+  fs.rmSync(REPO, { recursive: true, force: true })
+  fs.rmSync(FAKE_HOME, { recursive: true, force: true })
+})
 
-let bad = 0
-for (const [label, got, want, ok] of cases) {
-  if (!ok) bad++
-  console.log(`${ok ? '  ok  ' : ' FAIL '} ${label} → ${got}${ok ? '' : ` (expected ${want})`}`)
-}
-console.log(`\n${cases.length - bad}/${cases.length} passed`)
-process.exit(bad ? 1 : 0)

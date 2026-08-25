@@ -32,14 +32,16 @@
     "web",
     "menubar",
     "!menubar/k0.app",
-    ".claude/skills",
+    ".claude/skills/k0-import",
     "README.md",
     "CHANGELOG.md",
     "LICENSE"
   ],
   "scripts": {
     "start": "node server/index.js",
-    "test": "node test/clean.test.mjs && node test/states.test.mjs && node test/files.test.mjs && node test/mentions.test.mjs && node test/refs.test.mjs && node test/machine.test.mjs && node test/mode.test.mjs",
+    "test": "node --test \"test/*.test.mjs\"",
+    "test:watch": "node --test --watch \"test/*.test.mjs\"",
+    "coverage": "node --test --experimental-test-coverage --test-coverage-exclude=\"platform/**\" --test-coverage-exclude=\"test/**\" \"test/*.test.mjs\"",
     "doctor": "node bin/k0-board.js doctor"
   }
 }
