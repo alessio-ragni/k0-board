@@ -6,6 +6,11 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.1.2]
+
+Two things that were in the way every day: a field nobody needed, and a notification that opened
+the wrong application.
+
 ### Fixed
 
 - **Clicking a notification opens that session's terminal**, on all three platforms. On macOS it
@@ -87,6 +92,7 @@ here is everything that had to change for it to be somebody else's tool as well.
 - The personal fixtures k0 grew up on. `test/clean.test.mjs` now fails the build if any of them
   come back.
 
-[Unreleased]: https://github.com/alessio-ragni/k0-board/compare/v0.1.1...HEAD
+[Unreleased]: https://github.com/alessio-ragni/k0-board/compare/v0.1.2...HEAD
+[0.1.2]: https://github.com/alessio-ragni/k0-board/compare/v0.1.1...v0.1.2
 [0.1.1]: https://github.com/alessio-ragni/k0-board/compare/v0.1.0...v0.1.1
 [0.1.0]: https://github.com/alessio-ragni/k0-board/releases/tag/v0.1.0
