@@ -8,6 +8,20 @@ All notable changes to this project are documented here. The format follows
 
 ### Added
 
+- **The board keeps itself down to what you are working on.** A repository you have not touched
+  since the day before your last piece of work folds away by itself: its column leaves the board
+  and its name appears in `Old`, the new column next to `Others`. Click that name and the column
+  comes back at full width for the rest of the visit. There is nothing to switch on — with a dozen
+  repositories open, you arrive in the morning and the three or four you are actually on are the
+  ones standing there, side by side. The day is counted back from your last piece of work rather
+  than from the clock, so on Monday you find Friday's work instead of an empty board. A column
+  with a live session in it never folds, whatever its age, and nothing folds while you are looking
+  at it: the board tidies itself on the next reload, never out from under your hands.
+- **A column can be put away now.** Next to a column's `+`, a button that folds it immediately
+  instead of waiting for it to go quiet — for a repository you are finished with for the day. That
+  one is remembered across reloads, until you fetch the column back or something in it wakes up.
+  It closes nothing: no session is stopped and no terminal is shut. What closes a session is still
+  `Done` on a card.
 - **The installation ends on the board.** `npx k0-board` now opens it in your browser once
   everything is in place, after the cards have been imported, so the first thing you see is your
   own work and there is no address to copy out of the terminal. `--no-open` finishes without it,

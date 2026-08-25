@@ -198,8 +198,10 @@ body {
   vertical-align: middle;
 }
 /* The column's "+": from here a card is born already addressed to this repository.
-   It sits to the left of the name, faded, and darkens when you hover over it. */
-.column .add {
+   It sits to the left of the name, faded, and darkens when you hover over it. The button that
+   puts the column away stands next to it and is cut from the same cloth. */
+.column .add,
+.column > h2 .fold {
   padding: 0;
   width: 19px;
   height: 19px;
@@ -214,8 +216,17 @@ body {
   align-items: center;
   justify-content: center;
 }
-.column .add svg { width: 15px; height: 15px; display: block; }
+.column .add svg,
+.column > h2 .fold svg { width: 15px; height: 15px; display: block; }
 .column .add:hover { opacity: 1; background: rgba(0, 0, 0, .07); }
+/* And next to it, the one that puts the column away. It keeps its place in the row whether it
+   shows or not — a button that appears and pushes the name sideways is worse than one that is
+   simply faint — and it comes out when the pointer is anywhere over the heading. */
+.column > h2 .fold { opacity: 0; transition: opacity .12s; }
+.column > h2:hover .fold { opacity: .32; }
+.column > h2 .fold:hover { opacity: 1; background: rgba(0, 0, 0, .07); }
+.column > h2 .fold[disabled] { cursor: default; }
+.column > h2:hover .fold[disabled] { opacity: .12; }
 
 .empty {
   position: absolute;
@@ -402,6 +413,36 @@ body {
 .column.repos .repo:hover .name { color: var(--ink); }
 .column.repos .git { margin-left: auto; }
 
+/* ── Old ──────────────────────────────────────────────────────────────
+   The repositories that do have work on the board, just not lately. Built like `Others` next to
+   it, because it is the same gesture — one click from being a column again — with two things
+   `Others` has nothing to say about: how much work is parked in there, and how long it has been
+   quiet. The name is a button here, not a label: it is what brings the column back. */
+.column.old .repo { cursor: pointer; }
+.column.old .name {
+  padding: 0;
+  border: none;
+  background: none;
+  text-align: left;
+  cursor: pointer;
+  flex: 1 1 auto;
+}
+.column.old .repo small {
+  font-family: var(--sans);
+  color: var(--muted);
+  font-size: .72rem;
+  font-weight: 600;
+  flex: none;
+}
+.column.old .repo em {
+  font-family: var(--sans);
+  font-style: normal;
+  font-size: .72rem;
+  color: rgba(0, 0, 0, .38);
+  flex: none;
+}
+.column.old .repo .git { margin-left: 4px; }
+
 /* ── The git mark ─────────────────────────────────────────────────────
    One symbol: the dot if there is work that is nowhere yet, the arrow if it is committed but not
    pushed, the tick if everything is safe. The detail is in the title, which comes out on hover.
@@ -567,6 +608,12 @@ html[data-driving] .modes button { width: 46px; height: 46px; }
 html[data-driving] .modes button svg { width: 27px; height: 27px; }
 html[data-driving] .column .add { width: 26px; height: 26px; }
 html[data-driving] .column .add svg { width: 20px; height: 20px; }
+
+/* Putting a column away, same as the pencil: as well as growing, it stays visible. A target that
+   expects to be found before it will show itself is, from across the room, not a target. */
+html[data-driving] .column > h2 .fold { width: 26px; height: 26px; opacity: .32; }
+html[data-driving] .column > h2 .fold svg { width: 20px; height: 20px; }
+html[data-driving] .column > h2 .fold[disabled] { opacity: .12; }
 
 /* The git lens: it is the door to the files, and at 12px it is a target for sitting still. */
 html[data-driving] .git svg { width: 18px; height: 18px; }

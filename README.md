@@ -230,10 +230,37 @@ move the view and a pinch zooms. Where you were is still there after a reload.
 The pills at the top are both legend and filter: click one and that status leaves the board. They
 stay as you left them.
 
-**The last column on the right is `Others`**: the repositories that have no column because they
-have no cards. Headings only, in alphabetical order. It is there for two things — getting into
-the files of a directory you are not working on, and giving birth to the first card there with
-its `+`.
+**The board keeps itself down to what you are working on.** A repository you have not touched
+since the day before your last piece of work folds away by itself: its column leaves the board
+and its name appears in `Old`, over on the right. There is nothing to switch on and nothing to
+tidy up — with a dozen repositories open, you arrive in the morning and the three or four you are
+actually on are the ones standing there, side by side.
+
+The day is counted back from **your last piece of work, not from the clock**, and that is what
+makes it survive a weekend: on Monday the freshest thing on the board is Friday evening, so what
+you find is Friday — not an empty board on the one morning you most need to see where you left
+off. The moment you start something on Monday the line moves with you.
+
+Two things never fold. **A column with a live session in it** — working, asking you something,
+holding a plan up for approval — stays where it is however old it is: hiding the one that is
+waiting for you is the opposite of what the board is for. And **nothing folds while you are
+looking at it**: within one visit the set of columns can only grow, and the board tidies itself
+on the next reload, so a column never disappears out from under your hands.
+
+**The last two columns on the right are `Old` and `Others`.** `Old` is the repositories that have
+work on the board, just not lately: the name, how many cards are parked there, how long it has
+been quiet, and the git mark. **Click the name and the column comes back** at full width for the
+rest of the visit. `Others` is the repositories that have no column because they have no cards at
+all — headings only, in alphabetical order. Both are there for the same two things as well:
+getting into the files of a directory you are not working on, and giving birth to the first card
+there with the `+`.
+
+Next to a column's `+` there is one more button, which **puts that column away now** instead of
+waiting for it to go quiet on its own — for when you are finished with a repository for the day
+and would rather not look at it. Unlike the automatic fold, that one is remembered across
+reloads, until you fetch the column back or something in it wakes up. It **closes nothing**: no
+session is stopped and no terminal is shut. It is the board that gets smaller, not the work —
+what closes a session is `Done` on a card.
 
 ### The git mark
 
@@ -622,6 +649,7 @@ web/             the two pages (html, css, js served exactly as they are)
   files.html     the file viewer — files.js, files.css
   base.css       colours, fonts and scale: the house variables, shared by both pages
   md.js          markdown laid out, written by hand because nothing here is compiled
+  recency.js     which repositories are still warm, and which fold away into `Old`
   fuzzy.js       searching the names: the letters you type, in the order you type them
   mentions.js    which of a repository's files a piece of text names
   refs.js        what a name written inside a document points at, and which of the nine READMEs
