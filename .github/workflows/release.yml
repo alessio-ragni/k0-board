@@ -4,9 +4,10 @@ on:
   push:
     tags: ['v*']
 
-# Publishing needs `id-token: write` so npm can attach a provenance statement: proof, signed by
-# GitHub, that this tarball was built from this commit of this repository. It costs one line and
-# it is the difference between "trust me" and something a stranger can check.
+# Publishing needs `id-token: write` twice over: it is how npm's trusted publishing recognises
+# this workflow without a token, and it is what lets npm attach a provenance statement — proof,
+# signed by GitHub, that this tarball was built from this commit of this repository. It costs one
+# line and it is the difference between "trust me" and something a stranger can check.
 permissions:
   contents: read
   id-token: write
@@ -48,7 +49,9 @@ jobs:
             echo "skip=false" >> "$GITHUB_OUTPUT"
           fi
 
+      # No token anywhere. npm is configured to trust this repository and this workflow, and the
+      # `id-token: write` permission above is what lets the runner prove it is really them —
+      # which is the same proof the provenance statement is built from. A token that can publish
+      # is a token that can be stolen; this one does not exist between one release and the next.
       - if: steps.published.outputs.skip == 'false'
         run: npm publish --access public --provenance
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}

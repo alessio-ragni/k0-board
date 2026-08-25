@@ -19,6 +19,7 @@ doing, and it goes on saying so while you are looking somewhere else.
 ![Four columns of paper sticky notes — yellow, blue, amber and green — pinned on a dark wall, each note tilted at its own angle, with a row of small coloured status pills along the top bar.](https://raw.githubusercontent.com/alessio-ragni/k0-board/main/docs/board.jpg)
 
 [![Tests](https://github.com/alessio-ragni/k0-board/actions/workflows/ci.yml/badge.svg)](https://github.com/alessio-ragni/k0-board/actions/workflows/ci.yml)
+[![npm](https://img.shields.io/npm/v/k0-board)](https://www.npmjs.com/package/k0-board)
 [![License: MIT](https://img.shields.io/badge/License-MIT-informational)](LICENSE)
 
 **Contents** · [Install](#install) · [How it is used](#how-it-is-used) ·

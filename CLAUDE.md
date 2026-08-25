@@ -44,6 +44,19 @@ Nobody should have to ask for this.
 - **The server answers only itself.** Loopback bind plus a `Host`/`Origin` allowlist. Do not add
   a CORS header to make something work.
 
+## Releasing
+
+Bump the version in `package.json`, close the `[Unreleased]` section of `CHANGELOG.md` into a
+numbered one, commit, then push a tag that matches: `git tag -a v0.2.0 -m … && git push origin
+v0.2.0`. `.github/workflows/release.yml` does the rest — it runs the tests on all three
+platforms, refuses a tag that disagrees with `package.json`, skips a version already on the
+registry, and publishes with a signed provenance statement.
+
+There is no npm token, in the repository secrets or anywhere else. npm trusts this repository
+and this workflow directly (trusted publishing, OIDC), which is why nothing has to be kept
+secret and nothing has to be rotated. If a release ever fails on authentication, the thing to
+check is the trusted publisher on the package's npm settings page, not a token.
+
 ## Style
 
 Two spaces, no semicolons, single quotes, 120 columns — `.editorconfig` has the rest. Comments
