@@ -223,9 +223,11 @@ right, left, up, down, and diagonally in the corners — faster the closer you a
 where the board ends. The thin shadow along one side says there is still something over there.
 Holding a mouse button keeps the board still, so a click near the edge lands.
 
-Bottom right there is the **zoom** and a percentage that, clicked, goes back to 100%; the button
+Bottom right there is the **zoom**: + and − move it ten per cent at a time — 90%, 80%, 70% and so
+on, between 30% and 200% — and the percentage between them, clicked, goes back to 100%. The button
 next to it shrinks just enough to fit the whole board on the screen. On a trackpad, two fingers
-move the view and a pinch zooms. Where you were is still there after a reload.
+move the view and a pinch zooms to anything in between; the next click of + or − picks the nearest
+step from there. Where you were is still there after a reload.
 
 The pills at the top are both legend and filter: click one and that status leaves the board. They
 stay as you left them.

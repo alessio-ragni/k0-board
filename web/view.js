@@ -9,7 +9,9 @@ const $ = (s) => document.querySelector(s)
 
 const EDGE = 96 // the sensitive band along each edge, in px
 const SPEED = 1200 // px per second right at the edge; inside the band it accelerates
-const STEPS = [0.3, 0.4, 0.5, 0.65, 0.8, 1, 1.25, 1.5, 2]
+// The ladder is even on purpose: every click of + or − is ten points, so where the next one lands
+// is something you can predict rather than discover.
+const STEPS = [0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1, 1.1, 1.2, 1.3, 1.4, 1.5, 1.6, 1.7, 1.8, 1.9, 2]
 
 let vp, board, edges, level
 

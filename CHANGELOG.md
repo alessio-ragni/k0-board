@@ -34,6 +34,12 @@ All notable changes to this project are documented here. The format follows
 
 ### Changed
 
+- **The zoom goes ten per cent at a time.** `+` and `−` used to jump from 100% straight to 80%,
+  or up to 125%: the steps in between simply did not exist, and the only way to a size like 90%
+  was a pinch on the trackpad — if you knew to try it. Now every click is ten points — 90%, 80%,
+  70% and so on, still stopping at 30% and 200% — so where the next one lands is something you
+  can guess before you press it. The pinch still gets you to anything in between, and from there
+  the next click picks the nearest step.
 - **Nothing here changes what you see using k0.** The work went underneath, and it was worth doing
   for two reasons. The tests now run on the machinery Node already ships with rather than on a loop
   written by hand, which turns seven pass-or-fail files into five hundred and twenty-one named
