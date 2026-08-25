@@ -180,6 +180,7 @@ final class K0: NSObject, NSApplicationDelegate, UNUserNotificationCenterDelegat
     /// nothing anywhere to say why.
     var notificationStatus: UNAuthorizationStatus = .notDetermined
     private var loggedStatus: UNAuthorizationStatus?
+    private var ticksBeforeAsking = 0
     let images = ImagePaste()
 
     func applicationDidFinishLaunching(_ n: Notification) {
@@ -187,38 +188,53 @@ final class K0: NSObject, NSApplicationDelegate, UNUserNotificationCenterDelegat
         item.menu = NSMenu()
 
         UNUserNotificationCenter.current().delegate = self
-        askAboutNotifications()
-        // Half a minute apart, because the only thing this catches is a permission that arrives
-        // late — granted by hand in System Settings, or a service that was not ready at login.
-        Timer.scheduledTimer(withTimeInterval: 30, repeats: true) { _ in self.askAboutNotifications() }
 
         images.start()
         watchScreens()
         watchTerminal()
 
-        Timer.scheduledTimer(withTimeInterval: 2, repeats: true) { _ in self.refresh() }
+        Timer.scheduledTimer(withTimeInterval: 2, repeats: true) { _ in
+            self.refresh()
+            self.readNotificationPermission()
+        }
         refresh()
+        readNotificationPermission()
     }
 
-    /// Reads the permission, asks for it if it has never been asked, and writes down what came
-    /// back — once per change, not every half minute.
+    /// Reads the permission on **every** pass, two seconds apart, along with everything else.
     ///
-    /// The log line is the point. A permission that was refused and one that was never asked for
-    /// are both perfectly silent, and until this was written down the only visible symptom was a
-    /// notification that did nothing. `launchd` sends this to `~/.k0/logs/com.k0.menubar.err.log`.
-    func askAboutNotifications() {
+    /// It rides the same beat as the rest on purpose. Somebody who has just switched k0 on in
+    /// System Settings comes straight back to this menu to see it change, and a menu that still
+    /// says "blocked" reads as broken — they switch it off again, or give up. Half a minute is
+    /// long enough for that; two seconds is not. The read is one call to a service already
+    /// listening, next to an HTTP request that happens anyway.
+    ///
+    /// Asking is the part that is kept slow: the request is fired only where the permission has
+    /// never been asked for, and at most once every half minute, because a request that fails
+    /// leaves the status exactly as it was and would otherwise be retried on every pass.
+    ///
+    /// The log line is the point of the rest. A permission that was refused and one that was
+    /// never asked for are both perfectly silent, and until this was written down the only visible
+    /// symptom was a notification that did nothing. `launchd` sends it to
+    /// `~/.k0/logs/com.k0.menubar.err.log`.
+    func readNotificationPermission() {
         let centre = UNUserNotificationCenter.current()
         centre.getNotificationSettings { settings in
-            DispatchQueue.main.async { self.record(settings.authorizationStatus) }
-            guard settings.authorizationStatus == .notDetermined else { return }
-            centre.requestAuthorization(options: [.alert, .sound]) { granted, error in
-                if let error {
-                    NSLog("k0: macOS refused the notification permission: \(error.localizedDescription)")
-                } else if !granted {
-                    NSLog("k0: the notification permission was declined")
+            DispatchQueue.main.async {
+                self.record(settings.authorizationStatus)
+                guard settings.authorizationStatus == .notDetermined else { return }
+                guard self.ticksBeforeAsking <= 0 else {
+                    self.ticksBeforeAsking -= 1
+                    return
                 }
-                centre.getNotificationSettings { again in
-                    DispatchQueue.main.async { self.record(again.authorizationStatus) }
+                self.ticksBeforeAsking = 15   // half a minute, at one read every two seconds
+                centre.requestAuthorization(options: [.alert, .sound]) { granted, error in
+                    if let error {
+                        NSLog("k0: macOS refused the notification permission: \(error.localizedDescription)")
+                    } else if !granted {
+                        NSLog("k0: the notification permission was declined")
+                    }
+                    // Whatever the answer, the next read is two seconds away and will report it.
                 }
             }
         }
