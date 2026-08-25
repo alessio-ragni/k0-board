@@ -42,6 +42,36 @@ npx k0-board
 That is the whole thing. It tells you everything it is about to change, asks, and only then does
 it. `k0-board uninstall` undoes all of it.
 
+k0 is published on npm as [`k0-board`](https://www.npmjs.com/package/k0-board): one package, no
+dependencies, nothing to compile. `npx` fetches it, runs the installer once and leaves nothing
+behind — what stays on the machine is the copy the installer puts in `~/.k0/app`, not an npx
+cache that could be swept away under a running service. Installing it globally with
+`npm install -g k0-board` works too, if you would rather have the command on your PATH.
+
+**To update it**, run the installer again with `npx k0-board@latest`: it replaces the copy and
+restarts the service. Your board is never in the way — it lives in `~/.k0/k0.db`, outside
+everything the installer touches, and `uninstall` leaves it there as well.
+
+Every release is published by GitHub Actions with a signed **provenance statement**: proof, which
+`npm audit signatures` will check for you, that the tarball was built from a particular commit of
+this repository rather than uploaded by somebody who happened to have a password. (0.1.0 predates
+that and went out from a laptop.)
+
+### The commands
+
+| | |
+|---|---|
+| `k0-board install` | install and start it — this is what `npx k0-board` runs |
+| `k0-board uninstall` | undo everything install did; your board stays |
+| `k0-board start` | run the server in the foreground, installing nothing |
+| `k0-board restart` | restart the service |
+| `k0-board status` | is it running? exits 0 if it is, 1 if it is not |
+| `k0-board doctor` | what this machine can and cannot do, and why |
+
+`--yes` does not ask. `--from-source` points the service at the directory you are in instead of
+copying it, which is what you want while working on k0 itself. `--no-<name>` skips one optional
+change — `--no-lid-sleep`, `--no-shift-enter`. `K0_PORT` moves the board off 4319.
+
 From a clone, if you would rather look first:
 
 ```bash

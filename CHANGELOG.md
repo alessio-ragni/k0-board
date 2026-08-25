@@ -6,6 +6,18 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.1.1]
+
+Documentation, and how a release is made. Nothing about k0 itself changed.
+
+### Changed
+
+- The README says what the npm package is, how to keep it up to date, and what each command
+  does.
+- Releases are published by GitHub Actions through npm's **trusted publishing**, with a signed
+  provenance statement and no publishing token kept anywhere — not in the repository secrets,
+  not on a laptop. A token that can publish is a token that can be stolen.
+
 ## [0.1.0]
 
 The first public release. k0 existed for a while as one person's tool before this; what changed
@@ -53,5 +65,6 @@ here is everything that had to change for it to be somebody else's tool as well.
 - The personal fixtures k0 grew up on. `test/clean.test.mjs` now fails the build if any of them
   come back.
 
-[Unreleased]: https://github.com/alessio-ragni/k0-board/compare/v0.1.0...HEAD
+[Unreleased]: https://github.com/alessio-ragni/k0-board/compare/v0.1.1...HEAD
+[0.1.1]: https://github.com/alessio-ragni/k0-board/compare/v0.1.0...v0.1.1
 [0.1.0]: https://github.com/alessio-ragni/k0-board/releases/tag/v0.1.0
