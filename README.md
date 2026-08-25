@@ -16,6 +16,8 @@ gets dragged from one to the next; the cards reorder themselves by who is waitin
 **A card is a real Claude Code session** — it opens a terminal, it knows what that session is
 doing, and it goes on saying so while you are looking somewhere else.
 
+![Four columns of paper sticky notes — yellow, blue, amber and green — pinned on a dark wall, each note tilted at its own angle, with a row of small coloured status pills along the top bar.](https://raw.githubusercontent.com/alessio-ragni/k0-board/main/docs/board.jpg)
+
 [![Tests](https://github.com/alessio-ragni/k0-board/actions/workflows/ci.yml/badge.svg)](https://github.com/alessio-ragni/k0-board/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-informational)](LICENSE)
 
