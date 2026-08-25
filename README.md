@@ -108,6 +108,7 @@ The board lives at <http://k0.localhost:4319>.
 | Keep the machine awake | ✅ | ✅ | ✅ |
 | Keep working with the lid closed | ✅ | ❌ system setting | ❌ system setting |
 | Tray icon and notifications | ✅ | ✅ GNOME/KDE | ✅ |
+| Clicking a notification takes you to that terminal | ✅ needs the permission | ✅ if the desktop honours actions | ✅ |
 
 **macOS is the only platform the author has.** Linux and Windows are written from the
 documentation and reviewed carefully, and the logic they share with macOS is tested on all three
@@ -146,8 +147,9 @@ k0 makes **no network requests**. Not one, not even for a font.
 ### The board
 
 - **+** — at the left, next to k0, and next to every repository name on the board: that one opens
-  a card with the repository already chosen. First the repository, then a title, then what Claude
-  should do when it starts. The prompt can be left empty.
+  a card with the repository already chosen. Three fields and no more: the repository, a title,
+  and what Claude should do when it starts. The prompt can be left empty — nothing stops you from
+  starting the session and typing straight into Claude Code.
 
   The repository has to be **picked from the list** (searchable, most used at the top; arrow keys
   to move, Enter takes the highlighted row): a name typed by hand does not count. On leaving the
@@ -380,7 +382,9 @@ numbers.
 
 The difference between the two is the writing. The installer uses the name the session already
 had, or the first few words of the first prompt. `/k0-import` has Claude read the conversation and
-write a title and a description in the language it was held in.
+write a title and a description in the language it was held in. That description is the line in
+italics under the title on the note, and importing is the only thing that writes one: a card you
+write yourself has a title and a prompt, which is all it needs.
 
 Imported cards are born yellow — *Your turn*: **Resume** reopens the conversation where it was,
 **Done** clears it away. Being dead sessions they do not light the tray icon. Running it again
@@ -588,6 +592,7 @@ platform/
   contract.js    the line between k0 and the operating system, and what an adapter must fill in
   index.js       picks the adapter, and reports what this machine can and cannot do
   darwin/        AppleScript and Terminal.app, pmset and caffeinate, launchd, the Swift icon
+                 (menubar/, which is also what posts the notifications and reads the permission)
   linux/         tmux and any emulator, systemd-inhibit, systemd user units, a GTK tray
   win32/         PowerShell and Windows Terminal, execution state, Task Scheduler, a WinForms tray
   shared/        what more than one of them needs: tmux, running commands, reading a process table
@@ -605,7 +610,9 @@ server/
   machine.js     the only one that looks at processes and memory: what it all costs, and who is costing it
   pdf.js         the document on paper, printed by a headless browser
 web/             the two pages (html, css, js served exactly as they are)
-  index.html     the board — board.js, board.css, view.js
+  index.html     the board — board.js, board.css, view.js. A note is never taller than it is
+                 wide: the title, the age and the buttons always show, the text in the middle is
+                 what gets clipped
   files.html     the file viewer — files.js, files.css
   base.css       colours, fonts and scale: the house variables, shared by both pages
   md.js          markdown laid out, written by hand because nothing here is compiled
@@ -634,6 +641,12 @@ certain), `-n` for the name, `--resume` to pick one up, and `--permission-mode p
 
 Field notes the code takes for granted.
 
+- **A notification posted by `osascript` belongs to Script Editor.** `display notification` is the
+  one-line way to put a banner on screen from a script, and it works — but the banner is not
+  yours: it carries nothing, it has no delegate, and clicking it opens Script Editor with its file
+  dialog. It was in here as a fallback for when macOS would not deliver k0's own notifications,
+  and every click on it went to the wrong application. There is now one way to notify, and where
+  macOS refuses it the menu says so and takes you to the Notifications pane instead of pretending.
 - **`--dangerously-skip-permissions` switches off plan mode.** No error, no warning, and the order
   of the two flags changes nothing — the session starts in `bypassPermissions` and there is no
   trace of a plan. It looks like it works, which is what makes it a trap. The only way to really

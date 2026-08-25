@@ -41,6 +41,18 @@ except (ImportError, ValueError) as err:  # pragma: no cover - depends on the de
     print(f"k0: no tray support on this desktop ({err}); the board still works", file=sys.stderr)
     raise SystemExit(0)
 
+# libnotify is what makes a notification clickable: `notify-send` can only shout, and a
+# notification you cannot click is one that tells you a session is waiting and then leaves you to
+# find its terminal yourself. Where it is missing we still shout — see `notify`.
+try:  # pragma: no cover - depends on the desktop
+    gi.require_version("Notify", "0.7")
+    from gi.repository import Notify
+
+    if not Notify.init("k0"):
+        Notify = None
+except (ImportError, ValueError, GLib.Error):
+    Notify = None
+
 
 PORT = os.environ.get("K0_PORT", "4319")
 BASE = f"http://127.0.0.1:{PORT}"
@@ -130,7 +142,35 @@ def api(path, payload=None):
         return None
 
 
-def notify(title, body):
+# Notifications still waiting to be clicked. They are held here for one reason: a Notify object
+# that Python garbage-collects takes its action callback with it, and the click then does nothing.
+_shown = []
+
+
+def _forget(notification):
+    if notification in _shown:
+        _shown.remove(notification)
+
+
+def notify(card_id, title, body):
+    """Say that a session is waiting, and let the click take you to it.
+
+    The action is named `default`, which is what a notification daemon calls the click on the
+    banner itself rather than on a button. Not every daemon honours actions; where it does not,
+    or where libnotify is missing altogether, this falls back to `notify-send`, which still says
+    what happened — the terminal is then one click away in the menu instead of none.
+    """
+    if Notify is not None:
+        try:
+            note = Notify.Notification.new(title, body, None)
+            note.add_action("default", "Open", lambda *_: api(f"/api/card/{card_id}/focus", {}))
+            note.connect("closed", _forget)
+            _shown.append(note)
+            if note.show():
+                return
+            _forget(note)
+        except (GLib.Error, TypeError):
+            pass
     try:
         subprocess.Popen(["notify-send", "-a", "k0", title, body])
     except OSError:
@@ -177,7 +217,7 @@ class Tray:
         if not self.first_pass:
             for card in waiting:
                 if (card["id"], card["status"]) not in self.seen:
-                    notify(LABELS.get(card["status"], "k0"), card.get("title", ""))
+                    notify(card["id"], LABELS.get(card["status"], "k0"), card.get("title", ""))
         self.seen = now
         self.first_pass = False
 

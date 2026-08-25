@@ -180,7 +180,10 @@ body {
   transform-origin: 0 0;
   will-change: transform;
 }
-.column { flex: 0 0 268px; }
+/* A column is exactly one card wide. The number lives in a variable because the card reads it
+   too: a post-it is never taller than it is wide. */
+:root { --card-w: 268px; }
+.column { flex: 0 0 var(--card-w); }
 .column > h2 {
   margin: 0 0 14px 4px;
   font: 600 1.5rem/1 var(--hand);
@@ -278,6 +281,10 @@ body {
 }
 
 /* ── Cards ───────────────────────────────────────────────────────────── */
+/* A square, at most. Text that keeps coming does not push the card taller — a post-it that grows
+   with what is written on it stops being a post-it and becomes a page. Everything but the body is
+   `flex: none`, so the repository, the title, the age and the buttons are always there to read;
+   the body is what gives way. */
 .postit {
   background: var(--BACKLOG);
   border-radius: 2px;
@@ -287,6 +294,16 @@ body {
   cursor: default;
   transition: transform .12s ease, box-shadow .12s ease;
   position: relative;
+  display: flex;
+  flex-direction: column;
+  max-height: var(--card-w);
+  overflow: hidden;
+}
+.postit > * { flex: none; }
+.postit .body {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: hidden;
 }
 .postit:hover { box-shadow: 3px 6px 14px rgba(0, 0, 0, .24); z-index: 2; }
 .postit.ASK { background: var(--ASK); }
@@ -321,6 +338,12 @@ body {
   font-size: .94rem;
   letter-spacing: 0;
   word-break: break-word;
+  /* Two lines and an ellipsis. A session name is a name: if it does not fit in two lines of
+     monospace it was never going to be read at a glance anyway. */
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
 }
 /* What the card is about. On imported sessions it is the only thing that says what happened in
    there, so it sits right under the title — and in italics, so it is not mistaken for the prompt,
@@ -331,7 +354,7 @@ body {
   color: rgba(0, 0, 0, .56);
   margin-top: 6px;
   display: -webkit-box;
-  -webkit-line-clamp: 4;
+  -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
   overflow: hidden;
 }
@@ -342,7 +365,7 @@ body {
   /* The prompt's line breaks stay line breaks: a list has to read like a list. */
   white-space: pre-wrap;
   display: -webkit-box;
-  -webkit-line-clamp: 4;
+  -webkit-line-clamp: 3;
   -webkit-box-orient: vertical;
   overflow: hidden;
 }
@@ -557,5 +580,6 @@ html[data-driving] .postit .corner svg { width: 20px; height: 20px; }
 html[data-driving] .zoom button { width: 40px; height: 40px; }
 html[data-driving] .zoom button svg { width: 22px; height: 22px; }
 
-/* The column is in pixels too: with the text at 22 the cards would choke inside it. */
-html[data-driving] .column { flex: 0 0 340px; }
+/* The card is in pixels too: with the text at 22 it would choke inside 268. And since the card is
+   never taller than it is wide, raising this raises the ceiling with it. */
+html[data-driving] { --card-w: 340px; }

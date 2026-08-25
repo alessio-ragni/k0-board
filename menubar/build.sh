@@ -22,7 +22,13 @@ swiftc -O -swift-version 5 -o "$BIN" K0MenuBar.swift
 
 # Ad-hoc signature: without one, macOS does not deliver the bundle's notifications.
 codesign --force --sign - --identifier com.k0.menubar "$APP" >/dev/null 2>&1 || {
-  echo "⚠️  signing failed: notifications will use the fallback banner"
+  echo "⚠️  signing failed: macOS will not deliver this app's notifications"
 }
+
+# And a signature is not enough on its own: macOS only grants the notification permission to an
+# app it knows about. The bundle never passes through Finder — launchd starts it — so nothing
+# else would ever register it, and the permission would be refused with no explanation.
+LSREGISTER=/System/Library/Frameworks/CoreServices.framework/Frameworks/LaunchServices.framework/Support/lsregister
+if [ -x "$LSREGISTER" ]; then "$LSREGISTER" -f "$APP" >/dev/null 2>&1 || true; fi
 
 echo "✅ $(pwd)/$APP"

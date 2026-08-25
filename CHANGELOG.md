@@ -6,6 +6,27 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+### Fixed
+
+- **Clicking a notification opens that session's terminal**, on all three platforms. On macOS it
+  used to open **Script Editor** with a file dialog: when the Mac would not deliver k0's own
+  notifications, k0 fell back to posting one through `osascript`, and a banner posted that way
+  belongs to Script Editor rather than to k0 — no card, no click, wrong application. The fallback
+  is gone. When macOS refuses the permission, k0 now says so in the menu bar and takes you to the
+  Notifications pane, keeps asking instead of giving up on the first refusal, and writes what the
+  answer was in its log. On Linux the notification carries an action, on Windows the balloon
+  finally has a click.
+
+### Changed
+
+- **A new card asks for three things**: the repository, a title, and what Claude should do when it
+  starts — which can be left empty and typed straight into Claude Code. The *Description* field is
+  gone: it never went anywhere except onto the note. Imported sessions keep theirs, which is the
+  one place it says something, and `/k0-import` still writes it.
+- **A note is never taller than it is wide.** Long text used to push a card down the column until
+  it stopped looking like a note. The repository, the title, the age and the buttons always show;
+  the text in the middle is what gets clipped.
+
 ## [0.1.1]
 
 Documentation, and how a release is made. Nothing about k0 itself changed.
