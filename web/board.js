@@ -2,6 +2,7 @@ import { titleCase } from '/title.js'
 import { initView, refit } from '/view.js'
 import { weight, gb } from '/units.js'
 import { setFavicon } from '/favicon.js'
+import { split } from '/recency.js'
 
 // ── Statuses ───────────────────────────────────────────────────────
 // The order is the attention priority inside a column: first whoever is waiting for you,
@@ -36,6 +37,16 @@ let lastSignature = ''
 // The filters are the legend itself: click one to switch it off, and it stays as you left it.
 const hidden = new Set(JSON.parse(localStorage.getItem('k0-hidden') || '["COMPLETED"]'))
 const saveHidden = () => localStorage.setItem('k0-hidden', JSON.stringify([...hidden]))
+
+// The repositories you have put away by hand. Unlike `held` this outlives the page: putting a
+// column away is a decision, not a glance.
+const folded = new Set(JSON.parse(localStorage.getItem('k0-folded') || '[]'))
+const saveFolded = () => localStorage.setItem('k0-folded', JSON.stringify([...folded]))
+
+// The columns open in this visit. Within one visit the set only ever grows: a column does not
+// fold out from under you while you are working — it folds the next time the page loads. It is
+// deliberately not remembered, so that reloading is what tidies the board up.
+const held = new Set()
 
 // The weight of each session: on to begin with, switched off from the gauge at the top.
 let showLoad = localStorage.getItem('k0-load') !== '0'
@@ -148,6 +159,8 @@ const ICON = {
   edit: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>',
   del: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M8 6V4h8v2"/><path d="M19 6l-1 14H6L5 6"/></svg>',
   plus: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>',
+  // Put this column away: it slides off to the right, where `Old` is.
+  fold: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 6l6 6-6 6"/><path d="M19 5v14"/></svg>',
 }
 
 const esc = (s) =>
@@ -261,22 +274,121 @@ function render(data) {
   // still in alphabetical order — the server's, which is not touched here.
   if (data.mode === 'driving') columns.sort((a, b) => byAttention(a.cards[0], b.cards[0]))
 
-  for (const { col, cards } of columns) {
+  // Which of them are still warm. Everything else folds away into `Old` — see recency.js for the
+  // four rules and for why the day is counted back from your last piece of work rather than from
+  // the clock.
+  const { open, old, touched, alive } = split({
+    paths: columns.map((c) => c.col.path),
+    cards: data.cards,
+    folded,
+    held,
+  })
+  // A column open now is open for the rest of the visit, and a column that is open is not one
+  // you have put away: a session woke up in there, or you went and fetched it back yourself.
+  let forget = false
+  for (const p of open) {
+    held.add(p)
+    if (folded.delete(p)) forget = true
+  }
+  if (forget) saveFolded()
+
+  const openSet = new Set(open)
+  for (const { col, cards } of columns.filter(({ col }) => openSet.has(col.path))) {
     const wrap = document.createElement('section')
     wrap.className = 'column'
     // The "+" next to the name: a new card on THIS repository, without picking it.
     const add = `New card in ${esc(col.name)}`
-    wrap.innerHTML = `<h2><button class="add" title="${add}" aria-label="${add}">${ICON.plus}</button>${esc(
-      col.name
-    )}<small>${cards.length}</small>${gitChip(col.git, col.path)}</h2>`
+    // And next to it, the one that puts the column away without waiting for it to go quiet on
+    // its own. Not on a column with a session alive in it: hiding the one that is waiting for
+    // you is the opposite of what the board is for, and the title says so rather than the
+    // button simply doing nothing.
+    const live = alive.has(col.path)
+    const away = live ? `${col.name} has a session running: it cannot be put away` : `Put ${col.name} away`
+    const buttons =
+      `<button class="add" title="${add}" aria-label="${add}">${ICON.plus}</button>` +
+      `<button class="fold" title="${esc(away)}" aria-label="${esc(away)}"${live ? ' disabled' : ''}>` +
+      `${ICON.fold}</button>`
+    wrap.innerHTML = `<h2>${buttons}${esc(col.name)}<small>${cards.length}</small>${gitChip(
+      col.git,
+      col.path
+    )}</h2>`
     wrap.querySelector('.add').onclick = () => openEditor(null, col.path)
+    wrap.querySelector('.fold').onclick = () => putAway(col.path)
     for (const c of cards) wrap.append(postit(c, data.now))
     board.append(wrap)
   }
 
+  board.append(oldColumn(columns.filter(({ col }) => !openSet.has(col.path)), touched, data.now))
   board.append(repoColumn(data.projects ?? [], new Set(columns.map((c) => c.col.path))))
   $('#empty').style.display = columns.length ? 'none' : 'grid'
   refit() // the board changed size: the view comes back inside its limits
+}
+
+/** Put a column away by hand, and let go of the place it was holding for this visit. */
+function putAway(path) {
+  folded.add(path)
+  held.delete(path)
+  saveFolded()
+  lastSignature = ''
+  refresh()
+}
+
+/** Fetch one back: it stays for the rest of the visit, and folds again on the next load. */
+function bringBack(path) {
+  held.add(path)
+  folded.delete(path)
+  saveFolded()
+  lastSignature = ''
+  refresh()
+}
+
+/**
+ * The second-to-last column: the repositories that DO have work on the board, just not lately —
+ * nothing touched in the day before your most recent piece of work, and nothing alive inside.
+ * They are the reason the board was three screens wide: a dozen of them, standing at full width
+ * between the three you are actually on.
+ *
+ * They are folded, not thrown away. The name is a button: click it and the column comes back at
+ * full width for the rest of the visit. Next to `Others`, and built the same way, because they
+ * are the same gesture — a repository you are not working on, one click from being one you are.
+ */
+function oldColumn(columns, touched, now) {
+  if (!columns.length) return document.createDocumentFragment()
+
+  const wrap = document.createElement('section')
+  wrap.className = 'column repos old'
+  // Alphabetical, for the same reason `Others` is: these are rows you scan with your eye looking
+  // for a name. In driving mode the columns above have queued up by urgency, and letting that
+  // order through to here would be a list that reshuffles itself with nothing urgent in it.
+  wrap.innerHTML =
+    '<h2>Old<small>' +
+    columns.length +
+    '</small></h2>' +
+    [...columns]
+      .sort((a, b) => a.col.name.localeCompare(b.col.name, undefined, { sensitivity: 'base' }))
+      .map(({ col, cards }) => {
+        const add = `New card in ${esc(col.name)}`
+        const back = `Bring ${col.name} back onto the board`
+        return `<div class="repo" data-p="${esc(col.path)}">
+          <button class="add" title="${add}" aria-label="${add}">${ICON.plus}</button>
+          <button class="name" title="${esc(back)}">${esc(col.name)}</button>
+          <small>${cards.length}</small><em>${esc(since(touched.get(col.path), now))}</em>${gitChip(
+            col.git,
+            col.path
+          )}
+        </div>`
+      })
+      .join('')
+  // The whole row brings the column back, not only the name: at this size, asking for the four
+  // words exactly is asking for a second click. The `+` and the git lens are the two things in
+  // there that mean something else, and they keep meaning it.
+  wrap.onclick = (e) => {
+    const path = e.target.closest('.repo')?.dataset.p
+    if (!path || e.target.closest('.git')) return
+    if (e.target.closest('.add')) openEditor(null, path)
+    else bringBack(path)
+  }
+  return wrap
 }
 
 /**
@@ -627,6 +739,10 @@ async function refresh() {
         c.description,
         c.prompt,
         c.project_path,
+        // What folds a column away and what brings it back: the day is measured from the
+        // freshest of these, so when none of them moves nothing can fold, and the board is
+        // spared a redraw on a timer.
+        c.updated_at,
         gitSig(c.git),
         c.load ? weight(c.load.rss) : '',
       ]),

@@ -90,8 +90,8 @@ rather than mocked into a shape that proves nothing.
 The two big browser files, `web/board.js` and `web/files.js`, are not tested either: they are
 written against the DOM, and testing them would mean either a browser or a fake one, and the fake
 one is a dependency. What was worth extracting from them already has been — the markdown
-renderer, the fuzzy search, the mentions and the references all live in files of their own and are
-covered.
+renderer, the fuzzy search, the mentions, the references and the rule that decides which
+repositories are still warm all live in files of their own and are covered.
 
 `server/index.js` is not loaded by any test. The piece of it that carries a promise — who is
 allowed to talk to the server at all — was moved into `server/guard.js` so it could be read and
