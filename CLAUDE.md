@@ -54,6 +54,11 @@ rules about tone live. It ships with the repository, not with the package.
 
 ## Releasing
 
+With Claude Code none of this has to be done by hand: the `commit-push-deploy` skill in
+`.claude/skills/` is the whole road out — documentation, tests, the coverage floor, one commit,
+the push, and the tag — and it stops to ask exactly once, before the tag that cannot be taken
+back. It ships with the repository, not with the package. What follows is what it does.
+
 Bump the version in `package.json`, close the `[Unreleased]` section of `CHANGELOG.md` into a
 numbered one, commit, then push a tag that matches: `git tag -a v0.2.0 -m … && git push origin
 v0.2.0`. `.github/workflows/release.yml` does the rest — it runs the tests on all three

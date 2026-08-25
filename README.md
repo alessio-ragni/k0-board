@@ -629,6 +629,9 @@ web/             the two pages (html, css, js served exactly as they are)
   k0-import/     the skill that fills the board with sessions you have already had
   changelog/     the one that writes the changelog and the documentation when work is finished.
                  For whoever works on k0, not for whoever uses it: it is not in the package
+  commit-push-deploy/
+                 the road out: the documents, the tests, the commit, the push, and the tag that
+                 publishes. Also for whoever works on k0, and also not in the package
 docs/
   database.md    the shape of the database as it is now: the three tables, column by column
   testing.md     how the tests are written, run and measured, and what is left untested on purpose

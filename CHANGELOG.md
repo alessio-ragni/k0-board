@@ -28,6 +28,11 @@ All notable changes to this project are documented here. The format follows
 - **The reasoning behind k0 is now written down where it can be found.** Two documents for whoever
   works on it: the shape of what k0 remembers, and how its tests are put together and what they
   deliberately leave alone. Neither is shipped with the package.
+- **Nothing changes for you here either.** Putting out a new version of k0 — the documents brought
+  up to date, the tests run, and the version that reaches the registry — is now one road written
+  down rather than a sequence somebody has to remember, with a single stop to ask before the step
+  that cannot be undone. Like the two documents above, it is for whoever works on k0 and is not in
+  the package.
 
 ## [0.1.2]
 
