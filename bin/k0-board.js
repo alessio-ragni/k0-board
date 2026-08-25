@@ -126,6 +126,31 @@ async function waitForServer(seconds = 10) {
   return false
 }
 
+// ── Opening the board ────────────────────────────────────────────────────────
+/**
+ * Opens the board in a browser and answers with the address it used.
+ *
+ * `k0.localhost` is the name the board deserves, and inside a browser it is guaranteed to mean
+ * this machine — RFC 6761 reserves the whole of `.localhost` for loopback and every browser
+ * honours it. A resolver is under no such obligation, and on Windows usually declines. So the
+ * name is tried first, from here, and the number is what we fall back to: a board at a duller
+ * address beats a blank page at a prettier one.
+ *
+ * Not being able to open anything at all is not a failure. Installing over SSH, or on a machine
+ * with no session to put a window in, is an ordinary thing to do, and the install has already
+ * succeeded by the time we get here.
+ */
+async function openBoard() {
+  let url = `http://k0.localhost:${PORT}`
+  try {
+    await fetch(`${url}/api/status`, { signal: AbortSignal.timeout(1500) })
+  } catch {
+    url = `http://127.0.0.1:${PORT}`
+  }
+  await shell.openBrowser(url).catch(() => {})
+  return url
+}
+
 // ── install ──────────────────────────────────────────────────────────────────
 async function install() {
   say(`\n${bold('k0')} — the board that drives your Claude Code sessions`)
@@ -218,7 +243,8 @@ async function install() {
     appDir: APP_DIR,
     tray,
   })
-  if (await waitForServer()) ok(`k0 is up: ${bold(`http://k0.localhost:${PORT}`)}`)
+  const up = await waitForServer()
+  if (up) ok(`k0 is up: ${bold(`http://k0.localhost:${PORT}`)}`)
   else warn(`the server is not answering yet — look in ${paths.LOG_DIR}`)
 
   // ── The two invitations ────────────────────────────────────────────────────
@@ -231,6 +257,12 @@ async function install() {
     note(`Where: ${extra.target}`)
   }
 
+  // Last of all, on purpose: by now the imported cards are on the board, so what opens is
+  // somebody's own work rather than an empty grid they would have to reload.
+  if (up && !flag('no-open')) {
+    say(`\n${bold('Done.')} The board is open at ${await openBoard()}`)
+    return
+  }
   say(`\n${bold('Done.')} The board is at http://k0.localhost:${PORT}`)
   if (process.platform === 'win32') note(`If that name does not resolve, use http://127.0.0.1:${PORT}`)
 }
@@ -334,16 +366,17 @@ async function uninstall() {
 // ── start ────────────────────────────────────────────────────────────────────
 /** Runs the server in the foreground and opens the board. No service, nothing installed. */
 async function start() {
+  const open = !flag('no-open')
   if (await alive()) {
     ok(`k0 is already running on http://k0.localhost:${PORT}`)
-    await shell.openBrowser(`http://k0.localhost:${PORT}`).catch(() => {})
+    if (open) await openBoard()
     return
   }
   const child = spawn(process.execPath, [path.join(SOURCE, 'server', 'index.js')], {
     stdio: 'inherit',
     env: { ...process.env, K0_PORT: String(PORT) },
   })
-  if (await waitForServer()) await shell.openBrowser(`http://k0.localhost:${PORT}`).catch(() => {})
+  if ((await waitForServer()) && open) await openBoard()
   child.on('exit', (code) => process.exit(code ?? 0))
 }
 
@@ -434,6 +467,7 @@ ${bold('k0-board')} — a board of sticky notes that drives your Claude Code ses
 Options
   ${bold('--yes')}            do not ask, assume yes
   ${bold('--from-source')}    point the service at this directory instead of copying it
+  ${bold('--no-open')}        do not open the board in a browser at the end
   ${bold('--no-<name>')}      skip one optional change, e.g. --no-lid-sleep
 `)
 }

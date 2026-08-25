@@ -6,6 +6,14 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+### Added
+
+- **The installation ends on the board.** `npx k0-board` now opens it in your browser once
+  everything is in place, after the cards have been imported, so the first thing you see is your
+  own work and there is no address to copy out of the terminal. `--no-open` finishes without it,
+  for installing over SSH. Where the name `k0.localhost` does not resolve, k0 falls back to
+  `127.0.0.1` rather than leaving you on a blank page.
+
 ## [0.1.2]
 
 Two things that were in the way every day: a field nobody needed, and a notification that opened
