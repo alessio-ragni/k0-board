@@ -13,9 +13,10 @@ All notable changes to this project are documented here. The format follows
   notifications, k0 fell back to posting one through `osascript`, and a banner posted that way
   belongs to Script Editor rather than to k0 — no card, no click, wrong application. The fallback
   is gone. When macOS refuses the permission, k0 now says so in the menu bar and takes you to the
-  Notifications pane, keeps asking instead of giving up on the first refusal, and writes what the
-  answer was in its log. On Linux the notification carries an action, on Windows the balloon
-  finally has a click.
+  Notifications pane — and switch it on there and the menu says so on the next pass, a couple of
+  seconds later, instead of leaving you looking at a message that reads as stuck. It writes what
+  the answer was in its log, and asks again rather than giving up on the first refusal. On Linux
+  the notification carries an action, on Windows the balloon finally has a click.
 
 ### Changed
 
