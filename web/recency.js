@@ -8,12 +8,20 @@
 export const DAY = 24 * 60 * 60 * 1000
 
 /**
- * A card is quiet when nothing is happening to it: it has not started, or it is finished. Every
- * other status means a session is alive in there — grinding away, waiting for an answer, holding
- * a plan up for approval — and a column with one of those in it must never fold. Hiding the one
- * that is waiting for you is the exact opposite of what the board is for.
+ * The statuses that hold a column on the board whatever its age: something is happening in there
+ * right now, or something is on screen waiting for you. Hiding the one that is waiting for you is
+ * the exact opposite of what the board is for.
+ *
+ * `IDLE` is deliberately not one of them, and it is the only debatable line in this file. It
+ * means "your turn", so it looks like it belongs — but it is also the resting state of every
+ * terminal you have left open, and on a real board nearly every live card is sitting in it. Let
+ * it hold a column and nothing ever folds: a session you finished with three weeks ago and never
+ * closed would keep its column at full width for ever. So `IDLE` gets the same treatment as
+ * everything else — recent, and it stays; a fortnight old, and it goes to `Old`, where it is one
+ * click away. Nothing is closed either way: the terminal is still open, and the card is still
+ * exactly where you left it.
  */
-const QUIET = new Set(['BACKLOG', 'COMPLETED'])
+const DEMANDING = new Set(['ASK', 'PLANNED', 'WORKING', 'PLANNING'])
 
 /** The last time each repository was touched: the freshest of its cards. */
 export function lastTouched(cards) {
@@ -25,10 +33,10 @@ export function lastTouched(cards) {
   return map
 }
 
-/** The repositories with a session alive in them right now. */
+/** The repositories with something going on in them right now. */
 export function busy(cards) {
   const set = new Set()
-  for (const c of cards) if (!QUIET.has(c.status)) set.add(c.project_path)
+  for (const c of cards) if (DEMANDING.has(c.status)) set.add(c.project_path)
   return set
 }
 
@@ -50,8 +58,8 @@ export function cutoff(touched) {
 /**
  * Which columns stay open, and which fold into `Old`. Four rules, in this order:
  *
- * 1. a repository with a live session is always open — see QUIET above, and note this beats a
- *    fold you did by hand: something in there woke up and wants you;
+ * 1. a repository with something going on in it is always open — see DEMANDING above, and note
+ *    this beats a fold you did by hand: something in there woke up and wants you;
  * 2. one you opened by hand during this visit stays open;
  * 3. one you put away by hand stays away;
  * 4. otherwise, open if it was touched after the cutoff.

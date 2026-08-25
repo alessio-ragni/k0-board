@@ -15,8 +15,10 @@ All notable changes to this project are documented here. The format follows
   repositories open, you arrive in the morning and the three or four you are actually on are the
   ones standing there, side by side. The day is counted back from your last piece of work rather
   than from the clock, so on Monday you find Friday's work instead of an empty board. A column
-  with a live session in it never folds, whatever its age, and nothing folds while you are looking
-  at it: the board tidies itself on the next reload, never out from under your hands.
+  with something going on in it — working, planning, asking you something, holding a plan up for
+  approval — never folds, whatever its age; a terminal simply left open at *Your turn* folds like
+  anything else, and folding closes nothing. And nothing folds while you are looking at it: the
+  board tidies itself on the next reload, never out from under your hands.
 - **A column can be put away now.** Next to a column's `+`, a button that folds it immediately
   instead of waiting for it to go quiet — for a repository you are finished with for the day. That
   one is remembered across reloads, until you fetch the column back or something in it wakes up.

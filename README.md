@@ -241,10 +241,13 @@ makes it survive a weekend: on Monday the freshest thing on the board is Friday 
 you find is Friday — not an empty board on the one morning you most need to see where you left
 off. The moment you start something on Monday the line moves with you.
 
-Two things never fold. **A column with a live session in it** — working, asking you something,
-holding a plan up for approval — stays where it is however old it is: hiding the one that is
-waiting for you is the opposite of what the board is for. And **nothing folds while you are
-looking at it**: within one visit the set of columns can only grow, and the board tidies itself
+Two things never fold. **A column with something going on in it** — working, planning, asking you
+something, holding a plan up for approval — stays where it is however old it is: hiding the one
+that is waiting for you is the opposite of what the board is for. A terminal simply left open at
+**Your turn** is not one of those: it is the resting state of every window you have not closed,
+and a session you finished with three weeks ago would otherwise hold its column at full width for
+ever. It folds like anything else — and folding closes nothing, so the terminal is still open and
+the card is still exactly where you left it. And **nothing folds while you are looking at it**: within one visit the set of columns can only grow, and the board tidies itself
 on the next reload, so a column never disappears out from under your hands.
 
 **The last two columns on the right are `Old` and `Others`.** `Old` is the repositories that have

@@ -73,6 +73,18 @@ section('A session alive in there')
     list(split({ paths: PAIR, cards: [card('/repo/board', FRI), card('/repo/site', stale, 'BACKLOG')] }).old),
     '/repo/site'
   )
+  // The one debatable line, and the reason the feature works at all: `IDLE` is the resting state
+  // of every terminal left open, so letting it hold a column would mean nothing ever folds.
+  check(
+    'a terminal left open weeks ago does not hold its column',
+    list(split({ paths: PAIR, cards: [card('/repo/board', FRI), card('/repo/site', stale, 'IDLE')] }).old),
+    '/repo/site'
+  )
+  check(
+    'but your turn from an hour ago is on the board like anything else',
+    list(split({ paths: PAIR, cards: [card('/repo/board', FRI), card('/repo/site', FRI - H, 'IDLE')] }).old),
+    ''
+  )
 }
 
 // ── Put away by hand ─────────────────────────────────────────────────────────
@@ -113,12 +125,13 @@ section('Boards with nothing much on them')
 // ── The pieces on their own ──────────────────────────────────────────────────
 section('The pieces on their own')
 {
-  const cards = [card('/repo/board', FRI - 5 * H), card('/repo/board', FRI), card('/repo/api', FRI - H, 'IDLE')]
+  const cards = [card('/repo/board', FRI - 5 * H), card('/repo/board', FRI), card('/repo/api', FRI - H, 'WORKING')]
   const touched = lastTouched(cards)
   check('a repository is as fresh as its freshest card', touched.get('/repo/board'), FRI)
   check('one card is enough for the others', touched.get('/repo/api'), FRI - H)
-  check('your turn counts as alive', busy(cards).has('/repo/api'), true)
+  check('work under way counts', busy(cards).has('/repo/api'), true)
   check('finished work does not', busy(cards).has('/repo/board'), false)
+  check('nor does a terminal sitting at your turn', busy([card('/x', FRI, 'IDLE')]).size, 0)
   const { alive } = split({ paths: ['/repo/api'], cards })
   check('and split says who is alive as well', list([...alive]), '/repo/api')
 }
