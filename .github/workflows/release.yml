@@ -34,6 +34,21 @@ jobs:
             exit 1
           }
 
-      - run: npm publish --access public --provenance
+      # A tag can be pushed again for perfectly ordinary reasons — a release note fixed, a tag
+      # moved onto the right commit — and the registry refuses the same version twice. If this
+      # version is already out there, there is nothing left to do and nothing to fail about.
+      - name: Is this version already on the registry?
+        id: published
+        run: |
+          version="$(node -p "require('./package.json').version")"
+          if npm view "k0-board@$version" version > /dev/null 2>&1; then
+            echo "k0-board@$version is already published; nothing to do"
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "skip=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - if: steps.published.outputs.skip == 'false'
+        run: npm publish --access public --provenance
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
