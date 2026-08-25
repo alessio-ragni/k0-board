@@ -1,12 +1,11 @@
+import { check, section } from './harness.mjs'
 import { childrenOf, subtree, verdict, shortName } from '../server/machine.js'
 import { cpuSeconds, parsePs } from '../platform/shared/ps.js'
 import { parseVmStat, parseSwap } from '../platform/darwin/metrics.js'
 import { parseMeminfo, parseSwapFromMeminfo, parsePressure } from '../platform/linux/metrics.js'
 
-const cases = []
-const check = (label, got, want) => cases.push([label, got, want, got === want])
-
 // ── CPU time ─────────────────────────────────────────────────────────────────
+section('CPU time')
 // It is needed for the difference between two samples, which is the only way to know how hard a
 // session is working NOW: `ps`'s own `%cpu` is the average since the process was born.
 check('minutes and seconds, as ps usually writes them', cpuSeconds('9:40.82'), 580.82)
@@ -18,6 +17,7 @@ check('something unintelligible is worth zero', cpuSeconds('anything'), 0)
 check('and so is nothing at all', cpuSeconds(undefined), 0)
 
 // ── The lines of ps ──────────────────────────────────────────────────────────
+section('The lines of ps')
 const PS = [
   '    1     0   5680 136:21.14 /sbin/launchd',
   ' 45913 45020 285840   8:20.34 /home/you/.local/bin/claude',
@@ -54,6 +54,7 @@ const PS = [
 }
 
 // ── Memory, macOS ────────────────────────────────────────────────────────────
+section('Memory, macOS')
 // Real `vm_stat` output, taken from a real machine. "Used" memory is what Activity Monitor also
 // counts: the applications' pages plus wired plus compressed. Files held in cache are not
 // memory anybody is short of and stay out.
@@ -92,6 +93,7 @@ check(
 check('with no swap, zero', parseSwap('').total, 0)
 
 // ── Memory, Linux ────────────────────────────────────────────────────────────
+section('Memory, Linux')
 // Real `/proc/meminfo` output, cut down to the lines that matter. "Used" is total minus
 // MemAvailable, which is the kernel's own estimate of what a new process could get hold of
 // without swapping — a far better answer than total minus free.
@@ -130,6 +132,7 @@ check('a lot of stalling: critical', parsePressure('some avg10=45.10 avg60=30.00
 check('no PSI on this kernel: normal', parsePressure(''), 1)
 
 // ── The verdict ──────────────────────────────────────────────────────────────
+section('The verdict')
 // It is the kernel's, not ours: 1 normal, 2 warning, 4 critical. Where the kernel publishes
 // nothing the level is always 1, and the memory rule is the whole verdict.
 const mem = (fraction) => ({ total: 100, used: fraction * 100 })
@@ -140,6 +143,7 @@ check('memory nearly gone: a warning even when the kernel is silent', verdict(1,
 check('below the threshold we stay calm', verdict(1, mem(0.89)), 'ok')
 
 // ── The name to show ─────────────────────────────────────────────────────────
+section('The name to show')
 // Without this, half the processes would be called "node" and none of it would mean anything.
 check(
   'a macOS application has its name in the bundle',
@@ -161,10 +165,3 @@ check('an executable on Windows', shortName('C:\\nodejs\\node.exe C:\\p\\server.
 check("behind node -e there is no program: better to say node", shortName(`node -e import('./x.js').then(f)`), 'node')
 check('and when there is nothing at all', shortName(''), 'unknown')
 
-let bad = 0
-for (const [label, got, want, ok] of cases) {
-  if (!ok) bad++
-  console.log(`${ok ? '  ok  ' : ' FAIL '} ${label} → ${got}${ok ? '' : ` (expected ${want})`}`)
-}
-console.log(`\n${cases.length - bad}/${cases.length} passed`)
-process.exit(bad ? 1 : 0)

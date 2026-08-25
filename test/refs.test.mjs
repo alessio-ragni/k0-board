@@ -1,3 +1,4 @@
+import { check, section, after } from './harness.mjs'
 import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
@@ -5,6 +6,7 @@ import { resolveRel, index, resolve, candidates, worth } from '../web/refs.js'
 import { exist } from '../server/files.js'
 
 // ── The references inside a document ─────────────────────────────────────────
+section('The references inside a document')
 // The fixture is the same research repository the mentions tests use, cut down to what matters
 // here: four `README.md` files in four directories, three `summary.md` files, and the PDFs
 // inside `out/` — which the viewer's listing skips and which therefore are **not here**, just
@@ -30,9 +32,6 @@ const REPO = [
 ]
 const IX = index(REPO)
 
-const cases = []
-const check = (label, got, want) => cases.push([label, got, want, got === want])
-
 /** Where `t` points when read from inside `doc`, as one line to compare. */
 const at = (t, doc, code = true) => {
   const r = resolve(t, doc, IX, code)
@@ -43,6 +42,7 @@ const at = (t, doc, code = true) => {
 }
 
 // ── The path relative to the document ────────────────────────────────────────
+section('The path relative to the document')
 {
   const doc = 'interviews/README.md'
   check("a bare name is looked for in the document's own directory", at('glossary.md', doc), 'interviews/glossary.md')
@@ -58,6 +58,7 @@ const at = (t, doc, code = true) => {
 }
 
 // ── Climbing out of a directory ──────────────────────────────────────────────
+section('Climbing out of a directory')
 {
   check("README.md inside interviews is the interviews one", at('README.md', 'interviews/glossary.md'), 'interviews/README.md')
   check(
@@ -80,6 +81,7 @@ const at = (t, doc, code = true) => {
 }
 
 // ── What is not a reference ──────────────────────────────────────────────────
+section('What is not a reference')
 check('a word in the middle of a sentence is not a file', worth('README', false), false)
 check('not even a long one', worth('formatting', false), false)
 check('with a dot and an extension it is', worth('README.md', false), true)
@@ -100,6 +102,7 @@ check('an address is not a file from here', worth('example.com', true), false)
 }
 
 // ── What the listing does not have ───────────────────────────────────────────
+section('What the listing does not have')
 {
   const doc = 'billing/invoices/README.md'
   check(
@@ -112,6 +115,7 @@ check('an address is not a file from here', worth('example.com', true), false)
 }
 
 // ── The pieces worth trying, taken from a document ───────────────────────────
+section('The pieces worth trying, taken from a document')
 {
   const doc = [
     'It produces `out/report.pdf` (9 pages) and `out/report.html`.',
@@ -132,11 +136,13 @@ check('an address is not a file from here', worth('example.com', true), false)
 }
 
 // ── The relative path, on its own ────────────────────────────────────────────
+section('The relative path, on its own')
 check('resolveRel cuts the query string off', resolveRel('a/b.md', 'c.md?x=1'), 'a/c.md')
 check('and the anchor', resolveRel('a/b.md', 'c.md#here'), 'a/c.md')
 check('and it does not get lost climbing too far', resolveRel('a/b.md', '../../../x.md'), 'x.md')
 
 // ── The check on disk, on the server side ────────────────────────────────────
+section('The check on disk, on the server side')
 // This is the part that really touches the disk: get it wrong here and a name written inside a
 // document reads whatever it likes from outside the repository.
 {
@@ -158,13 +164,6 @@ check('and it does not get lost climbing too far', resolveRel('a/b.md', '../../.
   check('several paths at once return only the real ones', exist(root, ['real.md', 'fake.md']).join(), 'real.md')
   check('a malformed question breaks nothing', exist(root, null).length, 0)
 
-  fs.rmSync(root, { recursive: true, force: true })
+  after(() => fs.rmSync(root, { recursive: true, force: true }))
 }
 
-let bad = 0
-for (const [label, got, want, ok] of cases) {
-  if (!ok) bad++
-  console.log(`${ok ? '  ok  ' : ' FAIL '} ${label} → ${got}${ok ? '' : ` (expected ${want})`}`)
-}
-console.log(`\n${cases.length - bad}/${cases.length} passed`)
-process.exit(bad ? 1 : 0)

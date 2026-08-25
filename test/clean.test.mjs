@@ -1,9 +1,11 @@
+import { check, section } from './harness.mjs'
 import fs from 'node:fs'
 import path from 'node:path'
 import { execFileSync } from 'node:child_process'
 import { fileURLToPath } from 'node:url'
 
 // ── Nothing personal ─────────────────────────────────────────────────────────
+section('Nothing personal')
 // k0 grew up as one person's tool, and the functions that find files inside documents were built
 // against real material: real people's names, real client names, real absolute paths. All of that
 // was replaced before the project was opened. This test is what stops it coming back.
@@ -72,9 +74,6 @@ function* walk(dir) {
   }
 }
 
-const cases = []
-const check = (label, got, want) => cases.push([label, got, want, got === want])
-
 const wordRe = new RegExp(`\\b(${WORDS.map((w) => w.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|')})\\b`, 'i')
 
 const found = []
@@ -98,14 +97,10 @@ for (const file of tracked()) {
   }
 }
 
-check('there are files to scan at all', scanned > 20, true)
-check(`no personal data in ${scanned} files`, found.slice(0, 10).join(' '), '')
+// The failure prints the first ten places, which is enough to see the shape of what came back;
+// the count of the rest goes in the label so nobody reads ten and thinks that was all of it.
+const rest = found.length > 10 ? ` (and ${found.length - 10} more)` : ''
 
-let bad = 0
-for (const [label, got, want, ok] of cases) {
-  if (!ok) bad++
-  console.log(`${ok ? '  ok  ' : ' FAIL '} ${label} → ${got}${ok ? '' : ` (expected ${want})`}`)
-}
-if (found.length > 10) console.log(`  …and ${found.length - 10} more`)
-console.log(`\n${cases.length - bad}/${cases.length} passed`)
-process.exit(bad ? 1 : 0)
+check('there are files to scan at all', scanned > 20, true)
+check(`no personal data in ${scanned} files${rest}`, found.slice(0, 10).join(' '), '')
+

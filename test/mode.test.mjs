@@ -1,3 +1,4 @@
+import { check, section, after } from './harness.mjs'
 import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
@@ -11,10 +12,8 @@ const store = await import('../server/db.js')
 const { parseSleepDisabled, parseBattery } = await import('../platform/darwin/power.js')
 const { lidWanted, normalise, MODES, ORDER, THRESHOLD } = mode
 
-const cases = []
-const check = (label, got, want) => cases.push([label, got, want, got === want])
-
 // ── The four modes ───────────────────────────────────────────────────────────
+section('The four modes')
 // The scale, and the fact that each step includes the one before it: that is what makes it a
 // scale rather than a list of independent switches.
 check('there are four of them, in order', ORDER.join(' '), 'sleep away nerd driving')
@@ -45,6 +44,7 @@ check('the old Italian name for sleep is understood', normalise('sonno'), 'sleep
 check('and the old name for away', normalise('caffe'), 'away')
 
 // ── The ban on sleeping ──────────────────────────────────────────────────────
+section('The ban on sleeping')
 // It is the only thing that holds with the lid closed, and it is read rather than remembered:
 // if somebody else changed it, the truth is what the system says, not what we think.
 const ON = `System-wide power settings:
@@ -73,6 +73,7 @@ check('and nothing at all does not break it', parseSleepDisabled(undefined), fal
 check('it is not confused by the other lines', parseSleepDisabled(' sleep 1\n displaysleep 10'), false)
 
 // ── Where we are with the power ──────────────────────────────────────────────
+section('Where we are with the power')
 const MAINS = `Now drawing from 'AC Power'
  -InternalBattery-0 (id=22937699)\t66%; charging; 0:55 remaining present: true`
 
@@ -94,6 +95,7 @@ check('a desktop is always on the mains', parseBattery(DESKTOP).onAcPower, true)
 check('and has no charge to report', parseBattery(DESKTOP).charge, null)
 
 // ── Who decides whether to cover the lid ─────────────────────────────────────
+section('Who decides whether to cover the lid')
 // The rule is written once, and this is it. The idle inhibitor has nothing to do with it: that
 // follows the mode regardless, because it harms nobody.
 //
@@ -124,6 +126,7 @@ check(
 )
 
 // ── Remembering it ───────────────────────────────────────────────────────────
+section('Remembering it')
 {
   check('never touched: it starts from away', store.getPref(mode.KEY, mode.DEFAULT), 'away')
   store.setPref(mode.KEY, 'driving')
@@ -160,15 +163,11 @@ check(
   check('and the old keys are retired', store.getPref('modo', null), null)
 }
 
-// The handle has to go before the file does: on Windows a file that is still open cannot be
-// deleted, and this line is the whole difference between a green build and a red one there.
-;(await import('../server/db.js')).close()
-for (const suffix of ['', '-wal', '-shm']) fs.rmSync(process.env.K0_DB + suffix, { force: true })
+// Tidying up waits until the tests have run, which is what `after` is for. The handle has to go
+// before the file does: on Windows a file that is still open cannot be deleted, and this line is
+// the whole difference between a green build and a red one there.
+after(async () => {
+  ;(await import('../server/db.js')).close()
+  for (const suffix of ['', '-wal', '-shm']) fs.rmSync(process.env.K0_DB + suffix, { force: true })
+})
 
-let bad = 0
-for (const [label, got, want, ok] of cases) {
-  if (!ok) bad++
-  console.log(`${ok ? '  ok  ' : ' FAIL '} ${label} → ${got}${ok ? '' : ` (expected ${want})`}`)
-}
-console.log(`\n${cases.length - bad}/${cases.length} passed`)
-process.exit(bad ? 1 : 0)

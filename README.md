@@ -603,7 +603,8 @@ platform/
   shared/        what more than one of them needs: tmux, running commands, reading a process table
 server/
   index.js       the http server, the API, and the watching loop that runs every second
-  db.js          SQLite (node:sqlite): the card, session_event and pref tables
+  guard.js       who is allowed to talk to this server at all: the Host and the Origin
+  db.js          SQLite (node:sqlite): the card, session_event and pref tables — docs/database.md
   paths.js       where the board, the logs and the cache live
   watcher.js     reads Claude Code's own files and derives the statuses; also renames a session
   git.js         the only one that talks to git: what is committed, what is pushed, whose it is
@@ -626,7 +627,13 @@ web/             the two pages (html, css, js served exactly as they are)
   refs.js        what a name written inside a document points at, and which of the nine READMEs
 .claude/skills/
   k0-import/     the skill that fills the board with sessions you have already had
-test/            npm test — plain scripts, no framework. See CONTRIBUTING.md
+  changelog/     the one that writes the changelog and the documentation when work is finished.
+                 For whoever works on k0, not for whoever uses it: it is not in the package
+docs/
+  database.md    the shape of the database as it is now: the three tables, column by column
+  testing.md     how the tests are written, run and measured, and what is left untested on purpose
+test/            npm test — Node's own runner, no framework. See docs/testing.md
+  harness.mjs    check(label, got, want), and the sections the labels are grouped under
 ```
 
 ### What it reads, and what it never does

@@ -14,6 +14,21 @@ All notable changes to this project are documented here. The format follows
   for installing over SSH. Where the name `k0.localhost` does not resolve, k0 falls back to
   `127.0.0.1` rather than leaving you on a blank page.
 
+### Changed
+
+- **Nothing here changes what you see using k0.** The work went underneath, and it was worth doing
+  for two reasons. The tests now run on the machinery Node already ships with rather than on a loop
+  written by hand, which turns seven pass-or-fail files into five hundred and twenty-one named
+  checks — still a quarter of a second, still nothing to install, but a failure now names the one
+  thing that broke instead of the file it was in. And two parts that had never been tested at all
+  are: the one that decides whether a request reaching k0 may be answered, which is what stands
+  between a web page you happen to have open and a program that opens terminals on your machine,
+  and the one that keeps your cards, which is where a mistake loses work you cannot get back.
+  Every build from now on refuses to go backwards on how much of k0 is covered.
+- **The reasoning behind k0 is now written down where it can be found.** Two documents for whoever
+  works on it: the shape of what k0 remembers, and how its tests are put together and what they
+  deliberately leave alone. Neither is shipped with the package.
+
 ## [0.1.2]
 
 Two things that were in the way every day: a field nobody needed, and a notification that opened

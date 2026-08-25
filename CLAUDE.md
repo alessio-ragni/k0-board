@@ -22,18 +22,26 @@ Every finished piece of work is written down before it is called done:
 - **`README.md`** is the manual *and* the architecture document — the section *How it is put
   together* is where the design lives. New behaviour that a user can see belongs in the manual;
   new structure belongs in that section.
-- **`CHANGELOG.md`**, under `[Unreleased]`, in the Keep a Changelog shape.
+- **`docs/database.md`** describes the database as it is now. Change a table and it changes with
+  it, in the same commit. It is not a history: there is nothing to append.
+- **`docs/testing.md`** describes how tests are written, run and measured.
+- **`CHANGELOG.md`**, under `[Unreleased]`, in the Keep a Changelog shape. Every commit leaves a
+  line, including one that changes nothing a user can see — that one is short and says so.
 
-Nobody should have to ask for this.
+Nobody should have to ask for this, and with Claude Code nobody has to: the `changelog` skill in
+`.claude/skills/` does all of it whenever the work is about to be committed, and it is where the
+rules about tone live. It ships with the repository, not with the package.
 
 ## The rules the code already follows
 
 - **No dependencies.** There is no `dependencies` block and there will not be one. SQLite comes
   from `node:sqlite`, which is why Node 24 is the floor; the Markdown renderer, the fuzzy search
   and the PDF export are all written here. No bundler, no build step, no TypeScript.
-- **`npm test` before every commit.** The tests are plain scripts: each builds a list of
-  `check(label, got, want)` and prints it. They must never touch the real database or the real
-  home directory — point `K0_DB` and `HOME` at a temporary directory *before* the first import.
+- **`npm test` before every commit.** It runs on Node's own test runner — no framework, no
+  dependency — and every file is a plain script saying `check(label, got, want)` over and over.
+  They must never touch the real database or the real home directory: point `K0_DB` and `HOME` at
+  a temporary directory *before* the first import. CI puts a floor under the coverage of `server/`
+  and `web/`; never get a run green by weakening a test or lowering that floor.
 - **`test/clean.test.mjs` is not negotiable.** It fails the build if the author's personal
   fixtures come back. Do not skip it, do not weaken its list.
 - **Anything that talks to the operating system goes behind `platform/contract.js`**, with an

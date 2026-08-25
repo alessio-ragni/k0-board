@@ -1,6 +1,8 @@
+import { check, section } from './harness.mjs'
 import { mentions, countIn } from '../web/mentions.js'
 
 // ── The files a piece of text names ──────────────────────────────────────────
+section('The files a piece of text names')
 // The fixture is a research repository: notes from customer interviews, laid out the way a
 // real one is. Three things about it are load-bearing, and every case below leans on one of
 // them: eight `README.md` files in eight directories, three `summary.md` files, and a
@@ -37,14 +39,12 @@ const REPO = [
   f('reports/q3-2026/report-august-2026.html', 60),
 ]
 
-const cases = []
-const check = (label, got, want) => cases.push([label, got, want, got === want])
-
 /** The path of an entry's main row, or the directory it opens. */
 const head = (e) => (e ? (e.dir ? `${e.dir}/` : e.file.p) : undefined)
 const paths = (es) => es.map(head).join(' | ')
 
 // ── What is written out in full ──────────────────────────────────────────────
+section('What is written out in full')
 {
   const { named, maybe, missing } = mentions('I touched from-the-call.md and that is all', REPO)
   check('a name written out in full is found', paths(named), 'onboarding/what-to-fix/from-the-call.md')
@@ -77,6 +77,7 @@ const paths = (es) => es.map(head).join(' | ')
 }
 
 // ── The order is the order of the story ──────────────────────────────────────
+section('The order is the order of the story')
 {
   const { named } = mentions('first talking-to-users.md, then funnel.md, then from-the-call.md', REPO)
   check(
@@ -87,6 +88,7 @@ const paths = (es) => es.map(head).join(' | ')
 }
 
 // ── One name, several files ──────────────────────────────────────────────────
+section('One name, several files')
 {
   const { named } = mentions('I updated README.md', REPO)
   check('of the eight READMEs only one appears', named.length, 1)
@@ -97,6 +99,7 @@ const paths = (es) => es.map(head).join(' | ')
 }
 
 // ── What is only guessed at ──────────────────────────────────────────────────
+section('What is only guessed at')
 {
   const { named, maybe } = mentions('Survey, summary and open-questions are untouched', REPO)
   check('without the dot it does not end up among the certain', named.length, 0)
@@ -121,6 +124,7 @@ const paths = (es) => es.map(head).join(' | ')
 }
 
 // ── Directories ──────────────────────────────────────────────────────────────
+section('Directories')
 {
   const { named } = mentions('it is all in onboarding/what-to-fix', REPO)
   check('a directory written as a path is certain', head(named[0]), 'onboarding/what-to-fix/')
@@ -155,6 +159,7 @@ const paths = (es) => es.map(head).join(' | ')
 }
 
 // ── What is not here ─────────────────────────────────────────────────────────
+section('What is not here')
 {
   const { named, missing } = mentions('I changed plan-2025.md and notes.md', REPO)
   check('a name that does not exist does not invent a file', named.length, 0)
@@ -170,6 +175,7 @@ const paths = (es) => es.map(head).join(' | ')
 }
 
 // ── The empty cases ──────────────────────────────────────────────────────────
+section('The empty cases')
 {
   const { named, maybe, missing } = mentions('', REPO)
   check('empty text finds nothing', named.length + maybe.length + missing.length, 0)
@@ -184,6 +190,7 @@ const paths = (es) => es.map(head).join(' | ')
 }
 
 // ── The real case, all at once ───────────────────────────────────────────────
+section('The real case, all at once')
 {
   const text = `Tweaks to the files that were already there
 - from-the-call.md: two new warning signs that were absent.
@@ -201,10 +208,3 @@ Survey, summary and open-questions are untouched.`
   check('and five guessed at', countIn(maybe), 5)
 }
 
-let bad = 0
-for (const [label, got, want, ok] of cases) {
-  if (!ok) bad++
-  console.log(`${ok ? '  ok  ' : ' FAIL '} ${label} → ${got}${ok ? '' : ` (expected ${want})`}`)
-}
-console.log(`\n${cases.length - bad}/${cases.length} passed`)
-process.exit(bad ? 1 : 0)
