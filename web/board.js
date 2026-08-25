@@ -302,18 +302,22 @@ function render(data) {
     // its own. It sits there in plain sight next to the `+`, because a button you have to go
     // hunting for with the pointer is a button nobody knows exists.
     //
-    // On a column with something going on in it there is no button at all, rather than a grey
-    // one that does nothing: hiding the column that is waiting for you is the opposite of what
-    // the board is for, and a control you can see is a control you can use.
-    const away = `Put ${col.name} away`
-    const fold = alive.has(col.path)
-      ? ''
-      : `<button class="fold" title="${esc(away)}" aria-label="${esc(away)}">${ICON.fold}</button>`
+    // Where the column cannot be put away it goes faint and refuses, rather than not being drawn
+    // at all. Not being drawn was the first idea and it was the wrong one: a column runs and
+    // goes back to your turn every few seconds, so the button would have spent the whole session
+    // blinking in and out — and it would have done it on exactly the columns you are working on.
+    // A control that stays where it was and says why it will not move is worth more than one
+    // that is only there when it agrees with you. The title carries the reason.
+    const live = alive.has(col.path)
+    const away = live ? `${col.name} has something going on: it cannot be put away` : `Put ${col.name} away`
+    const fold = `<button class="fold" title="${esc(away)}" aria-label="${esc(away)}"${
+      live ? ' disabled' : ''
+    }>${ICON.fold}</button>`
     wrap.innerHTML = `<h2><button class="add" title="${add}" aria-label="${add}">${
       ICON.plus
     }</button>${fold}${esc(col.name)}<small>${cards.length}</small>${gitChip(col.git, col.path)}</h2>`
     wrap.querySelector('.add').onclick = () => openEditor(null, col.path)
-    wrap.querySelector('.fold')?.addEventListener('click', () => putAway(col.path))
+    wrap.querySelector('.fold').onclick = () => putAway(col.path)
     for (const c of cards) wrap.append(postit(c, data.now))
     board.append(wrap)
   }

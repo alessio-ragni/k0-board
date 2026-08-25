@@ -261,8 +261,9 @@ there with the `+`.
 
 Next to a column's `+` there is one more button, which **puts that column away now** instead of
 waiting for it to go quiet on its own — for when you are finished with a repository for the day
-and would rather not look at it. It is only there on a column that can actually be put away: on
-one with something going on in it there is no button, rather than a grey one that does nothing.
+and would rather not look at it. On a column with something going on in it the button goes faint
+and refuses, and says why if you hover it — it does not disappear, because a column runs and goes
+back to your turn every few seconds and it would spend the session blinking.
 Unlike the automatic fold, this one is remembered across reloads, until you fetch the column back
 or something in it wakes up. It **closes nothing**: no session is stopped and no terminal is
 shut. It is the board that gets smaller, not the work — what closes a session is `Done` on a

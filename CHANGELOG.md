@@ -22,9 +22,8 @@ All notable changes to this project are documented here. The format follows
   board tidies itself on the next reload, never out from under your hands.
 - **A column can be put away now.** Next to a column's `+`, a button that folds it immediately
   instead of waiting for it to go quiet — for a repository you are finished with for the day. It
-  is there only on a column that can be put away: where something is going on there is no button
-  at all, rather than a grey one. It is remembered across reloads, until you fetch the column back
-  or something in it wakes up.
+  goes faint and refuses on a column with something going on in it, and says why if you hover it.
+  It is remembered across reloads, until you fetch the column back or something in it wakes up.
   It closes nothing: no session is stopped and no terminal is shut. What closes a session is still
   `Done` on a card.
 - **The installation ends on the board.** `npx k0-board` now opens it in your browser once
