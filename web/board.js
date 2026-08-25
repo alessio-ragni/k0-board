@@ -277,7 +277,7 @@ function render(data) {
   // Which of them are still warm. Everything else folds away into `Old` — see recency.js for the
   // four rules and for why the day is counted back from your last piece of work rather than from
   // the clock.
-  const { open, old, touched, alive } = split({
+  const { open, alive } = split({
     paths: columns.map((c) => c.col.path),
     cards: data.cards,
     folded,
@@ -299,26 +299,26 @@ function render(data) {
     // The "+" next to the name: a new card on THIS repository, without picking it.
     const add = `New card in ${esc(col.name)}`
     // And next to it, the one that puts the column away without waiting for it to go quiet on
-    // its own. Not on a column with a session alive in it: hiding the one that is waiting for
-    // you is the opposite of what the board is for, and the title says so rather than the
-    // button simply doing nothing.
-    const live = alive.has(col.path)
-    const away = live ? `${col.name} has a session running: it cannot be put away` : `Put ${col.name} away`
-    const buttons =
-      `<button class="add" title="${add}" aria-label="${add}">${ICON.plus}</button>` +
-      `<button class="fold" title="${esc(away)}" aria-label="${esc(away)}"${live ? ' disabled' : ''}>` +
-      `${ICON.fold}</button>`
-    wrap.innerHTML = `<h2>${buttons}${esc(col.name)}<small>${cards.length}</small>${gitChip(
-      col.git,
-      col.path
-    )}</h2>`
+    // its own. It sits there in plain sight next to the `+`, because a button you have to go
+    // hunting for with the pointer is a button nobody knows exists.
+    //
+    // On a column with something going on in it there is no button at all, rather than a grey
+    // one that does nothing: hiding the column that is waiting for you is the opposite of what
+    // the board is for, and a control you can see is a control you can use.
+    const away = `Put ${col.name} away`
+    const fold = alive.has(col.path)
+      ? ''
+      : `<button class="fold" title="${esc(away)}" aria-label="${esc(away)}">${ICON.fold}</button>`
+    wrap.innerHTML = `<h2><button class="add" title="${add}" aria-label="${add}">${
+      ICON.plus
+    }</button>${fold}${esc(col.name)}<small>${cards.length}</small>${gitChip(col.git, col.path)}</h2>`
     wrap.querySelector('.add').onclick = () => openEditor(null, col.path)
-    wrap.querySelector('.fold').onclick = () => putAway(col.path)
+    wrap.querySelector('.fold')?.addEventListener('click', () => putAway(col.path))
     for (const c of cards) wrap.append(postit(c, data.now))
     board.append(wrap)
   }
 
-  board.append(oldColumn(columns.filter(({ col }) => !openSet.has(col.path)), touched, data.now))
+  board.append(oldColumn(columns.filter(({ col }) => !openSet.has(col.path))))
   board.append(repoColumn(data.projects ?? [], new Set(columns.map((c) => c.col.path))))
   $('#empty').style.display = columns.length ? 'none' : 'grid'
   refit() // the board changed size: the view comes back inside its limits
@@ -348,11 +348,15 @@ function bringBack(path) {
  * They are the reason the board was three screens wide: a dozen of them, standing at full width
  * between the three you are actually on.
  *
- * They are folded, not thrown away. The name is a button: click it and the column comes back at
- * full width for the rest of the visit. Next to `Others`, and built the same way, because they
- * are the same gesture — a repository you are not working on, one click from being one you are.
+ * They are folded, not thrown away. Click the row and the column comes back at full width for the
+ * rest of the visit.
+ *
+ * It sits next to `Others` and is built the same way, down to the row: a `+`, a name, a git mark
+ * and nothing else. How many cards are parked in there and how long it has been quiet were both
+ * in here once, and both had to go — three numbers on a row you are meant to read at a glance is
+ * two too many, and the answer to either is one click away in the column itself.
  */
-function oldColumn(columns, touched, now) {
+function oldColumn(columns) {
   if (!columns.length) return document.createDocumentFragment()
 
   const wrap = document.createElement('section')
@@ -366,16 +370,12 @@ function oldColumn(columns, touched, now) {
     '</small></h2>' +
     [...columns]
       .sort((a, b) => a.col.name.localeCompare(b.col.name, undefined, { sensitivity: 'base' }))
-      .map(({ col, cards }) => {
+      .map(({ col }) => {
         const add = `New card in ${esc(col.name)}`
         const back = `Bring ${col.name} back onto the board`
         return `<div class="repo" data-p="${esc(col.path)}">
           <button class="add" title="${add}" aria-label="${add}">${ICON.plus}</button>
-          <button class="name" title="${esc(back)}">${esc(col.name)}</button>
-          <small>${cards.length}</small><em>${esc(since(touched.get(col.path), now))}</em>${gitChip(
-            col.git,
-            col.path
-          )}
+          <button class="name" title="${esc(back)}">${esc(col.name)}</button>${gitChip(col.git, col.path)}
         </div>`
       })
       .join('')

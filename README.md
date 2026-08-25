@@ -250,20 +250,23 @@ ever. It folds like anything else — and folding closes nothing, so the termina
 the card is still exactly where you left it. And **nothing folds while you are looking at it**: within one visit the set of columns can only grow, and the board tidies itself
 on the next reload, so a column never disappears out from under your hands.
 
-**The last two columns on the right are `Old` and `Others`.** `Old` is the repositories that have
-work on the board, just not lately: the name, how many cards are parked there, how long it has
-been quiet, and the git mark. **Click the name and the column comes back** at full width for the
-rest of the visit. `Others` is the repositories that have no column because they have no cards at
-all — headings only, in alphabetical order. Both are there for the same two things as well:
+**The last two columns on the right are `Old` and `Others`**, and they are the same list twice
+over: a `+`, a name and the git mark, in alphabetical order. `Old` is the repositories that have
+work on the board, just not lately; `Others` is the ones that have no column because they have no
+cards at all. **Click a row in `Old` and the column comes back** at full width for the rest of the
+visit — with everything that was in it, which is why the row itself says nothing about how much
+that is or how long it has been there. Both columns are also there for the same two things:
 getting into the files of a directory you are not working on, and giving birth to the first card
 there with the `+`.
 
 Next to a column's `+` there is one more button, which **puts that column away now** instead of
 waiting for it to go quiet on its own — for when you are finished with a repository for the day
-and would rather not look at it. Unlike the automatic fold, that one is remembered across
-reloads, until you fetch the column back or something in it wakes up. It **closes nothing**: no
-session is stopped and no terminal is shut. It is the board that gets smaller, not the work —
-what closes a session is `Done` on a card.
+and would rather not look at it. It is only there on a column that can actually be put away: on
+one with something going on in it there is no button, rather than a grey one that does nothing.
+Unlike the automatic fold, this one is remembered across reloads, until you fetch the column back
+or something in it wakes up. It **closes nothing**: no session is stopped and no terminal is
+shut. It is the board that gets smaller, not the work — what closes a session is `Done` on a
+card.
 
 ### The git mark
 

@@ -219,14 +219,10 @@ body {
 .column .add svg,
 .column > h2 .fold svg { width: 15px; height: 15px; display: block; }
 .column .add:hover { opacity: 1; background: rgba(0, 0, 0, .07); }
-/* And next to it, the one that puts the column away. It keeps its place in the row whether it
-   shows or not — a button that appears and pushes the name sideways is worse than one that is
-   simply faint — and it comes out when the pointer is anywhere over the heading. */
-.column > h2 .fold { opacity: 0; transition: opacity .12s; }
-.column > h2:hover .fold { opacity: .32; }
+/* And next to it, the one that puts the column away. It stands there in plain sight, exactly as
+   faint as the `+`: a button that only comes out on hover is a button nobody knows exists. Where
+   a column cannot be put away it is not drawn at all — see board.js — rather than shown grey. */
 .column > h2 .fold:hover { opacity: 1; background: rgba(0, 0, 0, .07); }
-.column > h2 .fold[disabled] { cursor: default; }
-.column > h2:hover .fold[disabled] { opacity: .12; }
 
 .empty {
   position: absolute;
@@ -401,11 +397,11 @@ body {
   display: flex;
   align-items: center;
   gap: 4px;
-  padding: 3px 0;
+  padding: 4px 0;
   min-width: 0;
 }
 .column.repos .name {
-  font: 500 1.1rem/1.25 var(--hand);
+  font: 500 1.35rem/1.25 var(--hand);
   color: var(--muted);
   min-width: 0;
   overflow-wrap: anywhere;
@@ -425,23 +421,7 @@ body {
   background: none;
   text-align: left;
   cursor: pointer;
-  flex: 1 1 auto;
 }
-.column.old .repo small {
-  font-family: var(--sans);
-  color: var(--muted);
-  font-size: .72rem;
-  font-weight: 600;
-  flex: none;
-}
-.column.old .repo em {
-  font-family: var(--sans);
-  font-style: normal;
-  font-size: .72rem;
-  color: rgba(0, 0, 0, .38);
-  flex: none;
-}
-.column.old .repo .git { margin-left: 4px; }
 
 /* ── The git mark ─────────────────────────────────────────────────────
    One symbol: the dot if there is work that is nowhere yet, the arrow if it is committed but not
@@ -609,11 +589,9 @@ html[data-driving] .modes button svg { width: 27px; height: 27px; }
 html[data-driving] .column .add { width: 26px; height: 26px; }
 html[data-driving] .column .add svg { width: 20px; height: 20px; }
 
-/* Putting a column away, same as the pencil: as well as growing, it stays visible. A target that
-   expects to be found before it will show itself is, from across the room, not a target. */
-html[data-driving] .column > h2 .fold { width: 26px; height: 26px; opacity: .32; }
+/* Putting a column away: the same target as the `+`, and it grows with it. */
+html[data-driving] .column > h2 .fold { width: 26px; height: 26px; }
 html[data-driving] .column > h2 .fold svg { width: 20px; height: 20px; }
-html[data-driving] .column > h2 .fold[disabled] { opacity: .12; }
 
 /* The git lens: it is the door to the files, and at 12px it is a target for sitting still. */
 html[data-driving] .git svg { width: 18px; height: 18px; }
