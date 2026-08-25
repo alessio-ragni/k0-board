@@ -221,8 +221,12 @@ body {
 .column .add:hover { opacity: 1; background: rgba(0, 0, 0, .07); }
 /* And next to it, the one that puts the column away. It stands there in plain sight, exactly as
    faint as the `+`: a button that only comes out on hover is a button nobody knows exists. Where
-   a column cannot be put away it is not drawn at all — see board.js — rather than shown grey. */
+   the column cannot be put away it goes fainter still and stops answering — it does not leave,
+   because a column runs and goes back to your turn every few seconds and the button would spend
+   the session blinking. */
 .column > h2 .fold:hover { opacity: 1; background: rgba(0, 0, 0, .07); }
+.column > h2 .fold[disabled] { opacity: .12; cursor: default; }
+.column > h2 .fold[disabled]:hover { opacity: .12; background: none; }
 
 .empty {
   position: absolute;
@@ -592,6 +596,7 @@ html[data-driving] .column .add svg { width: 20px; height: 20px; }
 /* Putting a column away: the same target as the `+`, and it grows with it. */
 html[data-driving] .column > h2 .fold { width: 26px; height: 26px; }
 html[data-driving] .column > h2 .fold svg { width: 20px; height: 20px; }
+html[data-driving] .column > h2 .fold[disabled] { opacity: .12; }
 
 /* The git lens: it is the door to the files, and at 12px it is a target for sitting still. */
 html[data-driving] .git svg { width: 18px; height: 18px; }
