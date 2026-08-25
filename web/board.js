@@ -84,8 +84,17 @@ function postit(card, now) {
       card.id
     )}${loadChip(card)}</div>
     <div class="title">${esc(card.title)}</div>
-    ${card.description ? `<div class="desc">${esc(card.description)}</div>` : ''}
-    ${card.prompt ? `<div class="prompt">${esc(card.prompt)}</div>` : ''}
+    ${
+      // Description and prompt travel together in one box, and that box is the only part of the
+      // card allowed to shrink: whatever the text does, the repository, the title, the age and
+      // the buttons stay where they are.
+      card.description || card.prompt
+        ? `<div class="body">
+             ${card.description ? `<div class="desc">${esc(card.description)}</div>` : ''}
+             ${card.prompt ? `<div class="prompt">${esc(card.prompt)}</div>` : ''}
+           </div>`
+        : ''
+    }
     <div class="foot">
       ${dead ? '<span class="dead">session closed</span>' : ''}
       <span class="since" title="${LABEL[card.status]} for ${since(card.status_since, now)}">${since(card.status_since, now)}</span>
@@ -419,7 +428,6 @@ function openEditor(card, presetPath = null) {
   $('#f-project').disabled = !!card?.session_id
   $('#f-project').classList.remove('bad')
   $('#f-title').value = card?.title ?? ''
-  $('#f-desc').value = card?.description ?? ''
   $('#f-prompt').value = card?.prompt ?? ''
   $('#f-delete').style.display = card ? '' : 'none'
   // A live session is not restarted: there is only saving to do there.
@@ -513,9 +521,12 @@ async function save() {
     toast('A title is required')
     return null
   }
+  // No description here on purpose: a card written by hand does not need one. The field only
+  // ever mattered for an imported session, where it is the one line saying what happened in
+  // there — and that one is written by the import. Leaving the key out of the payload is what
+  // keeps it: `patchCard` writes only the keys it is given.
   const payload = {
     title,
-    description: $('#f-desc').value.trim(),
     project_path: chosenProject,
     prompt: $('#f-prompt').value,
   }

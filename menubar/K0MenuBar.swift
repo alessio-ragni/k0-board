@@ -173,18 +173,24 @@ final class K0: NSObject, NSApplicationDelegate, UNUserNotificationCenterDelegat
     let item = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
     var seen: [Int: String] = [:]      // the last known status of every card
     var firstPass = true               // no notifications on the first pass: that would be noise at startup
-    var notificationsAllowed = false
+    /// What macOS currently thinks of this app's notifications. **Asked again and again, never
+    /// remembered from the one answer at launch**: `requestAuthorization` replies asynchronously,
+    /// this app starts at login — before the notification service is necessarily up — and a
+    /// boolean captured in that callback would then say "no" for the rest of the day, with
+    /// nothing anywhere to say why.
+    var notificationStatus: UNAuthorizationStatus = .notDetermined
+    private var loggedStatus: UNAuthorizationStatus?
     let images = ImagePaste()
 
     func applicationDidFinishLaunching(_ n: Notification) {
         item.button?.image = icon(nil)
         item.menu = NSMenu()
 
-        let centre = UNUserNotificationCenter.current()
-        centre.delegate = self
-        centre.requestAuthorization(options: [.alert, .sound]) { ok, _ in
-            self.notificationsAllowed = ok
-        }
+        UNUserNotificationCenter.current().delegate = self
+        askAboutNotifications()
+        // Half a minute apart, because the only thing this catches is a permission that arrives
+        // late — granted by hand in System Settings, or a service that was not ready at login.
+        Timer.scheduledTimer(withTimeInterval: 30, repeats: true) { _ in self.askAboutNotifications() }
 
         images.start()
         watchScreens()
@@ -193,6 +199,50 @@ final class K0: NSObject, NSApplicationDelegate, UNUserNotificationCenterDelegat
         Timer.scheduledTimer(withTimeInterval: 2, repeats: true) { _ in self.refresh() }
         refresh()
     }
+
+    /// Reads the permission, asks for it if it has never been asked, and writes down what came
+    /// back — once per change, not every half minute.
+    ///
+    /// The log line is the point. A permission that was refused and one that was never asked for
+    /// are both perfectly silent, and until this was written down the only visible symptom was a
+    /// notification that did nothing. `launchd` sends this to `~/.k0/logs/com.k0.menubar.err.log`.
+    func askAboutNotifications() {
+        let centre = UNUserNotificationCenter.current()
+        centre.getNotificationSettings { settings in
+            DispatchQueue.main.async { self.record(settings.authorizationStatus) }
+            guard settings.authorizationStatus == .notDetermined else { return }
+            centre.requestAuthorization(options: [.alert, .sound]) { granted, error in
+                if let error {
+                    NSLog("k0: macOS refused the notification permission: \(error.localizedDescription)")
+                } else if !granted {
+                    NSLog("k0: the notification permission was declined")
+                }
+                centre.getNotificationSettings { again in
+                    DispatchQueue.main.async { self.record(again.authorizationStatus) }
+                }
+            }
+        }
+    }
+
+    private func record(_ status: UNAuthorizationStatus) {
+        notificationStatus = status
+        guard loggedStatus != status else { return }
+        loggedStatus = status
+        NSLog("k0: notifications are \(Self.name(status))")
+    }
+
+    private static func name(_ status: UNAuthorizationStatus) -> String {
+        switch status {
+        case .authorized: return "allowed"
+        case .provisional: return "allowed quietly"
+        case .denied: return "denied"
+        case .notDetermined: return "not granted — macOS has not registered this app"
+        default: return "in an unknown state (\(status.rawValue))"
+        }
+    }
+
+    /// True only when a notification posted now would actually be delivered.
+    var canNotify: Bool { notificationStatus == .authorized || notificationStatus == .provisional }
 
     // MARK: The screen changing under the windows
 
@@ -381,10 +431,21 @@ final class K0: NSObject, NSApplicationDelegate, UNUserNotificationCenterDelegat
         let restart = NSMenuItem(title: "Restart", action: #selector(restartServer), keyEquivalent: "")
         restart.target = self
         menu.addItem(restart)
-        let notifications = NSMenuItem(title: "Notifications", action: #selector(toggleNotifications), keyEquivalent: "")
-        notifications.target = self
-        notifications.state = Notifications.enabled ? .on : .off
-        menu.addItem(notifications)
+        // macOS has the last word here, and when it is saying no the switch below would be a lie:
+        // ticked, and nothing ever arrives. So the item stops pretending and takes you to the one
+        // place where that can be undone.
+        if canNotify {
+            let notifications = NSMenuItem(title: "Notifications", action: #selector(toggleNotifications), keyEquivalent: "")
+            notifications.target = self
+            notifications.state = Notifications.enabled ? .on : .off
+            menu.addItem(notifications)
+        } else {
+            let blocked = NSMenuItem(title: "Notifications blocked by macOS…",
+                                     action: #selector(openNotificationSettings),
+                                     keyEquivalent: "")
+            blocked.target = self
+            menu.addItem(blocked)
+        }
         // The four modes sit next to these because they are the same kind of gesture — something
         // you leave as it is — but the tick comes from the server rather than from here: over
         // there the board changes them too, and the menu is rebuilt every two seconds anyway.
@@ -440,6 +501,14 @@ final class K0: NSObject, NSApplicationDelegate, UNUserNotificationCenterDelegat
     @objc func toggleNotifications(_ sender: NSMenuItem) {
         Notifications.enabled.toggle()
         sender.state = Notifications.enabled ? .on : .off
+    }
+
+    /// Straight to the Notifications pane. The colour of the dot in the menu bar still tells you
+    /// what is waiting — what is missing without this permission is only being told without
+    /// looking.
+    @objc func openNotificationSettings() {
+        guard let url = URL(string: "x-apple.systempreferences:com.apple.Notifications-Settings.extension") else { return }
+        NSWorkspace.shared.open(url)
     }
 
     /// The server holds the mode, so here we only ask. The tick moves straight away so the menu
@@ -516,7 +585,15 @@ final class K0: NSObject, NSApplicationDelegate, UNUserNotificationCenterDelegat
         return Int(text.trimmingCharacters(in: .whitespacesAndNewlines)) == expected
     }
 
+    /// There is one way to notify and no other. There used to be a second one — `osascript -e
+    /// 'display notification'` — for when the Mac would not deliver this bundle's own. It is gone:
+    /// a banner posted by `osascript` **belongs to Script Editor**, so it carries no card, has no
+    /// delegate, and clicking it opened Script Editor's file dialog instead of the terminal. A
+    /// notification you cannot click is worse than none, because you go and click it.
+    ///
+    /// When macOS will not deliver ours, the menu says so — see `buildMenu`.
     func notify(_ w: Waiting) {
+        guard canNotify else { return }
         let c = UNMutableNotificationContent()
         c.title = "k0"
         c.body = "\(w.title) · \(label[w.status] ?? w.status)"
@@ -524,18 +601,8 @@ final class K0: NSObject, NSApplicationDelegate, UNUserNotificationCenterDelegat
         c.sound = .default
         let r = UNNotificationRequest(identifier: "k0-\(w.id)-\(w.status)", content: c, trigger: nil)
         UNUserNotificationCenter.current().add(r) { error in
-            // If the Mac will not deliver this bundle's notifications, fall back to the system
-            // banner: it looks the same, but it is not clickable.
-            if error != nil || !self.notificationsAllowed { self.fallbackNotify(w) }
+            if let error { NSLog("k0: the notification was not delivered: \(error.localizedDescription)") }
         }
-    }
-
-    func fallbackNotify(_ w: Waiting) {
-        let text = "\(w.title) · \(label[w.status] ?? w.status)"
-        let p = Process()
-        p.executableURL = URL(fileURLWithPath: "/usr/bin/osascript")
-        p.arguments = ["-e", "display notification \"\(text)\" with title \"k0\""]
-        try? p.run()
     }
 
     // Clicking the notification goes straight to that terminal.

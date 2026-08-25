@@ -74,6 +74,16 @@ $notify.Visible = $true
 $menu = New-Object System.Windows.Forms.ContextMenuStrip
 $notify.ContextMenuStrip = $menu
 
+# Clicking the balloon brings that session's terminal up front, which is the whole point of being
+# told. Windows shows one balloon at a time and replaces it rather than queueing, so the card the
+# click belongs to is always the last one announced — there is nothing else it could be.
+$script:LastNotified = $null
+$notify.Add_BalloonTipClicked({
+    if ($null -ne $script:LastNotified) {
+      Invoke-K0 "/api/card/$($script:LastNotified)/focus" @{} | Out-Null
+    }
+  }) | Out-Null
+
 function Add-K0Item($Text, $Action, [bool]$Enabled = $true) {
   $item = New-Object System.Windows.Forms.ToolStripMenuItem
   $item.Text = $Text
@@ -124,6 +134,7 @@ function Show-K0Notifications($Waiting) {
     foreach ($card in $Waiting) {
       $key = "$($card.id):$($card.status)"
       if (-not $script:Seen.ContainsKey($key)) {
+        $script:LastNotified = $card.id
         $notify.BalloonTipTitle = $Labels[$card.status]
         $notify.BalloonTipText = $card.title
         $notify.ShowBalloonTip(4000)
