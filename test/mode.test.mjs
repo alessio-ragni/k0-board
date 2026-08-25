@@ -160,6 +160,9 @@ check(
   check('and the old keys are retired', store.getPref('modo', null), null)
 }
 
+// The handle has to go before the file does: on Windows a file that is still open cannot be
+// deleted, and this line is the whole difference between a green build and a red one there.
+;(await import('../server/db.js')).close()
 for (const suffix of ['', '-wal', '-shm']) fs.rmSync(process.env.K0_DB + suffix, { force: true })
 
 let bad = 0

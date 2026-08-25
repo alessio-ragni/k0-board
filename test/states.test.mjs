@@ -431,6 +431,9 @@ const store = await import('../server/db.js')
   check('with no starting mark there is no knowing', sessionShare(shas, null), null)
 }
 
+// The handle has to go before the file does: on Windows a file that is still open cannot be
+// deleted, and this line is the whole difference between a green build and a red one there.
+;(await import('../server/db.js')).close()
 for (const suffix of ['', '-wal', '-shm']) fs.rmSync(process.env.K0_DB + suffix, { force: true })
 fs.rmSync(TRANSCRIPTS, { recursive: true, force: true })
 fs.rmSync(REPO, { recursive: true, force: true })

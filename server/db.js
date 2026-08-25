@@ -249,4 +249,14 @@ export function dropPref(key) {
   db.prepare('DELETE FROM pref WHERE "key" = ?').run(key)
 }
 
+/**
+ * Letting go of the file. It matters in exactly one place — a test that wants to delete the
+ * database it was pointed at — and it matters on exactly one platform: POSIX lets a file be
+ * unlinked while it is still open, Windows refuses. Closing also takes the `-wal` and `-shm`
+ * away with it.
+ */
+export function close() {
+  db.close()
+}
+
 export default db

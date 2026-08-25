@@ -449,6 +449,9 @@ check('and in bytes when it is small', bytes(6), '6 B')
 
 fs.rmSync(REPO, { recursive: true, force: true })
 fs.rmSync(FAKE_HOME, { recursive: true, force: true })
+// The handle has to go before the file does: on Windows a file that is still open cannot be
+// deleted, and this line is the whole difference between a green build and a red one there.
+;(await import('../server/db.js')).close()
 for (const suffix of ['', '-wal', '-shm']) fs.rmSync(process.env.K0_DB + suffix, { force: true })
 
 let bad = 0
