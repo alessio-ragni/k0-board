@@ -1,0 +1,134 @@
+/* Type and scale: the system font, 17px base, with Caveat for the handwritten touches only.
+   The house variables live here, and they live here because there are two pages: the board
+   and the file viewer. If you change a colour, change it once — this is the place.
+
+   The font is bundled rather than linked. k0 is a local tool and should stay one: a link to a
+   font service would mean a request to a third party every time you open the board, and a
+   board that comes up wrong on a laptop with no connection. See web/fonts/README.md. */
+@font-face {
+  font-family: 'Caveat';
+  font-style: normal;
+  font-weight: 500 600;
+  font-display: swap;
+  src: url('fonts/caveat-latin.woff2') format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304,
+    U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+@font-face {
+  font-family: 'Caveat';
+  font-style: normal;
+  font-weight: 500 600;
+  font-display: swap;
+  src: url('fonts/caveat-latin-ext.woff2') format('woff2');
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304,
+    U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0,
+    U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+
+:root {
+  --bg: #f3f1ea;
+  --ink: #2b2b2b;
+  --muted: #7d7869;
+  --line: #ddd8cb;
+  --paper: #fffdf7;
+
+  /* One colour per status: the whole card is what tells you where you are. */
+  --ASK: #fbb4b4;
+  --PLANNED: #fdd0a2;
+  --IDLE: #fde68a;
+  --WORKING: #a9c9f5;
+  --PLANNING: #c9dbfb;
+  --BACKLOG: #e2dfd6;
+  --COMPLETED: #b7e8c4;
+
+  /* The two signals: red if something is outstanding, green if everything is safe.
+     The red is the house red, the same one the bin and Delete use. */
+  --alert: #b91c1c;
+  --calm: #15803d;
+  --warn: #b45309;
+
+  --sans: ui-sans-serif, system-ui, -apple-system, sans-serif;
+  --hand: 'Caveat', ui-sans-serif, system-ui, sans-serif;
+  --mono: ui-monospace, 'SF Mono', Menlo, monospace;
+}
+
+* { box-sizing: border-box; }
+
+html { font-size: 17px; }
+html, body { height: 100%; }
+
+/* ── Buttons and dialogs ─────────────────────────────────────────────────────
+   They live here, and not on the board where they were born, because both pages open
+   dialogs: the card editor over there, the paste-a-chunk-of-chat box over here. A dialog
+   without its buttons would be half a dialog, so they come together. */
+button {
+  font: inherit;
+  border: 1px solid var(--line);
+  background: #fffdf7;
+  border-radius: 8px;
+  padding: 8px 15px;
+  cursor: pointer;
+}
+button:hover { background: #fff; border-color: #c9c3b4; }
+button.primary { background: var(--ink); color: #fffdf7; border-color: var(--ink); font-weight: 600; }
+button.danger { color: #b91c1c; border-color: #f1c9c9; }
+button.destructive { background: #b91c1c; border-color: #b91c1c; color: #fffdf7; font-weight: 600; }
+button.destructive:hover { background: #a11717; border-color: #a11717; }
+
+dialog {
+  border: none;
+  border-radius: 14px;
+  padding: 26px;
+  width: min(560px, 93vw);
+  background: #fffdf7;
+  color: var(--ink);
+  font-family: var(--sans);
+  font-size: 1rem;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, .3);
+}
+dialog::backdrop { background: rgba(40, 38, 32, .42); }
+dialog h2 { margin: 0; font: 700 1.3rem/1 var(--sans); }
+
+/* The X sits top right, where you expect to find it: closing without saving is a way out,
+   not a choice to line up next to the buttons that do something. */
+dialog .head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px; }
+dialog .x {
+  flex: none;
+  padding: 0;
+  width: 30px;
+  height: 30px;
+  margin: -4px -4px 0 0;
+  border: none;
+  background: none;
+  border-radius: 999px;
+  color: var(--muted);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+dialog .x svg { width: 17px; height: 17px; display: block; }
+dialog .x:hover { background: #f0ede3; color: var(--ink); border: none; }
+dialog label { display: block; margin-bottom: 18px; font-size: .82rem; font-weight: 600; color: var(--muted); }
+dialog label small { display: block; margin-top: 5px; font-weight: 400; }
+dialog input, dialog textarea {
+  display: block;
+  width: 100%;
+  margin-top: 6px;
+  font: inherit;
+  font-size: 1rem;
+  color: var(--ink);
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fff;
+}
+dialog textarea { resize: vertical; line-height: 1.5; }
+/* A repository typed but never picked from the list: it does not exist, and it shows. */
+dialog input.bad { border-color: #d97070; background: #fff6f6; }
+dialog footer { display: flex; gap: 8px; align-items: center; margin-top: 4px; }
+dialog .spacer { flex: 1; }
+
+/* The house confirmation: only ever asked before throwing a card away. */
+dialog.ask { width: min(380px, 88vw); padding: 22px 24px 18px; }
+dialog.ask p { margin: 0 0 20px; font-size: 1rem; }
+dialog.ask footer { margin: 0; }

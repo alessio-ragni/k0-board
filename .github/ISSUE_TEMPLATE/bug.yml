@@ -1,0 +1,60 @@
+name: Something is broken
+description: k0 does something wrong, or nothing at all
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time. The single most useful thing you can paste here is the
+        output of `k0-board doctor` — it says what your machine can and cannot do, and why,
+        which is the first question anybody would ask.
+
+  - type: textarea
+    id: doctor
+    attributes:
+      label: Output of `k0-board doctor`
+      description: Run it and paste the whole thing. It contains no personal data.
+      render: text
+    validations:
+      required: true
+
+  - type: dropdown
+    id: platform
+    attributes:
+      label: Platform
+      description: >-
+        Linux and Windows are written but untested by the author. If you are on one of them,
+        you are the first person to try this — say so plainly, including what did work.
+      options:
+        - macOS
+        - Linux
+        - Windows
+    validations:
+      required: true
+
+  - type: input
+    id: how
+    attributes:
+      label: How did you install it?
+      placeholder: "npx k0-board, or a clone with --from-source"
+    validations:
+      required: true
+
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened
+      description: What you did, what you expected, and what happened instead.
+    validations:
+      required: true
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: Anything in the logs?
+      description: >-
+        `~/.k0/logs/` on macOS and Linux, `%LOCALAPPDATA%\k0\logs\` on Windows.
+        Have a look before pasting — a log can contain paths from your own machine.
+      render: text
+    validations:
+      required: false

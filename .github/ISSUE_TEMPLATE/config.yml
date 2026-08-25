@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Ask a question
+    url: https://github.com/alessio-ragni/k0-board/discussions
+    about: Anything that is not a bug or an idea — how something works, whether it can do X, what you built with it.
+  - name: Report a security problem
+    url: https://github.com/alessio-ragni/k0-board/security/advisories/new
+    about: Privately, not in a public issue. See SECURITY.md.

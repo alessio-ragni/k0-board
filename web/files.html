@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>k0 — Files</title>
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+  <link rel="stylesheet" href="/files.css">
+</head>
+<body>
+  <header class="topbar">
+    <a class="home" href="/" title="Back to the dashboard">k0</a>
+    <h1 id="repo"></h1>
+    <span class="ctx" id="ctx"></span>
+    <div class="find">
+      <!-- The lens used to be a drawing; now it is the door to the other search, the one you
+           do by pasting a piece of conversation instead of typing. -->
+      <button type="button" class="lens" id="paste-open" title="Paste a chunk of chat and find the files it names" aria-label="Paste a chunk of chat">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4.2-4.2"/></svg>
+      </button>
+      <input id="q" autocomplete="off" spellcheck="false" placeholder="search a file…">
+    </div>
+    <span class="count" id="count"></span>
+  </header>
+
+  <main class="split" id="split">
+    <nav class="list" id="list" tabindex="-1"></nav>
+    <div class="grip" id="grip" title="Drag to resize" role="separator" aria-orientation="vertical"></div>
+    <section class="doc" id="doc">
+      <p class="blank">Pick a file on the left.</p>
+    </section>
+  </main>
+
+  <!-- The text is pasted in here, into a big box: a piece of chat does not fit on one line, and
+       seeing all of it is how you notice whether you grabbed the right piece. -->
+  <dialog id="paste">
+    <form id="paste-form">
+      <div class="head">
+        <h2>Paste a chunk of chat</h2>
+        <button type="button" id="p-close" class="x" title="Close" aria-label="Close">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg>
+        </button>
+      </div>
+
+      <label>The text
+        <textarea id="p-text" rows="10" placeholder="paste the piece of conversation that names the files…"></textarea>
+        <small>it looks for the file names written in the text, not for what they are about</small>
+      </label>
+
+      <p class="note" id="p-note" hidden></p>
+
+      <footer>
+        <span class="spacer"></span>
+        <button type="button" id="p-cancel">Cancel</button>
+        <button type="submit" class="primary">Find the files</button>
+      </footer>
+    </form>
+  </dialog>
+
+  <div id="toast" class="toast"></div>
+  <script type="module" src="/files.js"></script>
+</body>
+</html>

@@ -1,0 +1,39 @@
+name: Release
+
+on:
+  push:
+    tags: ['v*']
+
+# Publishing needs `id-token: write` so npm can attach a provenance statement: proof, signed by
+# GitHub, that this tarball was built from this commit of this repository. It costs one line and
+# it is the difference between "trust me" and something a stranger can check.
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          registry-url: https://registry.npmjs.org
+
+      # The tests run again here rather than being trusted from the pull request: a tag can be
+      # pushed from anywhere, and a broken release is far more expensive than a minute of CI.
+      - run: npm test
+
+      - name: The tag has to match the version
+        run: |
+          tag="${GITHUB_REF_NAME#v}"
+          version="$(node -p "require('./package.json').version")"
+          test "$tag" = "$version" || {
+            echo "tag $tag does not match package.json $version"
+            exit 1
+          }
+
+      - run: npm publish --access public --provenance
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}

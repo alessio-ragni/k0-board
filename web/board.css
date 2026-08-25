@@ -1,0 +1,561 @@
+/* The house variables — colours, fonts, scale — live in base.css, which belongs to both
+   pages. From here down there is only the board. */
+@import url('/base.css');
+
+/* The page no longer scrolls: it is the board that moves underneath the view. */
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--ink);
+  font-family: var(--sans);
+  font-size: 1rem;
+  line-height: 1.45;
+  -webkit-font-smoothing: antialiased;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+/* ── The top bar ─────────────────────────────────────────────────────── */
+.topbar {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 12px 22px;
+  background: #fffdf7;
+  border-bottom: 1px solid var(--line);
+  flex: none;
+}
+.topbar h1 {
+  margin: 0;
+  font: 700 1.35rem/1 var(--mono);
+  letter-spacing: 1px;
+}
+
+/* The legend IS the filter: click a status and it leaves the board. */
+.filters { display: flex; gap: 8px; flex: 1; flex-wrap: wrap; }
+.filters button {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  border: 1px solid var(--line);
+  background: #fffdf7;
+  border-radius: 999px;
+  padding: 5px 13px 5px 9px;
+  font-size: .82rem;
+  font-weight: 600;
+  color: var(--ink);
+  cursor: pointer;
+}
+.filters button i {
+  width: 13px;
+  height: 13px;
+  border-radius: 4px;
+  flex: none;
+  border: 1px solid rgba(0, 0, 0, .12);
+}
+.filters button[aria-pressed="false"] { opacity: .38; }
+.filters button[aria-pressed="false"] i { background: transparent !important; }
+.filters button:hover { border-color: #bdb6a5; }
+
+/* ── How the computer is doing ────────────────────────────────────────
+   At the end of the bar, always there. The dot is the kernel's judgement — green, amber, red —
+   and the rest of the picture comes out on hover. Clicking it switches the weights on the cards
+   off and on again. */
+.gauge {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  border: 1px solid var(--line);
+  background: #fffdf7;
+  border-radius: 999px;
+  padding: 5px 14px;
+  font-size: .78rem;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  color: var(--muted);
+  white-space: nowrap;
+  cursor: pointer;
+}
+/* `display: flex` beats the browser's `[hidden]`: until there is a sample, it hides here. */
+.gauge[hidden] { display: none; }
+.gauge:hover { border-color: #bdb6a5; background: #fff; }
+.gauge i {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  flex: none;
+  background: var(--calm);
+}
+.gauge.warn i { background: var(--warn); }
+.gauge.bad i { background: var(--alert); }
+/* Solid red only when it is critical: the one moment it is allowed to interrupt. */
+.gauge.bad { color: var(--alert); border-color: #f1c9c9; }
+
+/* The "+" sits next to k0, at the start of the bar: that is where a card is born.
+   The sign is drawn, not typed: a font glyph never sits in the middle of the circle. */
+.new {
+  flex: none;
+  padding: 0;
+  width: 34px;
+  height: 34px;
+  border-radius: 999px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.new svg { width: 17px; height: 17px; display: block; }
+
+/* ── The four modes ───────────────────────────────────────────────────
+   At the end of the bar, a row of four: how awake the machine has to stay. Switched off they are
+   pale outlines like the statuses filtered away; the lit one takes the colour of its mode. The
+   colour is not decoration: from across the room — which is what driving mode is for — you do not
+   focus on the icon, but you do see the colour. */
+.modes {
+  flex: none;
+  display: flex;
+  gap: 3px;
+}
+.modes button {
+  flex: none;
+  padding: 0;
+  width: 34px;
+  height: 34px;
+  border-radius: 999px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--ink);
+  opacity: .34;
+}
+.modes button svg { width: 20px; height: 20px; display: block; }
+.modes button:hover { opacity: .72; }
+.modes button[aria-checked="true"] { opacity: 1; }
+
+/* One colour per mode, climbing like the scale: grey asleep, green for the machine holding, amber
+   for you being there, blue for watching from a distance. The blue is driving mode's usual one,
+   the only one of the four that was already familiar. */
+.modes button[aria-checked="true"][data-mode="sleep"] {
+  background: #dfe3e8;
+  border-color: #b4bdc8;
+  color: #3d4854;
+}
+.modes button[aria-checked="true"][data-mode="away"] {
+  background: var(--COMPLETED);
+  border-color: #7fc99a;
+  color: #1d5233;
+}
+.modes button[aria-checked="true"][data-mode="nerd"] {
+  background: var(--IDLE);
+  border-color: #e8c766;
+  color: #6b5210;
+}
+.modes button[aria-checked="true"][data-mode="driving"] {
+  background: var(--WORKING);
+  border-color: #7fa9e8;
+  color: #1c3d6e;
+}
+
+/* On but not all the way: the permission is missing, or the battery is nearly flat, and with the
+   lid closed it will not hold. It is not an error worth stopping everything for, it is a promise
+   not to make: an amber ring around it, and the title says the rest. */
+.modes button[data-partial] { box-shadow: 0 0 0 2px #e0a72e; }
+
+/* ── The board ───────────────────────────────────────────────────────── */
+/* The viewport is the fixed window, the board is the content sliding behind it: one transform on
+   .board, and no scrollbar anywhere. */
+.viewport {
+  flex: 1;
+  min-height: 0;
+  position: relative;
+  overflow: hidden;
+}
+.board {
+  display: flex;
+  gap: 24px;
+  align-items: flex-start;
+  padding: 26px 40px 46px;
+  width: max-content; /* so offsetWidth is the real width of all the columns */
+  transform-origin: 0 0;
+  will-change: transform;
+}
+.column { flex: 0 0 268px; }
+.column > h2 {
+  margin: 0 0 14px 4px;
+  font: 600 1.5rem/1 var(--hand);
+  color: #5f5a4e;
+}
+.column > h2 small {
+  font-family: var(--sans);
+  color: var(--muted);
+  font-size: .72rem;
+  font-weight: 600;
+  margin-left: 7px;
+  vertical-align: middle;
+}
+/* The column's "+": from here a card is born already addressed to this repository.
+   It sits to the left of the name, faded, and darkens when you hover over it. */
+.column .add {
+  padding: 0;
+  width: 19px;
+  height: 19px;
+  margin-right: 5px;
+  border: none;
+  background: none;
+  border-radius: 5px;
+  color: #5f5a4e;
+  opacity: .32;
+  vertical-align: middle;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+.column .add svg { width: 15px; height: 15px; display: block; }
+.column .add:hover { opacity: 1; background: rgba(0, 0, 0, .07); }
+
+.empty {
+  position: absolute;
+  inset: 0;
+  margin: 0;
+  place-items: center;
+  text-align: center;
+  color: var(--muted);
+  display: none;
+}
+
+/* ── The edges ───────────────────────────────────────────────────────── */
+/* The faintest shadow on the side where the board continues: it is what says that bringing the
+   pointer there moves you along. Where it has run out, it goes dark. */
+.edges { position: absolute; inset: 0; pointer-events: none; z-index: 3; }
+.edges i { position: absolute; opacity: 0; transition: opacity .18s ease; }
+.edges .l, .edges .r { top: 0; bottom: 0; width: 38px; }
+.edges .t, .edges .b { left: 0; right: 0; height: 38px; }
+.edges .l { left: 0; background: linear-gradient(to right, rgba(0, 0, 0, .09), transparent); }
+.edges .r { right: 0; background: linear-gradient(to left, rgba(0, 0, 0, .09), transparent); }
+.edges .t { top: 0; background: linear-gradient(to bottom, rgba(0, 0, 0, .09), transparent); }
+.edges .b { bottom: 0; background: linear-gradient(to top, rgba(0, 0, 0, .09), transparent); }
+.edges.can-l .l, .edges.can-r .r, .edges.can-t .t, .edges.can-b .b { opacity: 1; }
+
+/* ── Zoom ────────────────────────────────────────────────────────────── */
+/* Bottom right, where you expect to find it. The percentage is a button: clicked, it goes back to
+   100%. The last one fits the whole board on the screen. */
+.zoom {
+  position: absolute;
+  right: 16px;
+  bottom: 16px;
+  z-index: 4;
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  padding: 4px;
+  background: #fffdf7;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  box-shadow: 0 3px 12px rgba(0, 0, 0, .12);
+}
+.zoom button {
+  padding: 0;
+  width: 30px;
+  height: 30px;
+  border: none;
+  background: none;
+  border-radius: 999px;
+  color: var(--ink);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.zoom button:hover { background: #f0ede3; border: none; }
+.zoom button svg { width: 16px; height: 16px; display: block; }
+.zoom #z-level {
+  width: auto;
+  padding: 0 9px;
+  font-size: .8rem;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  color: var(--muted);
+}
+
+/* ── Cards ───────────────────────────────────────────────────────────── */
+.postit {
+  background: var(--BACKLOG);
+  border-radius: 2px;
+  padding: 13px 15px 12px;
+  margin-bottom: 16px;
+  box-shadow: 2px 3px 8px rgba(0, 0, 0, .17);
+  cursor: default;
+  transition: transform .12s ease, box-shadow .12s ease;
+  position: relative;
+}
+.postit:hover { box-shadow: 3px 6px 14px rgba(0, 0, 0, .24); z-index: 2; }
+.postit.ASK { background: var(--ASK); }
+.postit.PLANNED { background: var(--PLANNED); }
+.postit.IDLE { background: var(--IDLE); }
+.postit.WORKING { background: var(--WORKING); }
+.postit.PLANNING { background: var(--PLANNING); }
+.postit.BACKLOG { background: var(--BACKLOG); }
+.postit.COMPLETED { background: var(--COMPLETED); opacity: .6; }
+.postit.COMPLETED .title { text-decoration: line-through; }
+/* Grinding away: the faintest breath, no blinking dots. */
+.postit.WORKING, .postit.PLANNING { animation: breathe 2.6s ease-in-out infinite; }
+@keyframes breathe { 50% { box-shadow: 2px 3px 8px rgba(0, 0, 0, .17), 0 0 0 3px rgba(59, 130, 246, .22); } }
+
+/* The repository's name and, beside it, how it is doing: the two read together. */
+.postit .head {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  margin-bottom: 3px;
+}
+.postit .tag {
+  font: 500 1.05rem/1 var(--hand);
+  color: rgba(0, 0, 0, .5);
+  min-width: 0;
+}
+/* The name is the session's: it is in monospace like the k0 mark at the top.
+   Monospace is heavier at the same size, which is why it drops to .94rem. */
+.postit .title {
+  font-family: var(--mono);
+  font-weight: 700;
+  font-size: .94rem;
+  letter-spacing: 0;
+  word-break: break-word;
+}
+/* What the card is about. On imported sessions it is the only thing that says what happened in
+   there, so it sits right under the title — and in italics, so it is not mistaken for the prompt,
+   which is something that ends up in the terminal. */
+.postit .desc {
+  font-size: .86rem;
+  font-style: italic;
+  color: rgba(0, 0, 0, .56);
+  margin-top: 6px;
+  display: -webkit-box;
+  -webkit-line-clamp: 4;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.postit .prompt {
+  font-size: .86rem;
+  color: rgba(0, 0, 0, .62);
+  margin-top: 6px;
+  /* The prompt's line breaks stay line breaks: a list has to read like a list. */
+  white-space: pre-wrap;
+  display: -webkit-box;
+  -webkit-line-clamp: 4;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.postit .foot {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 10px;
+  font-size: .76rem;
+  color: rgba(0, 0, 0, .5);
+  min-height: 1em;
+}
+.postit .since { margin-left: auto; }
+.postit .dead { font-style: italic; }
+
+/* ── The last column: every repository ────────────────────────────────
+   Headings only, one per repository, in the order you last used them. No cards and no counts:
+   this is how you get into the files of a directory you are not working on — which without this
+   column would have no door at all — and how you give birth to the first card there. */
+.column.repos { gap: 0; }
+.column.repos .repo {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 0;
+  min-width: 0;
+}
+.column.repos .name {
+  font: 500 1.1rem/1.25 var(--hand);
+  color: var(--muted);
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.column.repos .repo:hover .name { color: var(--ink); }
+.column.repos .git { margin-left: auto; }
+
+/* ── The git mark ─────────────────────────────────────────────────────
+   One symbol: the dot if there is work that is nowhere yet, the arrow if it is committed but not
+   pushed, the tick if everything is safe. The detail is in the title, which comes out on hover.
+
+   And it is also the door to the files: it is a link, and it opens the viewer in another tab. */
+.git {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  flex: none;
+  font-family: var(--sans);
+  font-size: .74rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+  text-decoration: none;
+  color: inherit;
+  border-radius: 5px;
+  padding: 2px 3px;
+  margin: -2px -3px;
+}
+.git:hover { background: rgba(0, 0, 0, .09); }
+.git svg { width: 12px; height: 12px; display: block; }
+/* Two colours and no more: red if something is outstanding — which of the two the mark itself
+   says, not the colour — and green when everything is safe. */
+.git.dirty, .git.push { color: var(--alert); }
+.git.ok { color: var(--calm); }
+/* Without git there is nothing to say about the work: the lens stays, but quietly. */
+.git.none { color: rgba(0, 0, 0, .32); }
+.column > h2 .git { margin-left: 8px; vertical-align: middle; }
+
+/* ── What a session weighs ────────────────────────────────────────────
+   At the head of the card, after the repository name and the git mark: repository · changes ·
+   load. Grey like the rest of the row — the colour comes from the gauge at the top — except for
+   whichever is eating the most while the machine is struggling, which is the only one worth
+   starting with. */
+.postit .load {
+  margin-left: auto;
+  flex: none;
+  font-size: .72rem;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  color: rgba(0, 0, 0, .45);
+  cursor: default;
+}
+.postit .load.hot { color: var(--alert); }
+
+/* The corner icon: the pencil opens the editor, and on a finished card — where there is nothing
+   left to edit — the bin takes its place. */
+.postit .corner {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 6px;
+  background: rgba(255, 255, 255, .72);
+  border-color: rgba(0, 0, 0, .14);
+  color: rgba(0, 0, 0, .55);
+  opacity: 0;
+  transition: opacity .12s ease;
+}
+.postit .corner svg { width: 14px; height: 14px; display: block; }
+.postit .corner.del { color: #b91c1c; }
+.postit:hover .corner, .postit .corner:focus-visible { opacity: 1; }
+/* The title must not end up underneath it. On the first row the container holds the space, so the
+   git mark stays next to the repository name instead of next to the pencil. */
+.postit .head, .postit .title { padding-right: 26px; }
+
+/* The buttons stay hidden until you hover: the dashboard stays clean. */
+.postit .actions {
+  display: flex;
+  gap: 7px;
+  margin-top: 11px;
+  opacity: 0;
+  transition: opacity .12s ease;
+}
+.postit:hover .actions, .postit:focus-within .actions { opacity: 1; }
+.postit .actions button {
+  font-size: .84rem;
+  font-weight: 600;
+  padding: 6px 13px;
+  background: rgba(255, 255, 255, .72);
+  border-color: rgba(0, 0, 0, .14);
+}
+
+/* ── Editor ───────────────────────────────────────────────────────────
+   The dialog and its buttons live in base.css, which belongs to both pages: the file viewer opens
+   one too. What is left here is only what belongs to a card's editor and to nothing else. */
+
+/* Choosing the repository: a searchable field, most used at the top. */
+.picker { position: relative; }
+.picker-list {
+  position: absolute;
+  z-index: 5;
+  left: 0;
+  right: 0;
+  top: calc(100% + 4px);
+  max-height: 320px;
+  overflow-y: auto;
+  background: #fff;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  box-shadow: 0 12px 30px rgba(0, 0, 0, .18);
+  padding: 5px;
+}
+.picker-list[hidden] { display: none; }
+.picker-list div {
+  padding: 9px 12px;
+  border-radius: 7px;
+  cursor: pointer;
+  font-size: .95rem;
+  font-weight: 500;
+  color: var(--ink);
+  display: flex;
+  align-items: center;
+  gap: 9px;
+}
+.picker-list div.on, .picker-list div:hover { background: #f0ede3; }
+/* Where you are with the arrows: the row Enter picks, told apart from the one already chosen. */
+.picker-list div.active { background: #e6e1d3; box-shadow: inset 0 0 0 1px #cdc6b4; }
+.picker-list div b { font-weight: 700; }
+.picker-list div em { margin-left: auto; font-style: normal; font-size: .74rem; color: var(--muted); font-weight: 400; }
+
+.toast {
+  position: fixed;
+  bottom: 22px;
+  left: 50%;
+  transform: translateX(-50%) translateY(20px);
+  background: var(--ink);
+  color: #fffdf7;
+  padding: 12px 20px;
+  border-radius: 9px;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity .2s, transform .2s;
+  max-width: 80vw;
+  font-size: .92rem;
+}
+.toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+/* ── Driving mode ─────────────────────────────────────────────────────
+   Everything bigger, for when you glance at the board from across the room.
+
+   The base size goes from 17 to 22, and with it goes everything written in `rem` — which is
+   nearly all the text. What does NOT go up by itself is the things you click: those are in
+   pixels, and in pixels they stay until they are raised by hand. And they are exactly the point —
+   a 34px "+" and a 12px lens, glanced at from a distance, cannot be hit.
+
+   The switch is the server's to flip, not the browser's: `data-driving` on the `<html>` element
+   is only its shadow in here. */
+html[data-driving] { font-size: 22px; }
+
+/* The bar's "+" and the column's: a card is born from them, and it is the gesture you make most
+   often. */
+html[data-driving] .new { width: 46px; height: 46px; }
+html[data-driving] .new svg { width: 24px; height: 24px; }
+html[data-driving] .modes button { width: 46px; height: 46px; }
+html[data-driving] .modes button svg { width: 27px; height: 27px; }
+html[data-driving] .column .add { width: 26px; height: 26px; }
+html[data-driving] .column .add svg { width: 20px; height: 20px; }
+
+/* The git lens: it is the door to the files, and at 12px it is a target for sitting still. */
+html[data-driving] .git svg { width: 18px; height: 18px; }
+
+/* The corner pencil. As well as growing, it stays visible: normally it appears on hover, and a
+   target that expects to be found before it will show itself is, in driving mode, not a target. */
+html[data-driving] .postit .corner { width: 34px; height: 34px; opacity: 1; }
+html[data-driving] .postit .corner svg { width: 20px; height: 20px; }
+
+/* The zoom at the bottom right, which stays the only way to bring the board back into view. */
+html[data-driving] .zoom button { width: 40px; height: 40px; }
+html[data-driving] .zoom button svg { width: 22px; height: 22px; }
+
+/* The column is in pixels too: with the text at 22 the cards would choke inside it. */
+html[data-driving] .column { flex: 0 0 340px; }

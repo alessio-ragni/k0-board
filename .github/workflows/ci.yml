@@ -1,0 +1,32 @@
+name: Tests
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+# The tests here are pure logic: they parse text, resolve paths and read fixtures. They open no
+# terminals, start no server and touch neither the real database nor the real home directory, so
+# they run identically on all three platforms — which is exactly why they are worth running on all
+# three. The parts that genuinely need a machine, a display and Claude Code cannot be tested here
+# and are not pretended to be.
+jobs:
+  test:
+    name: ${{ matrix.os }} · Node ${{ matrix.node }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [macos-latest, ubuntu-latest, windows-latest]
+        node: [24, 26]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node }}
+      - run: node --version
+      - run: npm test
+      - name: k0-board doctor
+        # Never the reason a build fails: it is here so that every run leaves a record of what
+        # each platform claims it can do. When a port stops being honest, this is where it shows.
+        run: node bin/k0-board.js doctor || true

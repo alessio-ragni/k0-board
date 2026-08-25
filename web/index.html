@@ -1,0 +1,112 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>k0 — Dashboard</title>
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+  <link rel="stylesheet" href="/board.css">
+</head>
+<body>
+  <header class="topbar">
+    <h1>k0</h1>
+    <button class="new" id="new-card" title="New card" aria-label="New card">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
+    </button>
+    <div class="filters" id="filters"></div>
+
+    <!-- How the computer is doing. Always visible; clicking it switches off the weights on the cards. -->
+    <button class="gauge" id="gauge" type="button" hidden></button>
+
+    <!-- The four modes: how awake the machine has to stay. It is a scale, not four switches —
+         sleep, away, nerd, driving, each one including the one before it — and exactly one is
+         always lit. Clicking the lit one again does nothing: to leave it you go to another. It
+         sits at the end of the bar, where driving mode used to be. -->
+    <div class="modes" id="modes" role="radiogroup" aria-label="Wake mode">
+      <button type="button" role="radio" data-mode="sleep" aria-checked="false" title="Sleep" aria-label="Sleep">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 4h5l-5 6h5"/><path d="M4 12h8l-8 8h8"/></svg>
+      </button>
+      <button type="button" role="radio" data-mode="away" aria-checked="false" title="Away" aria-label="Away">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11.6 21.5c0-4.6.8-8.2 2.1-11.2"/><path d="M13.7 10.3c-2.5-1.7-5.4-1.5-7.5.4"/><path d="M13.7 10.3c-1.4-2.7-3.8-4.1-6.4-3.9"/><path d="M13.7 10.3c.4-3 2.3-5.2 4.9-5.8"/><path d="M13.7 10.3c2.6-1.2 5.4-.6 7.2 1.4"/></svg>
+      </button>
+      <button type="button" role="radio" data-mode="nerd" aria-checked="false" title="Nerd" aria-label="Nerd">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9.5"/><circle cx="8.2" cy="10.4" r="2.8"/><circle cx="15.8" cy="10.4" r="2.8"/><path d="M11 10.4h2"/><path d="M8.6 16.4q3.4 2 6.8 0"/></svg>
+      </button>
+      <button type="button" role="radio" data-mode="driving" aria-checked="false" title="Driving" aria-label="Driving">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 17h14"/><path d="M4 17v-4.2a2 2 0 0 1 .2-.9l1.9-3.8A2 2 0 0 1 7.9 7h8.2a2 2 0 0 1 1.8 1.1l1.9 3.8a2 2 0 0 1 .2.9V17"/><path d="M4 17v2h2v-2"/><path d="M18 17v2h2v-2"/><circle cx="7.5" cy="13.5" r="1"/><circle cx="16.5" cy="13.5" r="1"/></svg>
+      </button>
+    </div>
+  </header>
+
+  <main id="viewport" class="viewport">
+    <div id="board" class="board"></div>
+    <p class="empty" id="empty">The dashboard is empty. Add your first card.</p>
+
+    <!-- Where the board continues past the edge: with no scrollbars, it is the only way to tell. -->
+    <div class="edges" id="edges" aria-hidden="true"><i class="l"></i><i class="r"></i><i class="t"></i><i class="b"></i></div>
+
+    <div class="zoom" id="zoom">
+      <button type="button" id="z-out" title="Zoom out" aria-label="Zoom out">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M5 12h14"/></svg>
+      </button>
+      <button type="button" id="z-level" title="Back to 100%">100%</button>
+      <button type="button" id="z-in" title="Zoom in" aria-label="Zoom in">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
+      </button>
+      <button type="button" id="z-fit" title="Fit the whole board on screen" aria-label="Fit to screen">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg>
+      </button>
+    </div>
+  </main>
+
+  <dialog id="editor">
+    <form id="editor-form">
+      <div class="head">
+        <h2 id="editor-title">New card</h2>
+        <button type="button" id="f-close" class="x" title="Close" aria-label="Close">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg>
+        </button>
+      </div>
+
+      <label>Repository
+        <div class="picker">
+          <input id="f-project" autocomplete="off" placeholder="search a repository…">
+          <div class="picker-list" id="f-project-list" hidden></div>
+        </div>
+      </label>
+
+      <label>Title
+        <input id="f-title" required autocomplete="off" spellcheck="false" placeholder="Fix-Login-Bug">
+        <small>this is also the session name</small>
+      </label>
+
+      <label>Description
+        <textarea id="f-desc" rows="2" placeholder="a line or two about this session"></textarea>
+      </label>
+
+      <label>What Claude should do when it starts
+        <textarea id="f-prompt" rows="6" placeholder="you can leave this empty"></textarea>
+      </label>
+
+      <footer>
+        <button type="button" id="f-delete" class="danger">Delete</button>
+        <span class="spacer"></span>
+        <button type="submit" id="f-save">Save</button>
+        <button type="button" id="f-start" class="primary">Start</button>
+      </footer>
+    </form>
+  </dialog>
+
+  <dialog id="confirm" class="ask">
+    <p id="confirm-text"></p>
+    <footer>
+      <span class="spacer"></span>
+      <button type="button" id="confirm-no">Cancel</button>
+      <button type="button" id="confirm-yes" class="destructive">Delete</button>
+    </footer>
+  </dialog>
+
+  <div id="toast" class="toast"></div>
+  <script type="module" src="/board.js"></script>
+</body>
+</html>

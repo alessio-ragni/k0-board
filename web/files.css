@@ -1,0 +1,535 @@
+/* The file viewer: k0's second tab. Colours and fonts live in base.css. */
+@import url('/base.css');
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--ink);
+  font-family: var(--sans);
+  font-size: 1rem;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+/* ── The top bar ─────────────────────────────────────────────────────── */
+.topbar {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 10px 18px;
+  background: var(--paper);
+  border-bottom: 1px solid var(--line);
+  flex: none;
+}
+.topbar .home {
+  font: 700 1.2rem/1 var(--mono);
+  letter-spacing: 1px;
+  color: var(--ink);
+  text-decoration: none;
+  opacity: .65;
+}
+.topbar .home:hover { opacity: 1; }
+/* The repository's name is handwritten, as at the top of the board's columns. */
+.topbar h1 { margin: 0; font: 600 1.6rem/1 var(--hand); }
+.topbar .ctx { color: var(--muted); font-size: .85rem; }
+.topbar .count { color: var(--muted); font-size: .8rem; font-variant-numeric: tabular-nums; }
+
+.find {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  margin-left: auto;
+  border: 1px solid var(--line);
+  background: #fff;
+  border-radius: 999px;
+  padding: 5px 14px;
+  width: min(340px, 38vw);
+}
+.find svg { width: 15px; height: 15px; color: var(--muted); flex: none; display: block; }
+/* The lens is no longer a drawing next to the field: it is the button for the other search, the
+   one you do by pasting. It stays grey and small as before — it only lights up on hover, or it
+   would look like a button you were meant to press straight away. */
+.find .lens {
+  flex: none;
+  padding: 0;
+  margin: 0;
+  border: 0;
+  background: none;
+  border-radius: 999px;
+  color: var(--muted);
+  display: flex;
+  align-items: center;
+  cursor: pointer;
+}
+.find .lens:hover { background: none; color: var(--ink); }
+.find input {
+  border: 0;
+  outline: 0;
+  background: none;
+  font: inherit;
+  font-size: .9rem;
+  width: 100%;
+  color: var(--ink);
+}
+
+/* ── The two panes ───────────────────────────────────────────────────── */
+/* The divider is a column of the grid: drag it and the size stays. */
+.split {
+  flex: 1;
+  min-height: 0;
+  display: grid;
+  grid-template-columns: var(--left, 28%) 7px 1fr;
+}
+.grip {
+  cursor: col-resize;
+  background: var(--line);
+  border-left: 1px solid var(--bg);
+  border-right: 1px solid var(--bg);
+  touch-action: none;
+}
+.grip:hover, .grip:active { background: var(--muted); }
+
+/* ── The listing ─────────────────────────────────────────────────────── */
+.list {
+  overflow-y: auto;
+  overflow-x: hidden;
+  background: var(--paper);
+  padding-bottom: 30px;
+  outline: 0;
+}
+.list h2 {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  margin: 0;
+  padding: 9px 16px 5px;
+  background: var(--paper);
+  border-bottom: 1px solid var(--line);
+  font-size: .68rem;
+  font-weight: 700;
+  letter-spacing: .09em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.list h2 small { margin-left: 7px; font-weight: 600; opacity: .7; }
+
+.row {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 0 10px;
+  padding: 7px 16px;
+  border-bottom: 1px solid rgba(0, 0, 0, .045);
+  text-decoration: none;
+  color: inherit;
+  cursor: pointer;
+}
+.row b {
+  font: 600 .86rem/1.3 var(--mono);
+  overflow-wrap: anywhere;
+}
+/* The path is relative to the repository, never absolute: nobody cares about /home. */
+.row i {
+  grid-column: 1;
+  font-style: normal;
+  font-size: .72rem;
+  color: var(--muted);
+  overflow-wrap: anywhere;
+}
+.row em {
+  grid-row: 1;
+  grid-column: 2;
+  font-style: normal;
+  font-size: .72rem;
+  color: var(--muted);
+  white-space: nowrap;
+}
+/* The line found inside the file: it is what makes you say "yes, this is the one". */
+.row q {
+  grid-column: 1 / -1;
+  margin-top: 3px;
+  font-size: .74rem;
+  line-height: 1.4;
+  color: var(--muted);
+  quotes: none;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.row q mark { background: #fde68a; color: var(--ink); border-radius: 3px; padding: 0 1px; }
+.row:hover { background: rgba(0, 0, 0, .035); }
+.row.on { background: var(--WORKING); }
+.row.active { box-shadow: inset 3px 0 0 var(--ink); }
+/* The red dot: the same mark that on a card says "there is uncommitted work here". */
+.row.hot b::before {
+  content: '';
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  margin-right: 6px;
+  border-radius: 50%;
+  background: var(--alert);
+  vertical-align: middle;
+}
+
+/* ── When a pasted text is in charge ──────────────────────────────────
+   The listing is no longer the whole repository but a slice, and that has to be visible without
+   having to be remembered: at the top it says how many files and where they come from, with the
+   way out next to it. The same label reopens the text, because the thing you most often want to
+   do after looking is correct it. */
+.from-text {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 10px 7px 16px;
+  background: var(--IDLE);
+  border-bottom: 1px solid rgba(0, 0, 0, .08);
+}
+.from-text button, .from-text span {
+  border: 0;
+  background: none;
+  padding: 0;
+  font: inherit;
+  font-size: .78rem;
+  font-weight: 600;
+  color: var(--ink);
+  cursor: pointer;
+  text-align: left;
+}
+/* A directory's name is not clickable: there is nothing to correct, it just says so. */
+.from-text span { cursor: default; }
+.from-text button:hover { background: none; text-decoration: underline; }
+.from-text .x {
+  margin-left: auto;
+  flex: none;
+  display: flex;
+  align-items: center;
+  opacity: .55;
+}
+.from-text .x:hover { opacity: 1; text-decoration: none; }
+.from-text .x svg { width: 15px; height: 15px; display: block; }
+
+/* The heading of a group that opens and closes: the guesses arrive closed. */
+.list h2.fold { cursor: pointer; user-select: none; }
+.list h2.fold::after {
+  content: '▸';
+  margin-left: 7px;
+  font-size: .8em;
+  opacity: .6;
+  display: inline-block;
+}
+.list h2.fold.open::after { transform: rotate(90deg); }
+
+/* A row that opens a directory. It reads like the others — same grid — but it is a button, not a
+   link: it leads nowhere, it opens underneath. */
+.row.fold {
+  width: 100%;
+  border: 0;
+  border-bottom: 1px solid rgba(0, 0, 0, .045);
+  border-radius: 0;
+  background: none;
+  text-align: left;
+}
+.row.fold b::after { content: ' ▸'; opacity: .6; font-weight: 400; }
+.row.fold.open b::after { content: ' ▾'; }
+
+/* "7 more": it sits under the row it belongs to, off to one side. */
+.more {
+  display: block;
+  width: 100%;
+  border: 0;
+  border-bottom: 1px solid rgba(0, 0, 0, .045);
+  border-radius: 0;
+  background: none;
+  text-align: left;
+  padding: 4px 16px 5px 16px;
+  font: inherit;
+  font-size: .72rem;
+  color: var(--muted);
+  cursor: pointer;
+}
+.more:hover { background: rgba(0, 0, 0, .035); border-color: rgba(0, 0, 0, .045); color: var(--ink); }
+
+/* What has been opened sits further in: at a glance you can see it depends on the row above and
+   is not a result in its own right. */
+.kids { box-shadow: inset 3px 0 0 var(--line); }
+.kids .row { padding-left: 30px; }
+
+/* The names the text writes that are not here. Said quietly and at the bottom: it is there to
+   tell you whether you picked the wrong repository, not as a result. */
+.missing {
+  margin: 0;
+  padding: 10px 16px 4px;
+  font-size: .72rem;
+  line-height: 1.5;
+  color: var(--muted);
+  font-style: italic;
+  overflow-wrap: anywhere;
+}
+
+/* The paste dialog. Its bones live in base.css, along with the board editor's: what is here is
+   only what this one has on top. */
+#paste textarea { font-size: .92rem; }
+#paste .note {
+  margin: -6px 0 16px;
+  padding: 9px 12px;
+  border-radius: 8px;
+  background: #fff6f6;
+  border: 1px solid #f1c9c9;
+  font-size: .82rem;
+  line-height: 1.45;
+  color: var(--ink);
+}
+
+/* ── The document ────────────────────────────────────────────────────── */
+.doc {
+  overflow: auto;
+  background: #fff;
+  padding: 0 0 60px;
+}
+.blank {
+  color: var(--muted);
+  padding: 40px;
+  text-align: center;
+}
+.blank button {
+  margin-top: 14px;
+  border: 1px solid var(--line);
+  background: var(--paper);
+  border-radius: 8px;
+  padding: 7px 16px;
+  font: inherit;
+  font-size: .85rem;
+  cursor: pointer;
+}
+.blank button:hover { background: #fff; }
+
+.crumb {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 4px;
+  padding: 7px 32px;
+  background: rgba(255, 255, 255, .94);
+  backdrop-filter: blur(6px);
+  border-bottom: 1px solid var(--line);
+  font-size: .78rem;
+  color: var(--muted);
+}
+.crumb b { font: 600 .82rem var(--mono); color: var(--ink); }
+.crumb i { font-style: normal; opacity: .5; }
+.crumb em { margin-left: auto; font-style: normal; }
+
+/* ── What to do with it ───────────────────────────────────────────────
+   Print the document, take it away as it is, or have it laid out into a PDF. They sit here at
+   the end of the path row, and not in the bar at the top, because they are about this document:
+   on the search row they had nothing to do with anything. */
+.acts { display: flex; align-items: center; gap: 6px; margin-left: 12px; }
+.act {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  border: 1px solid var(--line);
+  background: #fff;
+  border-radius: 999px;
+  padding: 4px 9px;
+  font: inherit;
+  font-size: .72rem;
+  color: var(--muted);
+  text-decoration: none;
+  cursor: pointer;
+}
+.act:hover { color: var(--ink); border-color: #bdb6a5; }
+.act svg { width: 14px; height: 14px; display: block; flex: none; }
+.cut { padding: 12px 32px; color: var(--muted); font-size: .82rem; font-style: italic; }
+
+/* ── The label ────────────────────────────────────────────────────────
+   What is written between the two rules at the top of the file. It is not text of the document —
+   it is what the document says it is — so it reads as a label: set apart, in a different colour,
+   with the title picked out. It used to end up in the text as just another paragraph, and nobody
+   could tell what it was. */
+.plate {
+  margin: 22px 32px 0;
+  padding: 12px 16px;
+  border-left: 3px solid var(--WORKING);
+  background: var(--paper);
+  border-radius: 0 8px 8px 0;
+}
+.plate b {
+  display: block;
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: #1e40af;
+}
+.plate span {
+  display: inline-block;
+  margin: 4px 14px 0 0;
+  font-size: .78rem;
+  color: var(--muted);
+}
+.plate i { font-style: normal; opacity: .65; }
+.plate + .md { padding-top: 18px; }
+
+.plain {
+  margin: 0;
+  padding: 20px 32px;
+  font: .82rem/1.6 var(--mono);
+  white-space: pre;
+  overflow-x: auto;
+}
+.media { padding: 28px 32px; }
+.media img { max-width: 100%; height: auto; border: 1px solid var(--line); border-radius: 6px; }
+/* A PDF and a page are looked at inside their own frame, as tall as the pane. */
+.pdf, .page { width: 100%; height: calc(100vh - 96px); border: 0; display: block; background: #fff; }
+
+/* ── The laid-out markdown ───────────────────────────────────────────── */
+/* No maximum width: the text runs to the end of the pane and wraps where the pane sends it. How
+   wide to keep it is the divider's decision, not this stylesheet's. */
+.md {
+  padding: 26px 32px;
+  font-size: .96rem;
+  line-height: 1.62;
+}
+.md > :first-child { margin-top: 0; }
+.md h1, .md h2, .md h3, .md h4 { line-height: 1.25; margin: 1.7em 0 .55em; }
+.md h1 { font-size: 1.7rem; }
+.md h2 { font-size: 1.32rem; padding-bottom: .25em; border-bottom: 1px solid var(--line); }
+.md h3 { font-size: 1.08rem; }
+.md h4 { font-size: .96rem; }
+.md p, .md ul, .md ol, .md table, .md pre, .md blockquote { margin: 0 0 1em; }
+.md ul, .md ol { padding-left: 1.5em; }
+.md li { margin: .25em 0; }
+.md li > ul, .md li > ol { margin: .25em 0; }
+/* A link has to look like a link, even when its text is a piece of code. */
+.md a { color: #1d4ed8; text-decoration-color: rgba(29, 78, 216, .4); }
+.md a:hover { text-decoration-color: currentColor; }
+.md a code { color: inherit; background: rgba(29, 78, 216, .09); }
+
+/* ── File names found in the text ─────────────────────────────────────
+   They are links, but they must not look like links until you are over them: in a table listing
+   eight files, eight blue words would BE the table. They stay written as they were — inside the
+   little grey box or in the middle of the sentence — and they light up only under the pointer,
+   which is when you are actually asking yourself whether you can click. */
+.md a.ref {
+  color: inherit;
+  text-decoration: none;
+  cursor: pointer;
+  border-bottom: 1px solid transparent;
+}
+.md a.ref:hover {
+  color: #1d4ed8;
+  border-bottom-color: rgba(29, 78, 216, .45);
+}
+.md code:has(> a.ref):hover { background: rgba(29, 78, 216, .09); }
+.md hr { border: 0; border-top: 1px solid var(--line); margin: 2em 0; }
+.md blockquote {
+  border-left: 3px solid var(--line);
+  padding-left: 1em;
+  color: var(--muted);
+}
+.md code {
+  font: .84em var(--mono);
+  background: var(--bg);
+  border-radius: 4px;
+  padding: .12em .35em;
+}
+.md pre {
+  background: var(--bg);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 12px 14px;
+  overflow-x: auto;
+}
+.md pre code { background: none; padding: 0; font-size: .8rem; line-height: 1.55; }
+.md img { max-width: 100%; height: auto; border-radius: 6px; }
+.md table { border-collapse: collapse; width: 100%; font-size: .88rem; }
+.md th, .md td { border: 1px solid var(--line); padding: 6px 10px; text-align: left; vertical-align: top; }
+.md th { background: var(--paper); font-weight: 700; }
+/* A plan's checkboxes: they show because they are part of the text, but they are not tickable
+   here. The box and the text are two columns, so a long line wraps under itself rather than under
+   the box. The list bullet goes: the box is already the mark. */
+.md li:has(> .task) { list-style: none; margin-left: -1.15em; }
+.md .task { display: flex; gap: .5em; align-items: baseline; }
+.md .task input { margin: 0; flex: none; }
+
+/* ── The message at the bottom ───────────────────────────────────────── */
+.toast {
+  position: fixed;
+  left: 50%;
+  bottom: 26px;
+  transform: translateX(-50%) translateY(14px);
+  background: var(--ink);
+  color: #fff;
+  padding: 10px 18px;
+  border-radius: 10px;
+  font-size: .86rem;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity .18s, transform .18s;
+}
+.toast.show { opacity: 1; transform: translateX(-50%); }
+
+/* ── On paper ─────────────────────────────────────────────────────────
+   The sheet gets the document and nothing else. The file listing, the bar and the divider are of
+   no use on paper: without this section it came out as twenty-nine pages with half an interface
+   inside them.
+
+   Nor does anything that on screen says WHERE you are — the file path, the size, the date — or
+   the label: whoever is holding the sheet has the document, and the title is already written
+   below it, large. The sheet starts at the document.
+
+   This margin only holds if "Margins" in the browser's print dialog is set to "Default": on
+   "None" the browser overrides it and the text runs to the edge of the paper. The PDF made by
+   the button does not go through that dialog, and always has its margin. */
+@media print {
+  /* The two measurements come from two different places, and that is not an oversight.
+     At the sides it is the padding of the pane below: nobody can take that away, and it holds on
+     every page. Top and bottom it is the `@page` margin, and the browser only keeps that if
+     "Margins" in its print dialog is set to "Default" — on "None" it zeroes it and the text runs
+     to the edge of the paper. Padding cannot stand in for it: top and bottom it would only apply
+     to the first page and the last. Repeating table header groups were tried too
+     (`display: table-header-group`): an empty pseudo-element does not keep its height, and the
+     space is not reserved. The PDF made by the button does not go through the print dialog, and
+     accordingly always gets it right.
+
+     Wide top and bottom, narrow at the sides, on purpose: at the top and bottom the white space
+     lifts the text off the edge and leaves room for a staple, while taking it away at the sides
+     gains line length — which on a dense document means fewer pages. */
+  @page { margin: 25mm 0; }
+
+  html, body { height: auto; overflow: visible; background: #fff; }
+  .topbar, .list, .grip, .toast, .crumb, .plate { display: none !important; }
+  .split { display: block; }
+  .doc { overflow: visible; padding: 0 14mm; background: #fff; }
+
+  .md, .plain { padding: 0; font-size: 10.5pt; line-height: 1.5; }
+  /* The label is hidden, but it is still there: the space that held it down is not. */
+  .plate + .md { padding-top: 0; }
+  .md a { color: #000; }
+  .md a code, .md code { background: #f2f2f2; }
+  /* On paper a file name is a file name: no underlines. */
+  .md a.ref { color: inherit; border-bottom: 0; }
+  .md pre { background: #f7f7f7; border-color: #ddd; }
+
+  /* You cannot scroll a sheet of paper. On screen a long line of code runs out of the pane and
+     you drag to reach it; on paper that piece is simply lost — a `curl` command cut in half
+     cannot even be copied out. So here it wraps, and it is allowed to break inside an address
+     too, which has no spaces to break at. */
+  .md pre, .plain { white-space: pre-wrap; overflow-wrap: anywhere; overflow: visible; }
+
+  /* Nothing cut in half across two sheets. */
+  pre, table, blockquote, img, tr, li { break-inside: avoid; }
+  h1, h2, h3, h4 { break-after: avoid; }
+  .md h2 { border-bottom-color: #bbb; }
+  .md th { background: #f2f2f2; }
+  .media img { border: 0; }
+}

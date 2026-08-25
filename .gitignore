@@ -1,0 +1,9 @@
+k0.db
+k0.db-wal
+k0.db-shm
+menubar/k0.app/
+node_modules/
+.DS_Store
+
+# Worktrees live inside the repository, but they are working copies: they are not committed.
+.claude/worktrees/

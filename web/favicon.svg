@@ -1,0 +1,8 @@
+<!-- The rounded square of the menu bar icon, in its unlit form: outline only, as when there is
+     nothing going on. This is what the browser shows before the javascript starts; the moment it
+     does, `favicon.js` fills it with the colour of the most urgent status, exactly as the menu
+     bar icon does.
+     The measurements come from `icon()` in menubar/K0MenuBar.swift, scaled to 32. -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
+  <rect x="4" y="4" width="24" height="24" rx="5.7" fill="none" stroke="#9ca3b0" stroke-width="3.4"/>
+</svg>

@@ -1,0 +1,45 @@
+{
+  "name": "k0-board",
+  "version": "0.1.0",
+  "description": "A board of sticky notes that drives your Claude Code sessions",
+  "keywords": [
+    "claude-code",
+    "ai-coding",
+    "kanban",
+    "developer-tools",
+    "terminal",
+    "dashboard"
+  ],
+  "homepage": "https://github.com/alessio-ragni/k0-board#readme",
+  "bugs": "https://github.com/alessio-ragni/k0-board/issues",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/alessio-ragni/k0-board.git"
+  },
+  "license": "MIT",
+  "author": "Alessio Ragni (https://alessioragni.com)",
+  "type": "module",
+  "bin": {
+    "k0-board": "bin/k0-board.js"
+  },
+  "engines": {
+    "node": ">=24"
+  },
+  "files": [
+    "bin",
+    "platform",
+    "server",
+    "web",
+    "menubar",
+    "!menubar/k0.app",
+    ".claude/skills",
+    "README.md",
+    "CHANGELOG.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "start": "node server/index.js",
+    "test": "node test/clean.test.mjs && node test/states.test.mjs && node test/files.test.mjs && node test/mentions.test.mjs && node test/refs.test.mjs && node test/machine.test.mjs && node test/mode.test.mjs",
+    "doctor": "node bin/k0-board.js doctor"
+  }
+}
