@@ -40,7 +40,8 @@ npx k0-board
 ```
 
 That is the whole thing. It tells you everything it is about to change, asks, and only then does
-it. `k0-board uninstall` undoes all of it.
+it — and when it is finished it opens the board in your browser, so there is no address to write
+down anywhere. `k0-board uninstall` undoes all of it.
 
 k0 is published on npm as [`k0-board`](https://www.npmjs.com/package/k0-board): one package, no
 dependencies, nothing to compile. `npx` fetches it, runs the installer once and leaves nothing
@@ -69,8 +70,9 @@ that and went out from a laptop.)
 | `k0-board doctor` | what this machine can and cannot do, and why |
 
 `--yes` does not ask. `--from-source` points the service at the directory you are in instead of
-copying it, which is what you want while working on k0 itself. `--no-<name>` skips one optional
-change — `--no-lid-sleep`, `--no-shift-enter`. `K0_PORT` moves the board off 4319.
+copying it, which is what you want while working on k0 itself. `--no-open` finishes without
+opening a browser, which is what you want over SSH. `--no-<name>` skips one optional change —
+`--no-lid-sleep`, `--no-shift-enter`. `K0_PORT` moves the board off 4319.
 
 From a clone, if you would rather look first:
 
@@ -83,7 +85,10 @@ node bin/k0-board.js start
 That runs the server in the foreground and opens the board. Nothing is installed and nothing
 outside the directory is touched.
 
-The board lives at <http://k0.localhost:4319>.
+The board lives at <http://k0.localhost:4319>, which is the address both `install` and `start`
+open for you. If that name does not resolve on your machine — which happens on Windows, because
+only browsers are obliged to know that `.localhost` means this computer — k0 opens
+<http://127.0.0.1:4319> instead, and says so.
 
 ### Requirements
 
