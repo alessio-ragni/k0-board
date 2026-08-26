@@ -95,7 +95,8 @@ body {
 
 /* The "+" sits next to k0, at the start of the bar: that is where a card is born.
    The sign is drawn, not typed: a font glyph never sits in the middle of the circle. */
-.new {
+.new,
+.log {
   flex: none;
   padding: 0;
   width: 34px;
@@ -105,7 +106,17 @@ body {
   align-items: center;
   justify-content: center;
 }
-.new svg { width: 17px; height: 17px; display: block; }
+.new svg,
+.log svg { width: 17px; height: 17px; display: block; }
+
+/* The way out to the ChangeLog. It is a link, not a button, because it goes somewhere — and it
+   is drawn quieter than the plus, because starting work matters more than reading about it. */
+.log {
+  border: 1px solid var(--line);
+  background: var(--paper);
+  color: var(--muted);
+}
+.log:hover { background: #fff; border-color: #c9c3b4; color: var(--ink); }
 
 /* ── The four modes ───────────────────────────────────────────────────
    At the end of the bar, a row of four: how awake the machine has to stay. Switched off they are
