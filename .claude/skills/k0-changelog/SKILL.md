@@ -76,6 +76,9 @@ something to put in them. This is a summary somebody reads standing up.
 - **Write in the language of the facts.** The commit subjects and the card titles tell you what
   language this person works in: write in that one, and do not translate anything. The headings,
   the bold lines, the bullets — all of it in their language.
+- **Leave the words of the trade alone.** *commit*, *push*, *branch*, *changelog* are what these
+  things are called in every language, and they do not decline: six commits, not *sei commessi*.
+  Translate the sentence around them, never the word itself.
 - **Do not invent.** If a commit subject does not say what it did, say what it says and leave
   it there. A summary that guesses is worse than a summary that is short.
 - **What changed for whoever uses the thing, not which function moved.** No file paths, no

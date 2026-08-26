@@ -21,7 +21,7 @@ process.env.K0_DB = path.join(HOME, 'board.db')
 const { windowFor, lastActiveDay, unreleasedSection, isActive, narrow, totals, facts, PERIODS } = await import(
   '../server/changelog.js'
 )
-const { parseLog } = await import('../server/git.js')
+const { parseLog, stripTrailers } = await import('../server/git.js')
 const db = await import('../server/db.js')
 
 const DAY = 24 * 60 * 60 * 1000
@@ -160,6 +160,14 @@ section('The commits, as git prints them')
   check('the body comes back too', commits[1].body, 'And a body.')
   check('a repository with no commits gives no commits', parseLog('').length, 0)
   check('and neither does one that failed', parseLog(null).length, 0)
+
+  // On a machine where commits are written with help, there is a signature at the foot of
+  // nearly every one of them. Left in, they would be most of what the summary is written from.
+  const signed = `f00d${F}2026-08-25T10:00:00+02:00${F}fix: something${F}Why it was done.\n\nCo-Authored-By: Claude Opus 5 <noreply@anthropic.com>\nClaude-Session: https://claude.ai/code/session_abc${R}`
+  check('the signature at the foot is not part of the story', parseLog(signed)[0].body, 'Why it was done.')
+  check('a commit that is only a signature has no body left', stripTrailers('Signed-off-by: Someone <a@b.c>'), '')
+  check('a body that is all story is left alone', stripTrailers('One line.\nAnd another.'), 'One line.\nAnd another.')
+  check('nothing to strip is not an error', stripTrailers(null), '')
 }
 
 // ── The cards that moved ─────────────────────────────────────────────────────

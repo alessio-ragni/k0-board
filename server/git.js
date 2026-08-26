@@ -189,9 +189,29 @@ export function parseLog(out) {
     if (!r) continue
     const [sha, at, subject, body] = r.split(FIELD)
     if (!sha || !subject) continue
-    commits.push({ sha, at, subject, body: (body ?? '').trim() })
+    commits.push({ sha, at, subject, body: stripTrailers(body) })
   }
   return commits
+}
+
+// The lines at the foot of a commit that are addressed to git and to nobody else. On a machine
+// where the commits are written with help there is one of these on almost every commit, and
+// left in they are the bulk of what gets read: a signature repeated four hundred times says
+// nothing about what anybody did.
+const TRAILER = /^(co-authored-by|signed-off-by|claude-session|reviewed-by|acked-by|change-id):\s/i
+const GENERATED = /^(🤖\s*)?generated with \[/i
+
+/** The part of a commit message a person wrote for another person. */
+export function stripTrailers(body) {
+  const kept = []
+  for (const line of String(body ?? '').split('\n')) {
+    const l = line.trim()
+    if (TRAILER.test(l) || GENERATED.test(l)) continue
+    // The bare session link that follows the signature, on a line of its own.
+    if (/^https:\/\/claude\.ai\/code\/session_\S+$/.test(l)) continue
+    kept.push(line)
+  }
+  return kept.join('\n').trim()
 }
 
 /**
