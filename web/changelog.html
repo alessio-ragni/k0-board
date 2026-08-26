@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>k0 — ChangeLog</title>
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+  <link rel="stylesheet" href="/changelog.css">
+</head>
+<body>
+  <header class="topbar">
+    <a class="home" href="/" title="Back to the dashboard">k0</a>
+    <h1>ChangeLog</h1>
+
+    <!-- Four windows and no date picker. A summary is something you glance at, and every extra
+         control is one more decision to make before reading a word. -->
+    <div class="periods" id="periods" role="radiogroup" aria-label="Period">
+      <button type="button" role="radio" data-period="today" aria-checked="false">Today</button>
+      <button type="button" role="radio" data-period="yesterday" aria-checked="false">Yesterday</button>
+      <button type="button" role="radio" data-period="week" aria-checked="false">Week</button>
+      <button type="button" role="radio" data-period="month" aria-checked="false">Month</button>
+    </div>
+
+    <span class="when" id="when"></span>
+  </header>
+
+  <main class="sheet" id="sheet">
+    <!-- While the words are being written the facts are already here, so the page is never a
+         spinner on an empty screen: it is the summary, filling in. -->
+    <div class="waiting" id="waiting" hidden>
+      <div class="bar"><i></i></div>
+      <p class="phrase" id="phrase"></p>
+    </div>
+
+    <div class="intro" id="intro"></div>
+    <div class="chips" id="chips" hidden></div>
+    <div class="repos" id="repos"></div>
+    <p class="blank" id="blank" hidden></p>
+  </main>
+
+  <script type="module" src="/changelog.js"></script>
+</body>
+</html>

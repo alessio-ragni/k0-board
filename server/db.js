@@ -230,6 +230,28 @@ export function deleteCard(id) {
   db.prepare('DELETE FROM card WHERE id = ?').run(id)
 }
 
+/**
+ * The cards that moved inside a window, one row each, with where they got to.
+ *
+ * `session_event` has been keeping this diary since the beginning — a row every time a card
+ * really changes status, and none when nothing happens — and until now the only thing anybody
+ * ever asked it was how old the current status is. This is the first question that reads it as
+ * what it is: a history.
+ *
+ * `touched` is when the card last moved inside the window, not when it moved last: a card
+ * finished on Tuesday belongs to Tuesday even if it was reopened on Friday.
+ */
+export function eventsBetween(from, to) {
+  return db.prepare(`
+    SELECT c.id, c.title, c.description, c.project_path, c.status, c.completed_at,
+           MAX(e.at) AS touched, COUNT(e.id) AS moves
+    FROM session_event e JOIN card c ON c.id = e.card_id
+    WHERE e.at >= ? AND e.at < ?
+    GROUP BY c.id
+    ORDER BY touched DESC
+  `).all(from, to)
+}
+
 // ── The switches that remember ───────────────────────────────────────────────
 /** The caller decides what a missing row means: this returns `fallback`. */
 export function getPref(key, fallback = null) {

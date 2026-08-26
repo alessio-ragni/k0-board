@@ -19,6 +19,8 @@ import * as mode from './mode.js'
 import { listProjects, onDisk, projectName } from './projects.js'
 import { scanSessions } from './sessions.js'
 import * as git from './git.js'
+import * as changelog from './changelog.js'
+import * as writer from './writer.js'
 import * as files from './files.js'
 import * as pdf from './pdf.js'
 import * as machine from './machine.js'
@@ -279,6 +281,50 @@ function site(req, res, seg) {
 // is a much smaller loss than that, so the header is gone.
 const SANDBOX = 'sandbox'
 
+// ── The recap of a window ────────────────────────────────────────────────────
+// Held for a minute, and not as a saved result: the page asks for the facts, then asks for the
+// write-up to start, then asks every second whether it is done. Reading every repository's git
+// history once a second to answer "not yet" would be absurd. Nothing is written down, and a
+// minute later the same question is asked of git again from scratch.
+const RECAP_TTL = 60000
+let recap = null
+
+async function recapFor(raw, { fresh = true } = {}) {
+  const period = changelog.PERIODS.includes(raw) ? raw : 'last'
+  // The page asks about the write-up once a second until it is done, and a model can take
+  // longer than a minute: those questions must reuse whatever window is already open, or a
+  // slow answer would mean a full sweep of every repository's git, every second, while waiting.
+  if (recap && recap.period === period && (!fresh || Date.now() - recap.at < RECAP_TTL)) return recap
+  const data = await changelog.facts(period)
+  recap = {
+    period,
+    at: Date.now(),
+    // The window is part of the name: at midnight "yesterday" becomes a different day, and a
+    // summary written for the old one must not be handed over as if it were the new one.
+    key: `${data.period}:${data.from}:${data.to}`,
+    public: data,
+    payload: JSON.stringify(
+      {
+        period: data.period,
+        from: new Date(data.from).toISOString(),
+        to: new Date(data.to).toISOString(),
+        totals: data.totals,
+        repositories: data.repos.map((r) => ({
+          name: r.name,
+          commits: r.commits.map(({ at, subject, body, online }) => ({ at, subject, body, online })),
+          unpushed_total: r.unpushedTotal,
+          uncommitted_files: r.dirty.map((f) => f.path),
+          unreleased_changelog: r.unreleased,
+          cards: r.cards,
+        })),
+      },
+      null,
+      2
+    ),
+  }
+  return recap
+}
+
 async function api(req, res, url) {
   const seg = url.pathname.split('/').filter(Boolean) // ['api', 'card', '3', 'start']
   const [, resource, idRaw, action] = seg
@@ -287,6 +333,20 @@ async function api(req, res, url) {
   if (resource === 'board' && req.method === 'GET') return send(res, 200, board())
   if (resource === 'status' && req.method === 'GET') return send(res, 200, status())
   if (resource === 'projects' && req.method === 'GET') return send(res, 200, listProjects())
+
+  // ── What you have been doing ───────────────────────────────────────────────
+  // Two halves, deliberately apart. The facts come back straight away and the page can already
+  // show them; the write-up takes a model half a minute, so it is started and then asked
+  // about, the same once-a-second poll the board and the viewer already live on.
+  if (resource === 'changelog' && !idRaw && req.method === 'GET') {
+    const data = await recapFor(url.searchParams.get('period'))
+    return send(res, 200, { ...data.public, writer: writer.capability() })
+  }
+  if (resource === 'changelog' && idRaw === 'write') {
+    const data = await recapFor(url.searchParams.get('period'), { fresh: false })
+    if (req.method === 'POST') return send(res, 200, writer.write(data.key, data.payload))
+    if (req.method === 'GET') return send(res, 200, writer.state(data.key))
+  }
 
   // ── The four modes ─────────────────────────────────────────────────────────
   // One control, with two handles: the row of buttons on the board and the four entries in the
@@ -601,6 +661,8 @@ process.on('exit', mode.stopNow)
 for (const signal of ['SIGTERM', 'SIGINT', 'SIGHUP']) {
   process.on(signal, () => {
     mode.stopNow()
+    // A summary being written when the server goes down has nobody left to give it to.
+    writer.stop()
     process.exit(0)
   })
 }

@@ -79,6 +79,15 @@ after(() => {
 The handle has to go before the file does. POSIX lets an open file be unlinked; Windows refuses,
 and that one line is the whole difference between a green build and a red one there.
 
+**And a third, since `server/writer.js`: never let a test reach the real Claude Code.** It is the
+only part of k0 that starts a model, so a test that found the real one would cost whoever ran
+`npm test` money and a minute of waiting. `K0_CLAUDE` names the executable outright, and
+`test/writer.test.mjs` points it at a four-line shell script that echoes back whatever arrives on
+standard input. That is enough to prove the things worth proving — that the facts really do reach
+it, that a failed run ends and says why rather than sliding its progress bar for ever — without
+any of it being pretend. The script cannot be spawned on Windows, so that file checks the rest
+there and leaves the runs to the other two platforms, which is where coverage is measured.
+
 ## What is not tested, and why
 
 Everything that needs a real machine: opening a terminal, keeping a laptop awake, placing a

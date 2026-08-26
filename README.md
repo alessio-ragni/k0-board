@@ -291,6 +291,57 @@ remote, pushing is not mentioned at all.
 
 ---
 
+## The ChangeLog
+
+The git mark answers "is this safe" for one repository, right now. The **ChangeLog** answers a
+different question — *what have I actually been doing* — across all of them at once. It is the
+list-shaped button next to the `+`, and it opens in a page of its own.
+
+It reads like a release note rather than a report. An opening paragraph saying how the day went,
+then one block per repository: a line saying what is different now, a short paragraph, a few
+points, and — the part that matters most — **what is done but not out yet**. A commit sitting on
+your machine, three changelog lines written but not closed into a version, four files never
+committed. That is the distinction the whole page is built on: what left here, and what only
+looks finished.
+
+Four windows across the top: **Today**, **Yesterday**, **Week**, **Month**. It opens on none of
+them: it opens on **the last day you actually worked**. On a Monday that is Friday, because a
+page that comes up empty after every weekend is a page you stop opening.
+
+**Only what you touched in that window appears.** A repository that has been dirty since March
+and that you have not opened since is not news, and a summary that repeats it every morning is
+one nobody is still reading by Thursday. Something has to have happened there — a commit, a file
+saved, a card moved — before k0 will tell you what is still outstanding in it. And only **your**
+commits are counted: k0 asks git which email you commit with in that repository and shows that
+person's day, so a repository shared with other people still tells you about yours.
+
+Below every block the facts are folded away, one line to open them: the commits themselves, each
+marked green if it is online and amber if it is still only here. That is what to open when you do
+not believe the paragraph above it.
+
+### Who writes it
+
+k0 does not. **k0 makes no network requests**, and that is worth more than a better paragraph: a
+model of its own would mean a key to keep, an account to configure, and your commit messages
+leaving this machine.
+
+It does not need one. If you are running k0 you already have Claude Code installed, signed in and
+paid for — that is the whole point of the board — so the model is already here. k0 works out the
+facts, hands them to Claude Code, and shows what comes back. No terminal opens, nothing appears
+on the board, and there is nothing to set up: the skill that does the writing ships inside the
+package, the same way `/k0-import` does.
+
+It is written **in your language**, without a setting anywhere, because it is written out of your
+own commit messages and card titles.
+
+Nothing is saved. Every time you open the page it is written again, and changing the window
+writes it again — which is why there is no stale summary to clear and no history to prune.
+"Today" changes while you are reading it, so keeping a copy would be wrong more often than it
+helped. If Claude Code is not on the machine the page still opens: you get the facts, and a line
+saying why the rest is missing.
+
+---
+
 ## The files of a session
 
 The git mark is also the door: clicking it opens a file viewer **in another tab**, and the board
@@ -643,7 +694,12 @@ server/
   db.js          SQLite (node:sqlite): the card, session_event and pref tables — docs/database.md
   paths.js       where the board, the logs and the cache live
   watcher.js     reads Claude Code's own files and derives the statuses; also renames a session
-  git.js         the only one that talks to git: what is committed, what is pushed, whose it is
+  git.js         the only one that talks to git: what is committed, what is pushed, whose it is,
+                 and — for the ChangeLog — what the commits actually said
+  changelog.js   gathers what happened in a window, out of git and out of session_event. Decides
+                 which repositories are worth mentioning at all, and stores nothing
+  writer.js      hands those facts to the Claude Code already on this machine and gets the words
+                 back. The only place k0 starts a model, and it never leaves the machine to do it
   launcher.js    starts and resumes sessions, through the platform's terminal
   mode.js        the four modes: how awake to keep the machine, and whether the text goes large
   projects.js    the repositories, in the order you last used them
@@ -651,12 +707,14 @@ server/
   files.js       the only one that reads the projects' disk: what is there, what changed, what it says
   machine.js     the only one that looks at processes and memory: what it all costs, and who is costing it
   pdf.js         the document on paper, printed by a headless browser
-web/             the two pages (html, css, js served exactly as they are)
+web/             the three pages (html, css, js served exactly as they are)
   index.html     the board — board.js, board.css, view.js. A note is never taller than it is
                  wide: the title, the age and the buttons always show, the text in the middle is
                  what gets clipped
   files.html     the file viewer — files.js, files.css
-  base.css       colours, fonts and scale: the house variables, shared by both pages
+  changelog.html what you have been doing — changelog.js, changelog.css. The only page in k0 you
+                 read top to bottom instead of looking at, so it is the only one that scrolls
+  base.css       colours, fonts and scale: the house variables, shared by all three pages
   md.js          markdown laid out, written by hand because nothing here is compiled
   recency.js     which repositories are still warm, and which fold away into `Old`
   fuzzy.js       searching the names: the letters you type, in the order you type them
@@ -664,6 +722,8 @@ web/             the two pages (html, css, js served exactly as they are)
   refs.js        what a name written inside a document points at, and which of the nine READMEs
 .claude/skills/
   k0-import/     the skill that fills the board with sessions you have already had
+  k0-changelog/  the one that turns the facts of a stretch of work into something readable. k0
+                 calls it by itself when the ChangeLog is opened, so it is in the package too
   changelog/     the one that writes the changelog and the documentation when work is finished.
                  For whoever works on k0, not for whoever uses it: it is not in the package
   commit-push-deploy/
@@ -688,6 +748,13 @@ writes for itself:
 
 Sessions are launched with `--session-id` (k0 chooses the id, so the card ↔ session link is
 certain), `-n` for the name, `--resume` to pick one up, and `--permission-mode plan` on new ones.
+
+The ChangeLog runs Claude Code a second way: `claude -p /k0-changelog`, with the facts on
+standard input and no terminal at all. It is the one time k0 starts a model, and it still opens
+no socket of its own — the request is Claude Code's, made with your own account, from your own
+machine. Those runs cannot come back as cards: `sessions.js` drops `claude -p` when it looks for
+sessions to import, which is also how it tells a hundred and forty real sessions from eight
+hundred automated ones.
 
 ### The traps
 

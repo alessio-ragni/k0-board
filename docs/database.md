@@ -73,9 +73,15 @@ nothing.
 | `status` | TEXT | The status the card moved to |
 | `at` | INTEGER | Milliseconds. On an imported card, when it really happened |
 
-Indexed by `(card_id, at DESC)`, which is the only way it is ever read. Deleting a card deletes
-its events explicitly as well as by the cascade: an orphaned event keeps the shape of a card you
-thought you had thrown away.
+Indexed by `(card_id, at DESC)`, which is how the board reads it: the age at the bottom of one
+note, one card at a time. The ChangeLog reads it the other way round — every card that moved
+between two moments — and that one is a scan, on purpose. The table only grows when a status
+really changes, so a year of it is thousands of rows and not millions, and an index kept up to
+date on every write to save a few microseconds on a page opened once a morning would be the
+wrong trade.
+
+Deleting a card deletes its events explicitly as well as by the cascade: an orphaned event keeps
+the shape of a card you thought you had thrown away.
 
 ## `pref`
 

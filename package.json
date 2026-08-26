@@ -33,6 +33,7 @@
     "menubar",
     "!menubar/k0.app",
     ".claude/skills/k0-import",
+    ".claude/skills/k0-changelog",
     "README.md",
     "CHANGELOG.md",
     "LICENSE"

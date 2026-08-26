@@ -8,6 +8,22 @@ All notable changes to this project are documented here. The format follows
 
 ### Added
 
+- **A ChangeLog page that tells you what you have been doing.** The list-shaped button next to
+  the `+` opens a page of its own that reads like a release note: an opening paragraph on how the
+  day went, then one block per repository saying what is different now — and, underneath it, what
+  is **done but not out yet**. A commit still sitting on your machine, changelog lines written
+  but never closed into a version, files never committed. Four windows across the top — Today,
+  Yesterday, Week, Month — and it opens on none of them: it opens on the last day you actually
+  worked, so on a Monday you get Friday instead of an empty page. Only repositories you touched
+  in that window appear, so the one that has been dirty since March stops turning up every
+  morning as if it were news, and only your own commits are counted, so a repository shared with
+  other people still tells you about your day. The facts sit folded under each block, one line to
+  open them, with every commit marked green if it is online and amber if it is still only here.
+  The words are written by the Claude Code already on your machine — no key to paste, no account
+  to configure, nothing leaving the machine — and they come out in the language you commit in,
+  because they are written out of your own commit messages. Nothing is stored: the page is
+  written again every time you open it. Without Claude Code it still opens, with the facts and a
+  line saying why the rest is missing.
 - **The board keeps itself down to what you are working on.** A repository you have not touched
   since the day before your last piece of work folds away by itself: its column leaves the board
   and its name appears in `Old`, the new column next to `Others` and built exactly like it — a
