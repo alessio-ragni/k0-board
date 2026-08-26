@@ -2,6 +2,7 @@ import { check, section, after } from './harness.mjs'
 import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
+import { execFileSync } from 'node:child_process'
 
 // ── What you have been doing ─────────────────────────────────────────────────
 // The ChangeLog page is mostly arithmetic over things git and the board already know, and the
@@ -17,7 +18,7 @@ process.env.HOME = HOME
 process.env.USERPROFILE = HOME
 process.env.K0_DB = path.join(HOME, 'board.db')
 
-const { windowFor, lastActiveDay, unreleasedSection, isActive, narrow, totals, PERIODS } = await import(
+const { windowFor, lastActiveDay, unreleasedSection, isActive, narrow, totals, facts, PERIODS } = await import(
   '../server/changelog.js'
 )
 const { parseLog } = await import('../server/git.js')
@@ -177,6 +178,86 @@ section('The cards that moved')
   check('the one that moved a year ago is not', moved.length, 1)
   check('it says which repository it belongs to', moved[0].project_path, '/repo/one')
   check('a window with nothing in it is empty, not an error', db.eventsBetween(now - 60e3, now).length, 0)
+}
+
+// ── Two real repositories on disk ────────────────────────────────────────────
+// Everything above is arithmetic on made-up numbers. This is the other half: two repositories
+// built for real under the fake home, with real commits made by real git, put through the same
+// code the page calls. It is what proves the two promises the whole feature rests on — that a
+// repository shared with somebody else still tells you about YOUR day, and that one you have
+// not touched stays out of the way — and neither of those can be proved with a fixture.
+section('Two real repositories on disk')
+
+const MINE = 'mine@example.test'
+const THEIRS = 'theirs@example.test'
+
+/** A repository with one commit of mine, one of somebody else's, and a file left hanging. */
+function build(name, when) {
+  const dir = path.join(HOME, name)
+  fs.mkdirSync(dir)
+  const git = (args, who = MINE) =>
+    execFileSync('git', ['-C', dir, ...args], {
+      encoding: 'utf8',
+      env: {
+        ...process.env,
+        GIT_AUTHOR_NAME: 'Somebody',
+        GIT_AUTHOR_EMAIL: who,
+        GIT_COMMITTER_NAME: 'Somebody',
+        GIT_COMMITTER_EMAIL: who,
+        GIT_AUTHOR_DATE: when,
+        GIT_COMMITTER_DATE: when,
+      },
+    })
+
+  git(['init', '-q', '-b', 'main'])
+  git(['config', 'user.email', MINE])
+  git(['config', 'user.name', 'Somebody'])
+  git(['config', 'commit.gpgsign', 'false'])
+
+  fs.writeFileSync(path.join(dir, 'CHANGELOG.md'), '# Changelog\n\n## [Unreleased]\n\n- the zoom lands on 90%\n')
+  fs.writeFileSync(path.join(dir, 'a.txt'), 'one\n')
+  git(['add', '-A'])
+  git(['commit', '-q', '-m', 'fix: the zoom lands on ninety per cent'])
+
+  fs.writeFileSync(path.join(dir, 'b.txt'), 'two\n')
+  git(['add', '-A'])
+  git(['commit', '-q', '-m', 'chore: something a colleague did'], THEIRS)
+
+  fs.writeFileSync(path.join(dir, 'hanging.txt'), 'never committed\n')
+  return dir
+}
+
+let repos = null
+try {
+  execFileSync('git', ['--version'], { encoding: 'utf8' })
+  build('fresh', new Date().toISOString())
+  const old = build('stale', new Date(Date.now() - 300 * DAY).toISOString())
+  // A file saved ten months ago in a repository nobody has opened since. This is the exact
+  // thing the page must not bring up every morning.
+  const stamp = (Date.now() - 300 * DAY) / 1000
+  for (const f of ['hanging.txt', 'a.txt', 'b.txt', 'CHANGELOG.md']) fs.utimesSync(path.join(old, f), stamp, stamp)
+  repos = (await facts('today')).repos
+} catch (err) {
+  repos = err // git is not on this machine, or would not run: say so rather than pass quietly
+}
+
+if (Array.isArray(repos)) {
+  const fresh = repos.find((r) => r.name === 'fresh')
+  check('the repository worked on today is there', !!fresh, true)
+  check('the one untouched since last year is not', repos.some((r) => r.name === 'stale'), false)
+
+  check('only the commit that is mine is counted', fresh.commits.length, 1)
+  check('and it is the one I wrote', fresh.commits[0].subject, 'fix: the zoom lands on ninety per cent')
+  // Nowhere to push to, so nothing can be said about whether it got out — and saying "not
+  // pushed" here would invent a chore out of a repository that never had a remote.
+  check('with no remote there is no such thing as online', fresh.commits[0].online, null)
+  check('and nothing is waiting to go out', fresh.unpushedTotal, 0)
+
+  check('the file never committed is there', fresh.dirty.map((f) => f.path).join(' '), 'hanging.txt')
+  check('what was written but not released is read', (fresh.unreleased || []).join(''), '- the zoom lands on 90%')
+  check('the day it settled on is today', new Date(fresh.commits[0].at).toDateString(), new Date().toDateString())
+} else {
+  check('git ran', String(repos), 'git ran')
 }
 
 after(() => {
