@@ -20,6 +20,10 @@ const LABEL = {
   COMPLETED: 'Done',
 }
 
+// The statuses where something is really running. The server holds the same rule — a browser
+// cannot import a module that reads the filesystem — the way `ORDER` is already written twice.
+const BUSY = new Set(['WORKING', 'PLANNING'])
+
 const $ = (s) => document.querySelector(s)
 const api = async (url, opts) => {
   const r = await fetch(url, { headers: { 'content-type': 'application/json' }, ...opts })
@@ -136,6 +140,10 @@ function postit(card, now) {
     btn('Start', () => start(card.id, 'start'))
   } else {
     if (dead) btn('Resume', () => start(card.id, 'resume'))
+    // Close gives the memory back without declaring the work over. Not while the session is
+    // working: stopping one mid-thought is not memory saved, it is work lost.
+    else if (!BUSY.has(card.status))
+      btn('Close', () => closeSession(card.id), 'stop the session and its terminal, and leave the card where it is')
     // An idea in the backlog cannot be "done": it never started.
     btn('Done', () => setCompleted(card.id, true), 'close this job and its terminal')
   }
@@ -519,6 +527,21 @@ function ask(text) {
 async function remove(card) {
   if (!(await ask(`Delete “${card.title}”?`))) return
   await api(`/api/card/${card.id}`, { method: 'DELETE' })
+  refresh()
+}
+
+/**
+ * The terminal goes, the card stays. Stopping the session takes a couple of seconds — it is asked
+ * to leave and given the time to — so it says what it is doing while it waits.
+ */
+async function closeSession(id) {
+  toast('Closing the terminal…', 10000)
+  try {
+    await api(`/api/card/${id}/close`, { method: 'POST' })
+    toast('Closed. Resume picks the conversation up where it was')
+  } catch (e) {
+    toast(`Couldn't do it: ${e.message}`, 8000)
+  }
   refresh()
 }
 
