@@ -203,21 +203,22 @@ k0 makes **no network requests**. Not one, not even for a font.
 - **Resume** — appears once you have closed the terminal: it reopens the same conversation exactly
   where it was.
 
-- **Close** — closes the terminal and **not the work**. The session is stopped, its window goes,
-  and the machine gets the memory back; the card stays exactly where it is, with the colour it
-  had — the one asking you something stays red, the one holding a plan up stays amber, the one at
-  your turn stays yellow — and **Resume** takes it from there. It is the button for a dozen
-  windows open and a computer running out of air.
-
-  It is **not there while the session is working**: stopping one mid-thought is not memory saved,
-  it is work lost. Wait for it to come back to you, and then close it.
-
 - **Done** — closes the work **and its terminal**, with no questions: undo it with **Reopen**, and
   pick the conversation up again with **Resume**. It is not on backlog cards: they never started.
 
   The session is stopped first and only then is the window closed. Closing a window with `claude`
   still inside it makes macOS put up the "terminate running processes" dialog, and the window does
   not close at all.
+
+- **Close** — a link at the end of the row, quieter than the buttons because it is the one you
+  reach for least: it closes the terminal and **not the work**. The session is stopped, its window
+  goes, and the machine gets the memory back; the card stays exactly where it is, with the colour
+  it had — the one asking you something stays red, the one holding a plan up stays amber, the one
+  at your turn stays yellow — and **Resume** takes it from there. It is what a dozen windows open
+  and a computer running out of air are answered with.
+
+  It is **not there while the session is working**: stopping one mid-thought is not memory saved,
+  it is work lost. Wait for it to come back to you, and then close it.
 
 The only thing that asks for confirmation is throwing a card away.
 
