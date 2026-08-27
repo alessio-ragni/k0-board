@@ -163,6 +163,13 @@ export function forgetSession(sessionId) {
 }
 
 /**
+ * Something is really running behind this status. It is the one question two different places
+ * ask: whether a status that survives the death of a process would be a lie, and whether a
+ * session may be closed from the board — a session that is grinding away is not.
+ */
+export const busy = (status) => status === 'WORKING' || status === 'PLANNING'
+
+/**
  * Translates Claude Code's signals into the board's statuses.
  * Returns { status, alive }.
  */
@@ -175,7 +182,7 @@ export function deriveStatus(card, live) {
     // Process dead: the session can still be resumed. We keep the last status only if it said
     // something about you (an open question, a plan left sitting there); WORKING and PLANNING
     // would be a lie, nothing is grinding away any more.
-    const stale = card.status === 'WORKING' || card.status === 'PLANNING' || card.status === 'BACKLOG'
+    const stale = busy(card.status) || card.status === 'BACKLOG'
     return { status: stale ? 'IDLE' : card.status, alive: false }
   }
 

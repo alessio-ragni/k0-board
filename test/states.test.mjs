@@ -22,7 +22,7 @@ process.env.USERPROFILE = FAKE_HOME
 // `db.js` now stops by itself if anybody tries again, but this is the right way round.
 process.env.K0_DB = path.join(os.tmpdir(), `k0-test-${process.pid}.db`)
 
-const { deriveStatus, transcriptPath, projectSlug, renameSession } = await import('../server/watcher.js')
+const { deriveStatus, transcriptPath, projectSlug, renameSession, busy } = await import('../server/watcher.js')
 const { sessionName } = await import('../server/launcher.js')
 const { scanSessions } = await import('../server/sessions.js')
 
@@ -170,6 +170,19 @@ check('no session -> BACKLOG', deriveStatus(card(null), new Map()).status, 'BACK
   check('closed while working -> IDLE', deriveStatus(card(s, { status: 'WORKING' }), new Map()).status, 'IDLE')
   check('closed while planning -> IDLE', deriveStatus(card(s, { status: 'PLANNING' }), new Map()).status, 'IDLE')
   check('closed with a question open: stays ASK', deriveStatus(card(s, { status: 'ASK' }), new Map()).status, 'ASK')
+  check('closed at your turn: stays IDLE', deriveStatus(card(s, { status: 'IDLE' }), new Map()).status, 'IDLE')
+}
+
+// Which sessions Close is offered on. It is the same rule the board draws the button by: a
+// session that is grinding away is not one to close, and everything else keeps its colour when
+// the terminal goes.
+{
+  check('working is not to be closed', busy('WORKING'), true)
+  check('planning is not to be closed', busy('PLANNING'), true)
+  check('your turn can be closed', busy('IDLE'), false)
+  check('a question waiting can be closed', busy('ASK'), false)
+  check('a plan waiting can be closed', busy('PLANNED'), false)
+  check('a backlog card has nothing to close', busy('BACKLOG'), false)
 }
 
 // Transcript truncated or recreated: it must not get stuck

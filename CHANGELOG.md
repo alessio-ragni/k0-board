@@ -8,6 +8,14 @@ All notable changes to this project are documented here. The format follows
 
 ### Added
 
+- **`Close` gives the memory back without closing the work.** A second button on the card, next to
+  `Done`: it stops the session and shuts its terminal — which is where the memory was going — and
+  leaves the card exactly where it is, with the colour it had. The one asking you something stays
+  red, the one holding a plan up stays amber, the one at your turn stays yellow, and `Resume`
+  picks the conversation up where it left off. Until now the only way to give a machine its memory
+  back was `Done`, which also declares the work finished, so a dozen windows open meant choosing
+  between a struggling computer and a board that lies. It is not there while a session is working:
+  stopping one mid-thought is not memory saved, it is work lost.
 - **A ChangeLog page that tells you what you have been doing.** The list-shaped button next to
   the `+` opens a page of its own that reads like a release note: an opening paragraph on how the
   day went, then one block per repository saying what is different now — and, underneath it, what
@@ -40,8 +48,8 @@ All notable changes to this project are documented here. The format follows
   instead of waiting for it to go quiet — for a repository you are finished with for the day. It
   goes faint and refuses on a column with something going on in it, and says why if you hover it.
   It is remembered across reloads, until you fetch the column back or something in it wakes up.
-  It closes nothing: no session is stopped and no terminal is shut. What closes a session is still
-  `Done` on a card.
+  It closes nothing: no session is stopped and no terminal is shut. What closes a session is
+  `Close` or `Done` on a card.
 - **The installation ends on the board.** `npx k0-board` now opens it in your browser once
   everything is in place, after the cards have been imported, so the first thing you see is your
   own work and there is no address to copy out of the terminal. `--no-open` finishes without it,

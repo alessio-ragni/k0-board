@@ -5,7 +5,7 @@ import crypto from 'node:crypto'
 import * as db from './db.js'
 import { allowed } from './guard.js'
 import { ROOT } from './paths.js'
-import { readLiveSessions, deriveStatus, forgetSession, renameSession } from './watcher.js'
+import { readLiveSessions, deriveStatus, forgetSession, renameSession, busy } from './watcher.js'
 import {
   launch,
   focusWindow,
@@ -580,6 +580,21 @@ async function api(req, res, url) {
     // Bringing this session's window back to the front: the double click on the card.
     if (req.method === 'POST' && action === 'focus') {
       return send(res, 200, await focusWindow(card.terminal_window_id))
+    }
+
+    // Closing the terminal without closing the work: the same two moves as Done — stop the
+    // session, shut its window — and none of the marking. The card stays where it is, with the
+    // status it had, and Resume picks the conversation up where it was.
+    if (req.method === 'POST' && action === 'close') {
+      if (!card.session_id) return send(res, 400, { error: 'This card has no session' })
+      // The board is up to a second behind, so a card that was idle when it was clicked may have
+      // started thinking since. Nothing that is working gets stopped from here.
+      if (busy(card.status)) return send(res, 409, { error: 'It is working: let it finish' })
+      const pid = readLiveSessions().get(card.session_id)?.pid
+      const out = await closeTerminal({ winId: card.terminal_window_id, pid })
+      db.setTerminalWindow(id, null) // that window is gone; Resume opens a new one
+      tick() // so the answer already carries the closed card, without waiting for the loop
+      return send(res, 200, { ...out, card: db.getCard(id) })
     }
 
     if (req.method === 'POST' && (action === 'start' || action === 'resume')) {

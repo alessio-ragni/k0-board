@@ -203,6 +203,15 @@ k0 makes **no network requests**. Not one, not even for a font.
 - **Resume** — appears once you have closed the terminal: it reopens the same conversation exactly
   where it was.
 
+- **Close** — closes the terminal and **not the work**. The session is stopped, its window goes,
+  and the machine gets the memory back; the card stays exactly where it is, with the colour it
+  had — the one asking you something stays red, the one holding a plan up stays amber, the one at
+  your turn stays yellow — and **Resume** takes it from there. It is the button for a dozen
+  windows open and a computer running out of air.
+
+  It is **not there while the session is working**: stopping one mid-thought is not memory saved,
+  it is work lost. Wait for it to come back to you, and then close it.
+
 - **Done** — closes the work **and its terminal**, with no questions: undo it with **Reopen**, and
   pick the conversation up again with **Resume**. It is not on backlog cards: they never started.
 
@@ -268,8 +277,8 @@ and refuses, and says why if you hover it — it does not disappear, because a c
 back to your turn every few seconds and it would spend the session blinking.
 Unlike the automatic fold, this one is remembered across reloads, until you fetch the column back
 or something in it wakes up. It **closes nothing**: no session is stopped and no terminal is
-shut. It is the board that gets smaller, not the work — what closes a session is `Done` on a
-card.
+shut. It is the board that gets smaller, not the work — what closes a session is `Close` or `Done`
+on a card.
 
 ### The git mark
 
@@ -457,6 +466,10 @@ CPU time between two readings — `ps`'s own `%cpu` would be the average since t
 which on an old session says nothing about this minute. And summing the memory of a process tree
 counts shared memory twice, so the total is a little generous: it is the usual approximation, and
 it is the right one for the question that matters — which one do I close to feel better.
+
+And once you have decided, **`Close` on that card is how you give the memory back**: the session
+is stopped and its window goes, the work stays on the board as it was, and `Resume` picks the
+conversation up where it left off. Nothing has to be declared finished to stop weighing.
 
 Reading the process table costs little on a calm machine and a lot on a struggling one, which is
 exactly when you look at it. So it is sampled every three seconds, and **only while the board is
