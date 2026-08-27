@@ -123,10 +123,11 @@ function postit(card, now) {
   }
 
   const actions = el.querySelector('.actions')
-  const btn = (text, fn, title) => {
+  const btn = (text, fn, title, cls) => {
     const b = document.createElement('button')
     b.textContent = text
     if (title) b.title = title
+    if (cls) b.className = cls
     b.onclick = (e) => {
       e.stopPropagation()
       fn()
@@ -140,12 +141,18 @@ function postit(card, now) {
     btn('Start', () => start(card.id, 'start'))
   } else {
     if (dead) btn('Resume', () => start(card.id, 'resume'))
-    // Close gives the memory back without declaring the work over. Not while the session is
-    // working: stopping one mid-thought is not memory saved, it is work lost.
-    else if (!BUSY.has(card.status))
-      btn('Close', () => closeSession(card.id), 'stop the session and its terminal, and leave the card where it is')
     // An idea in the backlog cannot be "done": it never started.
     btn('Done', () => setCompleted(card.id, true), 'close this job and its terminal')
+    // Close gives the memory back without declaring the work over, and it comes after Done, as a
+    // link rather than a button: it is the rarer of the two and should not compete with it. Not
+    // while the session is working — stopping one mid-thought is not memory saved, it is work lost.
+    if (!dead && !BUSY.has(card.status))
+      btn(
+        'Close',
+        () => closeSession(card.id),
+        'stop the session and its terminal, and leave the card where it is',
+        'link'
+      )
   }
 
   // The git mark is a link: a double click on it would open two tabs and bring the terminal to
