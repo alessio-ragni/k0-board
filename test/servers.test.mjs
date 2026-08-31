@@ -103,6 +103,12 @@ check('a neighbour that merely starts the same', isInside('/Users/you/site-old',
 check('somewhere else entirely', isInside('/tmp', '/Users/you/site'), false)
 check('an unknown directory belongs nowhere', isInside(null, '/Users/you/site'), false)
 check('and nothing belongs to an unknown repository', isInside('/Users/you/site', null), false)
+// Both slashes count, whichever this machine happens to use. The two paths come from different
+// places — one from the operating system, one from a card — and on Windows they do not reliably
+// agree. Reading `path.sep` instead is how this was right on a Mac and wrong everywhere else.
+check('a Windows path, inside', isInside('C:\\w\\site\\src', 'C:\\w\\site'), true)
+check('a Windows near-miss is still a miss', isInside('C:\\w\\site-old', 'C:\\w\\site'), false)
+check('a trailing slash on the repository changes nothing', isInside('/Users/you/site/src', '/Users/you/site/'), true)
 
 // ── Where the log goes ───────────────────────────────────────────────────────
 section('Where the log goes')

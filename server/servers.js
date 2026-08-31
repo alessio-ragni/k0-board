@@ -143,11 +143,24 @@ export function logPathFor(repo) {
   return path.join(LOG_DIR, `dev-${name}-${short}.log`)
 }
 
-/** Is `dir` the repository, or inside it? Compared as paths, so `/a/bc` is not inside `/a/b`. */
+/**
+ * Is `dir` the repository, or inside it?
+ *
+ * Compared a whole segment at a time, so `/a/bc` is not inside `/a/b` — without that, a
+ * neighbouring directory whose name merely starts the same would be adopted as if it were this
+ * repository, and the globe would then govern somebody else's server.
+ *
+ * Both separators count, rather than whichever one this machine happens to use. The paths on
+ * either side come from different places — one from the operating system, one from a card or from
+ * Claude Code's own files — and on Windows those two do not reliably agree on which slash they
+ * write. Asking `path.sep` would make the answer depend on the machine reading it, which is how a
+ * comparison starts being right in the tests and wrong in the field.
+ */
 export function isInside(dir, repo) {
   if (!dir || !repo) return false
   if (dir === repo) return true
-  return dir.startsWith(repo.endsWith(path.sep) ? repo : repo + path.sep)
+  const base = String(repo).replace(/[\\/]+$/, '')
+  return dir.startsWith(base) && (dir[base.length] === '/' || dir[base.length] === '\\')
 }
 
 /** The last thing the log has to say, which is what a failure owes the person looking at it. */
