@@ -53,6 +53,16 @@ server started inside a session could never do.
   the number moved every time a filter did. Long repository names now give up characters to an
   ellipsis instead of pushing the marks off the end of the row.
 
+### Fixed
+
+- **A tab left open no longer shows you the old interface.** k0 sent its own pages and stylesheets
+  with no instruction about keeping them, so the browser decided for itself — and a board left
+  open all day went on using the stylesheet it loaded that morning. It showed up the first time
+  the globe arrived: the servers switched on and off correctly and the board redrew every second,
+  but the heading kept the shape it had before, because the page redraws itself and the stylesheet
+  does not. After an update it is worse than confusing: the new k0 on disk, the old one on screen.
+  They are a few kilobytes over a connection to your own machine, so nothing is kept now.
+
 - **`Close` gives the memory back without closing the work.** A link at the end of a card's row,
   after `Done` and quieter than it: it stops the session and shuts its terminal — which is where
   the memory was going — and leaves the card exactly where it is, with the colour it had. The one

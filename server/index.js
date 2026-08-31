@@ -664,7 +664,17 @@ function serveStatic(res, pathname) {
     res.writeHead(404).end('Not found')
     return
   }
-  res.writeHead(200, { 'content-type': MIME[path.extname(file)] || 'application/octet-stream' })
+  // Nothing here is cached, and that is deliberate. These files have no version in their names
+  // and nothing rebuilds them, so with no instruction at all the browser decides for itself how
+  // long to keep them — and a tab left open all day keeps the stylesheet it loaded that morning.
+  // That turns "change a file, reload the page" into a promise k0 does not keep, and it does the
+  // same after an update: the new app on disk, the old interface on screen. They are a few
+  // kilobytes over loopback; there is nothing to save here and a whole class of confusion to
+  // avoid.
+  res.writeHead(200, {
+    'content-type': MIME[path.extname(file)] || 'application/octet-stream',
+    'cache-control': 'no-cache, no-store, must-revalidate',
+  })
   fs.createReadStream(file).pipe(res)
 }
 
