@@ -6,13 +6,23 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.2.0]
+
+k0 could always tell you how the work stood. This version lets it tell you whether the work is
+*running*: a globe in each column heading says whether that repository's site is up, and switches
+it on or off from the board. The server it starts belongs to nobody and outlives everything —
+the session that asked for it, the other sessions, and k0 itself — which is the one thing a dev
+server started inside a session could never do.
+
 ### Added
 
 - **A globe next to every repository: is the site up, and one click to change it.** Last on a
   column's heading, after the git mark. Grey is off, green is up, it breathes while it is coming
   up, and red means it was started and did not come up — with the reason and the log a hover
   away. **One click switches it, two restart it**, and while it is green the repository's **name
-  becomes a link** that opens the site in another tab, on the port it is really listening on. A
+  is underlined with a dotted line** and becomes a link that opens the site in another tab, on the
+  port it is really listening on. That line stays for as long as the server does, so a repository
+  that is up can be told apart from across the board without going near it. A
   repository gets one when its `package.json` has a `dev` script, or failing that a `serve` one:
   nothing to configure, nothing to fill in. The point of it is where the server lives: k0 starts
   it **detached and owned by nobody**, so it survives the session that asked for it, every other

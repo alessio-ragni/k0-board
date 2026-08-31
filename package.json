@@ -1,6 +1,6 @@
 {
   "name": "k0-board",
-  "version": "0.1.2",
+  "version": "0.2.0",
   "description": "A board of sticky notes that drives your Claude Code sessions",
   "keywords": [
     "claude-code",
