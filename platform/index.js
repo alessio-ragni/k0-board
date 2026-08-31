@@ -56,6 +56,13 @@ const unsupported = {
     swap: async () => ({ total: 0, used: 0 }),
     pressureLevel: async () => 1,
   },
+  servers: {
+    capabilities: () => ({ run: false, ports: false, adopt: false }),
+    listeners: async () => new Map(),
+    cwds: async () => new Map(),
+    shell: (command) => ({ file: process.env.SHELL || '/bin/sh', args: ['-lc', command] }),
+    stop: async () => false,
+  },
   shell: {
     revealInFileManager: async () => {},
     openBrowser: async () => {},
@@ -78,7 +85,8 @@ const unsupported = {
 const platform = load ? { ...unsupported, ...(await load()) } : unsupported
 
 export default platform
-export const { name, capabilities, notes, terminal, power, metrics, shell, service, extras } = platform
+export const { name, capabilities, notes, terminal, power, metrics, servers, shell, service, extras } =
+  platform
 
 /**
  * Is this capability available here? Takes a dotted path, so callers read as a question:

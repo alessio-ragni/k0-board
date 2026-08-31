@@ -33,6 +33,10 @@
  * @property {object} metrics
  * @property {boolean} metrics.pressure              the kernel publishes a memory-pressure verdict
  * @property {boolean} metrics.swap                  swap usage is readable
+ * @property {object} servers
+ * @property {boolean} servers.run                   can start and stop a project's dev server
+ * @property {boolean} servers.ports                 can tell which port a process is listening on
+ * @property {boolean} servers.adopt                 can recognise a server started outside k0
  * @property {object} service
  * @property {boolean} service.autostart             can register a service that starts at login
  * @property {boolean} tray                          a menu bar / system tray icon is available
@@ -47,6 +51,7 @@ export const NO_CAPABILITIES = {
   terminal: { windows: false, font: false, readScreen: false, pasteWithoutSending: false, title: false },
   power: { keepAwake: false, keepDisplayAwake: false, lidSleep: false, battery: false },
   metrics: { pressure: false, swap: false },
+  servers: { run: false, ports: false, adopt: false },
   service: { autostart: false },
   tray: false,
   revealInFileManager: false,
@@ -102,6 +107,30 @@ export const NO_CAPABILITIES = {
  */
 
 /**
+ * The dev server a project runs while you are working on it — the one the globe in the column
+ * heading switches on and off. k0 starts it detached, so it outlives both the session that
+ * asked for it and k0 itself; what this adapter adds is the two things only the operating
+ * system knows, and the one gesture Node cannot make portably.
+ *
+ * @typedef {object} ServersAdapter
+ * @property {() => {run: boolean, ports: boolean, adopt: boolean}} capabilities
+ * @property {() => Promise<Map<number, Set<number>>>} listeners
+ *   Every process holding a TCP port open, and which ports. This is how k0 knows a server is
+ *   up: not by asking it, which would be a network request, but by seeing it hold the socket.
+ * @property {(pids: number[]) => Promise<Map<number, string>>} cwds
+ *   Where each of those processes is working from, which is what ties one to a repository.
+ *   An adapter that cannot say returns an empty map and reports `adopt: false`.
+ * @property {(command: string) => {file: string, args: string[]}} shell
+ *   How to run `command` inside a project. It goes through a LOGIN shell on Unix, and that is
+ *   not a flourish: the server runs from a launch agent whose PATH is barely more than
+ *   /usr/bin:/bin, while npm and node usually arrive from a version manager whose PATH only
+ *   exists inside a shell. It is the same reason `findClaude` ends up in a shell.
+ * @property {(root: number, pids: number[], signal?: string) => Promise<boolean>} stop
+ *   Stops the server and everything it started. `pids` is the whole subtree, `root` included:
+ *   killing the top process alone leaves the real server holding the port.
+ */
+
+/**
  * @typedef {object} ShellAdapter
  * @property {(absPath: string) => Promise<unknown>} revealInFileManager
  * @property {(url: string) => Promise<unknown>} openBrowser
@@ -129,6 +158,7 @@ export const NO_CAPABILITIES = {
  * @property {TerminalAdapter} terminal
  * @property {PowerAdapter} power
  * @property {MetricsAdapter} metrics
+ * @property {ServersAdapter} servers
  * @property {ShellAdapter} shell
  * @property {ServiceAdapter} service
  */

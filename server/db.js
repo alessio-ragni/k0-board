@@ -52,6 +52,18 @@ db.exec(`
     "key"   TEXT PRIMARY KEY,
     "value" TEXT NOT NULL
   );
+
+  -- The dev server k0 started for a repository, and is therefore responsible for. It is
+  -- deliberately not a record of what is RUNNING — that is read from the machine every few
+  -- seconds and nothing here could be trusted to keep up with it. It is a record of intent:
+  -- a row means "k0 started this and it is meant to be up", which is what tells a server that
+  -- fell over apart from one that was switched off. Stopping deletes the row.
+  CREATE TABLE IF NOT EXISTS dev_server (
+    project_path TEXT PRIMARY KEY,
+    pid          INTEGER NOT NULL,
+    command      TEXT NOT NULL,
+    started_at   INTEGER NOT NULL
+  );
 `)
 
 // Additive migrations: the column may be missing from a database created before it existed.
@@ -269,6 +281,30 @@ export function setPref(key, value) {
 /** For migrations: a key that no longer means anything gets retired. */
 export function dropPref(key) {
   db.prepare('DELETE FROM pref WHERE "key" = ?').run(key)
+}
+
+// ── The dev servers k0 started ───────────────────────────────────────────────
+// See the comment on the table: a row is intent, not observation.
+
+export function listDevServers() {
+  return db.prepare('SELECT project_path, pid, command, started_at FROM dev_server').all()
+}
+
+export function getDevServer(projectPath) {
+  return db.prepare('SELECT project_path, pid, command, started_at FROM dev_server WHERE project_path = ?')
+    .get(projectPath) ?? null
+}
+
+export function setDevServer(projectPath, { pid, command, startedAt }) {
+  db.prepare(`
+    INSERT INTO dev_server (project_path, pid, command, started_at) VALUES (?, ?, ?, ?)
+    ON CONFLICT(project_path) DO UPDATE SET
+      pid = excluded.pid, command = excluded.command, started_at = excluded.started_at
+  `).run(projectPath, pid, command, startedAt)
+}
+
+export function clearDevServer(projectPath) {
+  db.prepare('DELETE FROM dev_server WHERE project_path = ?').run(projectPath)
 }
 
 /**

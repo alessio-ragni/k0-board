@@ -176,6 +176,9 @@ const ICON = {
   plus: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>',
   // Put this column away: it slides off to the right, where `Old` is.
   fold: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 6l6 6-6 6"/><path d="M19 5v14"/></svg>',
+  // The dev server: a world, because what is behind it is a site. A meridian and a parallel are
+  // enough to read it at twelve pixels — more lines and it goes back to being a circle.
+  globe: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M3 12h18"/><ellipse cx="12" cy="12" rx="4" ry="9"/></svg>',
 }
 
 const esc = (s) =>
@@ -227,6 +230,95 @@ function gitChip(g, repo, card) {
     GIT_ICON[kind]
   }${n}</a>`
 }
+
+// ── The dev server ────────────────────────────────────────────────────
+// The globe next to a repository's name: grey when its server is off, green when it is up,
+// spinning while it is coming up, red when it tried and could not. One click switches it, two
+// restart it, and when it is green the repository's name becomes the way into the site.
+//
+// The four states are the ones the server sends; nothing is guessed here. The only thing the
+// page knows that the server does not is that a click has just happened and no answer has come
+// back yet — which is what `switching` is for.
+const switching = new Set()
+
+/** Everything the globe knows, for the tooltip. Same idea as `gitDetail`: the detail is on hover. */
+function serverDetail(s, state) {
+  const bits = []
+  if (state === 'up') bits.push(s.adopted ? `up on port ${s.port}, started outside k0` : `up on port ${s.port}`)
+  else if (state === 'starting') bits.push('starting…')
+  else if (state === 'failed') bits.push(s.error ? `it did not come up: ${s.error}` : 'it did not come up')
+  else bits.push('the server is off')
+  bits.push(s.command)
+  if (state === 'up') bits.push('click to stop, double-click to restart')
+  else if (state !== 'starting') bits.push('click to start')
+  // Where it went wrong is worth more than any sentence about it going wrong.
+  if (state === 'failed') bits.push(s.log)
+  return bits.join(' · ')
+}
+
+/**
+ * The globe, or nothing at all. A repository with no way to start a server does not get a
+ * button that would quietly do nothing — the server sends null and this draws none.
+ */
+function serverChip(s, repo) {
+  if (!s) return ''
+  const state = switching.has(repo) ? 'starting' : s.state
+  const title = serverDetail(s, state)
+  const off = s.can.run ? '' : ' disabled'
+  return `<button class="globe ${state}" title="${esc(title)}" aria-label="${esc(title)}"${off}>${ICON.globe}</button>`
+}
+
+/**
+ * One click switches, two restart, and they are fighting over the same first click.
+ *
+ * What settles it without being seen: when the server is OFF there is nothing to wait for,
+ * because "start" and "restart" are the same thing there, so the click goes straight through.
+ * Only STOPPING waits the quarter second it takes to learn whether a second click is coming —
+ * and even that is invisible, because the globe starts spinning the moment it is pressed.
+ */
+function wireGlobe(el, repo, s) {
+  if (!s.can.run) return
+  if (s.state === 'starting' || switching.has(repo)) {
+    el.disabled = true
+    return
+  }
+  if (s.state !== 'up') {
+    el.onclick = () => switchServer(repo, 'start')
+    return
+  }
+  let timer = null
+  el.onclick = () => {
+    if (timer) return // the second click of a double: let `ondblclick` have it
+    timer = setTimeout(() => {
+      timer = null
+      switchServer(repo, 'stop')
+    }, 250)
+  }
+  el.ondblclick = () => {
+    clearTimeout(timer)
+    timer = null
+    switchServer(repo, 'restart')
+  }
+}
+
+async function switchServer(repo, action) {
+  switching.add(repo)
+  lastSignature = '' // the globe has to start spinning now, not at the next round
+  await refresh()
+  try {
+    const s = await api('/api/server', { method: 'POST', body: JSON.stringify({ path: repo, action }) })
+    if (s.state === 'failed') toast(s.error || 'The server did not come up. Hover the globe for the log.', 8000)
+  } catch (err) {
+    toast(err.message)
+  } finally {
+    switching.delete(repo)
+    lastSignature = ''
+    refresh()
+  }
+}
+
+/** Just enough to compare one round with the next, exactly as `gitSig` does for git. */
+const serverSig = (s) => (s ? `${s.state}/${s.port ?? ''}/${s.adopted ? 1 : 0}` : '')
 
 // ── What a session weighs ────────────────────────────────────────────
 /**
@@ -328,11 +420,24 @@ function render(data) {
     const fold = `<button class="fold" title="${esc(away)}" aria-label="${esc(away)}"${
       live ? ' disabled' : ''
     }>${ICON.fold}</button>`
+    // Two groups and a name between them: what you press on the left, what tells you how things
+    // stand on the right. The count of post-its that used to sit after the name is gone — it
+    // took up the room the name now uses, and it never answered a question anybody had.
+    //
+    // With the server up, the name is the door to it. It is the right thing to click for the
+    // same reason the git mark is the right thing to click to reach the files: the obvious
+    // gesture on the obvious word, leaving the globe free to mean only on and off.
+    const url = col.server?.state === 'up' ? col.server.url : null
+    const name = url
+      ? `<a class="name" href="${esc(url)}" target="_blank" title="${esc(url)}">${esc(col.name)}</a>`
+      : `<span class="name">${esc(col.name)}</span>`
     wrap.innerHTML = `<h2><button class="add" title="${add}" aria-label="${add}">${
       ICON.plus
-    }</button>${fold}${esc(col.name)}<small>${cards.length}</small>${gitChip(col.git, col.path)}</h2>`
+    }</button>${fold}${name}${gitChip(col.git, col.path)}${serverChip(col.server, col.path)}</h2>`
     wrap.querySelector('.add').onclick = () => openEditor(null, col.path)
     wrap.querySelector('.fold').onclick = () => putAway(col.path)
+    const globe = wrap.querySelector('.globe')
+    if (globe) wireGlobe(globe, col.path, col.server)
     for (const c of cards) wrap.append(postit(c, data.now))
     board.append(wrap)
   }
@@ -780,7 +885,9 @@ async function refresh() {
         gitSig(c.git),
         c.load ? weight(c.load.rss) : '',
       ]),
-      data.columns.map((col) => [col.path, gitSig(col.git)]),
+      // The server state belongs in here for the same reason the git state does: without it the
+      // globe would keep the colour it had on the first round for the rest of the visit.
+      data.columns.map((col) => [col.path, gitSig(col.git), serverSig(col.server)]),
       (data.projects ?? []).map((p) => [p.path, gitSig(p.git)]),
     ])
     if (sig !== lastSignature) {

@@ -24,6 +24,7 @@ import * as writer from './writer.js'
 import * as files from './files.js'
 import * as pdf from './pdf.js'
 import * as machine from './machine.js'
+import * as servers from './servers.js'
 import { report as platformReport } from '../platform/index.js'
 // The same front-matter reader the viewer uses: the PDF has to be called what the page is
 // called, and two different readings of the same header would give two different names.
@@ -142,6 +143,9 @@ function board() {
     load: machine.loadOf(live.get(c.session_id)?.pid),
   }))
   const paths = [...new Set(cards.map((c) => c.project_path))]
+  // And the same for the dev servers: looking at the board is what makes k0 ask the machine
+  // who is listening, and it asks only about the repositories in front of you.
+  servers.touch(paths)
 
   // Live sessions no card claims: they weigh the same, and if the computer is struggling it is
   // fair to know there are three of them open outside here.
@@ -152,7 +156,14 @@ function board() {
     // The columns are the projects with at least one card — and that still exist: a card is
     // kept alive by its directory (see `onDisk` in projects.js).
     columns: paths
-      .map((p) => ({ path: p, name: projectName(p), git: publicGit(git.stateOf(p)) }))
+      .map((p) => ({
+        path: p,
+        name: projectName(p),
+        git: publicGit(git.stateOf(p)),
+        // Null where the repository has no way to start a server: then there is no globe at
+        // all, rather than one that would do nothing.
+        server: servers.stateOf(p),
+      }))
       .sort((a, b) => a.name.localeCompare(b.name)),
     cards,
     // The repositories for the last column, the one you go through to reach the files of a
@@ -361,6 +372,25 @@ async function api(req, res, url) {
     await mode.setMode(b.mode)
     await setTerminalFont(db.listCards().map((c) => c.terminal_window_id))
     return send(res, 200, { mode: mode.current(), lid: mode.lid(), reason: mode.reason() })
+  }
+
+  // ── The dev server of a repository ─────────────────────────────────────────
+  // The globe in the column heading. One address for the three gestures, because they are the
+  // same gesture with different endings — and `restart` really is stop-then-start, not a third
+  // path through the same code.
+  //
+  // The repository is not taken on trust. It arrives from the page as a plain path and it is a
+  // path k0 is about to RUN something in, so it goes through the same allowlist the file viewer
+  // uses: a directory k0 already knows as a project, or nothing at all.
+  if (resource === 'server' && req.method === 'POST') {
+    const b = await readBody(req)
+    const repo = rootOf(b.path)
+    if (!repo) return send(res, 404, { error: 'k0 does not know that repository.' })
+    const action = b.action
+    if (action === 'start') return send(res, 200, await servers.start(repo))
+    if (action === 'stop') return send(res, 200, await servers.stop(repo))
+    if (action === 'restart') return send(res, 200, await servers.restart(repo))
+    return send(res, 400, { error: 'That is not something a server can be asked to do.' })
   }
 
   // The screen changed under the windows: a monitor plugged in or unplugged, a different

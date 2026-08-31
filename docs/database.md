@@ -1,7 +1,8 @@
 # The database
 
 Everything k0 remembers between one run and the next: the cards, the history of their statuses,
-and the handful of switches the server shares with the menu bar icon. It is SQLite, opened through
+the handful of switches the server shares with the menu bar icon, and the dev servers it has
+started and is on the hook for. It is SQLite, opened through
 `node:sqlite` — which is the reason Node 24 is the floor — and it is written by `server/db.js`,
 the only file that talks to it.
 
@@ -88,6 +89,31 @@ the shape of a card you thought you had thrown away.
 Two columns, `key` and `value`, both text. The little the server has to share with the menu bar
 icon and remember across a restart — today, the mode. Everything the board alone cares about lives
 in the browser's `localStorage`, where only the board can see it, and is not here.
+
+## `dev_server`
+
+The dev server k0 started for a repository, and is therefore responsible for. One row per
+repository, keyed by its path.
+
+| column | | |
+|---|---|---|
+| `project_path` | TEXT | the repository, and the primary key |
+| `pid` | INTEGER | the process k0 spawned — the shell, not the server underneath it |
+| `command` | TEXT | what it was told to run, e.g. `npm run dev` |
+| `started_at` | INTEGER | when, in milliseconds |
+
+It is deliberately **not** a record of what is running. What is running is read off the machine
+every few seconds — who holds which TCP port, and from which directory — and nothing written here
+could keep up with that. This is a record of *intent*: a row means "k0 started this and it is
+meant to be up". Stopping deletes the row, which is the whole mechanism behind the red globe — a
+row whose process has gone was never stopped, so it fell over.
+
+The `command` is also what stops a stale row from becoming dangerous. A pid outlives its process
+and the system hands the number out again, so a row is only believed while the process at that pid
+is still running the command it was started with.
+
+Servers **you** started, outside k0, have no row at all: they are recognised from the machine each
+time and forgotten between readings.
 
 ## Reading it by hand
 

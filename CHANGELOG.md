@@ -8,6 +8,35 @@ All notable changes to this project are documented here. The format follows
 
 ### Added
 
+- **A globe next to every repository: is the site up, and one click to change it.** Last on a
+  column's heading, after the git mark. Grey is off, green is up, it breathes while it is coming
+  up, and red means it was started and did not come up — with the reason and the log a hover
+  away. **One click switches it, two restart it**, and while it is green the repository's **name
+  becomes a link** that opens the site in another tab, on the port it is really listening on. A
+  repository gets one when its `package.json` has a `dev` script, or failing that a `serve` one:
+  nothing to configure, nothing to fill in. The point of it is where the server lives: k0 starts
+  it **detached and owned by nobody**, so it survives the session that asked for it, every other
+  session, and k0 restarting under it. A dev server started inside a session belongs to that
+  session and dies with it, which is what made "is the site up" a question nobody could answer
+  from the board. k0 also **never asks the server whether it is up** — it makes no network
+  requests, here as everywhere else — so "up" means the process is alive and the system says it
+  is holding a TCP port open, which is both stronger evidence and where the real port in the
+  tooltip comes from. And a server **you** started by hand in a terminal turns the globe green on
+  its own within a few seconds, and switches off from the board like any other: a globe that only
+  knew about its own servers would sit grey next to a site that is plainly running. On Windows
+  that last part is missing, because nothing there can read another process's working directory,
+  and k0 says so instead of drawing those servers as off.
+
+### Changed
+
+- **A column's heading is two groups now, and the count of post-its is gone.** What you press is
+  on the left — the `+` and the fold — and what tells you how things stand is on the right: the
+  git mark, and the globe after it. The number that used to follow the repository name has been
+  taken out. It sat in the middle of the row taking up the room the name now uses, and it was
+  never the answer to a question anybody had: the post-its are right there to be counted, and
+  the number moved every time a filter did. Long repository names now give up characters to an
+  ellipsis instead of pushing the marks off the end of the row.
+
 - **`Close` gives the memory back without closing the work.** A link at the end of a card's row,
   after `Done` and quieter than it: it stops the session and shuts its terminal — which is where
   the memory was going — and leaves the card exactly where it is, with the colour it had. The one
