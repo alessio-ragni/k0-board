@@ -299,6 +299,40 @@ k0 **never runs `git fetch`**. It only looks at what your git already knows abou
 itself; a push made by somebody else does not show until you fetch. On a repository with no
 remote, pushing is not mentioned at all.
 
+### The globe: is the site up
+
+Last on a column's heading, after the git mark, a small **globe** says whether that repository's
+dev server is running. **Grey** is off, **green** is up, and it **breathes** while it is coming
+up. **Red** means it was started and did not come up — hover it for the reason and the log.
+
+**One click switches it on or off. Two restart it.** And when it is green the repository's
+**name becomes a link**: click it and the site opens in another tab, on the port it is really
+listening on. Hover the globe to read the rest — the port, the command it was started with, and
+where its log is.
+
+A repository gets a globe when its `package.json` has a **`dev`** script, or failing that a
+**`serve`** one. Nothing to configure and nothing to fill in. `start` is deliberately not on that
+list: by convention it runs what has been *built*, which is not what this is for.
+
+Three things are worth knowing, because they are the point.
+
+**The server outlives the session.** k0 starts it detached and owned by nobody. Close the session
+that asked for it, close every session, restart k0 itself — the server stays up and the globe
+stays green. This is the whole reason it exists: a dev server started inside a session belongs to
+that session, and dies with it.
+
+**k0 never asks the server whether it is up.** It makes no network requests, here as everywhere
+else. "Up" means the process is alive *and* the operating system says it is holding a TCP port
+open. That is stronger evidence than a reply would be, and it is where the port in the tooltip
+comes from — k0 never guesses a port, it reads the one your server actually chose.
+
+**A server you started yourself is recognised.** Start one by hand in a terminal and the globe
+goes green on its own within a few seconds, with the right port, and switches it off if you ask
+it to. A globe that only knew about its own servers would sit grey next to a site that is plainly
+running, which is worse than no globe at all. On Windows this one part is missing — nothing there
+can read another process's working directory — and k0 says so rather than showing those servers
+as off.
+
 ---
 
 ## The ChangeLog
@@ -701,11 +735,13 @@ platform/
                  (menubar/, which is also what posts the notifications and reads the permission)
   linux/         tmux and any emulator, systemd-inhibit, systemd user units, a GTK tray
   win32/         PowerShell and Windows Terminal, execution state, Task Scheduler, a WinForms tray
-  shared/        what more than one of them needs: tmux, running commands, reading a process table
+  shared/        what more than one of them needs: tmux, running commands, reading a process
+                 table, and reading who is holding which port
 server/
   index.js       the http server, the API, and the watching loop that runs every second
   guard.js       who is allowed to talk to this server at all: the Host and the Origin
-  db.js          SQLite (node:sqlite): the card, session_event and pref tables — docs/database.md
+  db.js          SQLite (node:sqlite): the card, session_event, pref and dev_server tables —
+                 docs/database.md
   paths.js       where the board, the logs and the cache live
   watcher.js     reads Claude Code's own files and derives the statuses; also renames a session
   git.js         the only one that talks to git: what is committed, what is pushed, whose it is,
@@ -715,6 +751,8 @@ server/
   writer.js      hands those facts to the Claude Code already on this machine and gets the words
                  back. The only place k0 starts a model, and it never leaves the machine to do it
   launcher.js    starts and resumes sessions, through the platform's terminal
+  servers.js     the dev server of a repository: what starts it, whether it is up, and on what
+                 port. The only thing k0 starts that is meant to outlive k0
   mode.js        the four modes: how awake to keep the machine, and whether the text goes large
   projects.js    the repositories, in the order you last used them
   sessions.js    digs already-lived sessions out of the transcripts, to import as cards
@@ -744,7 +782,7 @@ web/             the three pages (html, css, js served exactly as they are)
                  the road out: the documents, the tests, the commit, the push, and the tag that
                  publishes. Also for whoever works on k0, and also not in the package
 docs/
-  database.md    the shape of the database as it is now: the three tables, column by column
+  database.md    the shape of the database as it is now: the four tables, column by column
   testing.md     how the tests are written, run and measured, and what is left untested on purpose
 test/            npm test — Node's own runner, no framework. See docs/testing.md
   harness.mjs    check(label, got, want), and the sections the labels are grouped under
@@ -798,6 +836,23 @@ Field notes the code takes for granted.
 - **The session file appears before the interface is ready to receive.** Writing at that moment
   loses the first characters and swallows the Enter. So k0 waits until it can see the input box —
   and where a platform cannot read a terminal's screen, it waits a fixed moment and says so.
+- **A service's PATH is not a shell's PATH.** Under launchd it is barely more than
+  `/usr/bin:/bin`, and `npm` and `node` usually arrive from a version manager whose PATH only
+  exists inside a shell. So a dev server is started through a **login shell** — which is the same
+  reason `findClaude` ends up asking one, and it is also what puts the project's own `.nvmrc` in
+  force.
+- **`npm run dev` is not the server, it is the thing that starts it.** SIGTERM to npm alone leaves
+  `vite` holding the port, which is why the old per-repo skills all ended up reaching for
+  `pkill -f`. k0 starts the server **detached**, so it leads a process group of its own, and
+  stops the *group*. But only when the process it was told about really is that group's leader:
+  a server somebody started by hand in a shell without job control can share its group with the
+  **shell**, and signalling that would close the user's terminal to stop a dev server. Where the
+  leader is somebody else, the processes are signalled one at a time instead.
+- **A remembered pid is only a number, and the system hands numbers out again.** A row written
+  before a reboot can point at a stranger's process — and that row is what a click on the globe
+  would kill. So a remembered server is only believed while the process at that pid is still
+  running the command it was started with, and `stop` reads the machine before it signals
+  anything rather than trusting what it stored.
 - **`do script … in tab 1 of window id N`** writes into the interface with no simulated keystrokes
   and no permissions, but it **always adds the Enter**. You can hold the Enter back with a
   trailing backslash, but the backslash stays on screen and forces two presses: tried and rejected.

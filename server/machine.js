@@ -124,6 +124,15 @@ setInterval(cycle, TTL).unref()
 
 // ── What is known right now ───────────────────────────────────────────────────
 /**
+ * The process table as it was last sampled, for whoever needs to walk it rather than weigh it —
+ * today that is `servers.js`, which follows a dev server down to whichever of its children is
+ * actually holding the port. Null until the first cycle has run: the caller decides what a
+ * missing sample means, and re-reading the table here to fill the gap would undo the whole
+ * point of only sampling while somebody is looking.
+ */
+export const tree = () => (snap ? { procs: snap.procs, kids: snap.kids } : null)
+
+/**
  * What a session weighs: its whole subtree. `top` is the three biggest processes inside it,
  * and that is the answer to "why is this terminal eating so much".
  */

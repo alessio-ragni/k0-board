@@ -3,6 +3,7 @@ import { fileURLToPath } from 'node:url'
 import * as terminal from './terminal.js'
 import * as power from './power.js'
 import * as metrics from './metrics.js'
+import * as servers from './servers.js'
 import * as shell from './shell.js'
 import * as service from './service.js'
 import { NO_CAPABILITIES } from '../contract.js'
@@ -19,6 +20,7 @@ export const capabilities = {
   terminal: terminal.capabilities(),
   power: power.capabilities(),
   metrics: metrics.capabilities(),
+  servers: servers.capabilities(),
   service: service.capabilities(),
   tray: hasPowerShell(),
   revealInFileManager: true,
@@ -45,9 +47,21 @@ export const notes = {
           'PowerShell was not found. k0 needs it to open, place and raise terminal windows on ' +
           'Windows.',
       }),
+  'servers.adopt':
+    'Windows does not let one process read another’s working directory, so k0 cannot tell ' +
+    'which repository a dev server you started yourself belongs to. The globe switches on and ' +
+    'off the servers k0 started, and says nothing about the others rather than showing them ' +
+    'as off.',
+  ...(hasPowerShell()
+    ? {}
+    : {
+        'servers.ports':
+          'PowerShell was not found, so k0 cannot see which port a dev server is listening on. ' +
+          'It can still start and stop one, but the globe cannot open it for you.',
+      }),
 }
 
-export { terminal, power, metrics, shell, service }
+export { terminal, power, metrics, servers, shell, service }
 
 /** Nothing on Windows reaches outside k0's own files, so there is nothing to consent to. */
 export const extras = []

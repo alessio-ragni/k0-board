@@ -195,11 +195,29 @@ body {
    too: a post-it is never taller than it is wide. */
 :root { --card-w: 268px; }
 .column { flex: 0 0 var(--card-w); }
+/* Two groups with the name between them: on the left what you press — the `+` and the fold — and
+   on the right what tells you how things stand, the git mark and the globe. The count of post-its
+   that used to follow the name is gone: it took the room the name now has, and answered nothing.
+   Flex is what lets the name give up characters instead of pushing the marks off the end. */
 .column > h2 {
+  display: flex;
+  align-items: center;
   margin: 0 0 14px 4px;
   font: 600 1.5rem/1 var(--hand);
   color: #5f5a4e;
 }
+.column > h2 .name {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: inherit;
+  text-decoration: none;
+}
+/* With the server up the name is the way into the site. It only says so on hover: a heading that
+   looked like a link all day would be a heading nobody trusted. */
+.column > h2 a.name:hover { text-decoration: underline; text-underline-offset: 4px; }
 .column > h2 small {
   font-family: var(--sans);
   color: var(--muted);
@@ -469,6 +487,38 @@ body {
 .git.none { color: rgba(0, 0, 0, .32); }
 .column > h2 .git { margin-left: 8px; vertical-align: middle; }
 
+/* ── The dev server ───────────────────────────────────────────────────
+   The last thing on the right, after the git mark: is this repository's site up. Grey is off,
+   green is up — the same green as the git tick, because it means the same thing — and red is
+   tried and could not. One click switches it, two restart it.
+
+   While it is coming up it breathes rather than spins. Breathing is already what a card does
+   while a session is working (see `.postit.WORKING` above), and there is no reason for the board
+   to have two different ways of saying the same thing. */
+.column > h2 .globe {
+  flex: none;
+  padding: 0;
+  margin-left: 7px;
+  width: 19px;
+  height: 19px;
+  border: none;
+  background: none;
+  border-radius: 5px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  color: rgba(0, 0, 0, .32);
+}
+.column > h2 .globe svg { width: 14px; height: 14px; display: block; }
+.column > h2 .globe:hover { background: rgba(0, 0, 0, .07); }
+.column > h2 .globe.up { color: var(--calm); }
+.column > h2 .globe.failed { color: var(--alert); }
+.column > h2 .globe.starting { color: var(--muted); cursor: default; animation: pulse 1.4s ease-in-out infinite; }
+.column > h2 .globe[disabled] { cursor: default; }
+.column > h2 .globe[disabled]:hover { background: none; }
+@keyframes pulse { 50% { opacity: .3; } }
+
 /* ── What a session weighs ────────────────────────────────────────────
    At the head of the card, after the repository name and the git mark: repository · changes ·
    load. Grey like the rest of the row — the colour comes from the gauge at the top — except for
@@ -624,6 +674,10 @@ html[data-driving] .column > h2 .fold[disabled] { opacity: .12; }
 
 /* The git lens: it is the door to the files, and at 12px it is a target for sitting still. */
 html[data-driving] .git svg { width: 18px; height: 18px; }
+
+/* The globe, which is a switch and so needs a target rather than a glyph. */
+html[data-driving] .column > h2 .globe { width: 26px; height: 26px; }
+html[data-driving] .column > h2 .globe svg { width: 20px; height: 20px; }
 
 /* The corner pencil. As well as growing, it stays visible: normally it appears on hover, and a
    target that expects to be found before it will show itself is, in driving mode, not a target. */
