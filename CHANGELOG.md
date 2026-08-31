@@ -25,7 +25,13 @@ All notable changes to this project are documented here. The format follows
   its own within a few seconds, and switches off from the board like any other: a globe that only
   knew about its own servers would sit grey next to a site that is plainly running. On Windows
   that last part is missing, because nothing there can read another process's working directory,
-  and k0 says so instead of drawing those servers as off.
+  and k0 says so instead of drawing those servers as off. Tried on a real board, against a
+  repository that had a `server-restart` skill to compare with: the globe went green on port
+  4321 — read off the running process, not off the port written in the skill — the name opened
+  the site, a double click brought it back on a new process with nothing orphaned behind it, and
+  a server started by hand in a terminal was picked up and then switched off from the board. And
+  the one that matters: after `k0-board restart` the globe was still green and the site still
+  answering on the same process.
 
 ### Changed
 

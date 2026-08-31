@@ -120,14 +120,20 @@ export const urlFor = (port) => (port ? `http://localhost:${port}` : null)
  * The row in the database is what separates "we stopped it" from "it died": stopping deletes
  * the row, so a row whose process is gone is a server that fell over.
  */
-export function phaseOf({ running, port, startedAt, now = Date.now(), sampled = true }) {
-  if (!running) return 'off'
+export function phaseOf({ started, running, port, startedAt, now = Date.now(), sampled = true }) {
   if (port) return 'up'
-  // Nothing has been read off the machine yet — the first glance after k0 itself restarted, say,
-  // with a dev server that has been up for hours. "We do not know" wears the same face as
-  // "coming up", because a red globe on no evidence at all is an accusation, not a report.
-  if (!sampled) return 'starting'
-  return now - (startedAt ?? now) > GRACE ? 'failed' : 'starting'
+  if (running) {
+    // Nothing has been read off the machine yet — the first glance after k0 itself restarted,
+    // say, with a dev server that has been up for hours. "We do not know" wears the same face as
+    // "coming up", because a red globe on no evidence at all is an accusation, not a report.
+    if (!sampled) return 'starting'
+    return now - (startedAt ?? now) > GRACE ? 'failed' : 'starting'
+  }
+  // Nothing is running. Whether that is a quiet globe or a red one turns entirely on `started`:
+  // k0 was told to start this and there is no process, so it fell over — and saying so is the
+  // difference between a globe that reports and one that shrugs. A server nobody asked for is
+  // simply off.
+  return started ? 'failed' : 'off'
 }
 
 /** Where a repository's output goes. Two repositories never share a file, whatever they are called. */
@@ -155,7 +161,7 @@ export function lastLine(text, limit = 200) {
 }
 
 /** The tail of a log file without reading the whole thing: a dev server writes a lot. */
-function logTail(file, bytes = 4096) {
+export function logTail(file, bytes = 4096) {
   try {
     const { size } = fs.statSync(file)
     const from = Math.max(0, size - bytes)
@@ -196,16 +202,86 @@ export function touch(repos = []) {
  * Every process between `pid` and the top, itself included. It stops at k0's own process for
  * the same reason it stops at init: whatever is above there is not part of a dev server.
  */
-function ancestry(procs, pid) {
+export function ancestry(procs, pid, self = process.pid) {
   const chain = []
   let cur = pid
-  for (let i = 0; i < MAX_DEPTH && cur > 1 && cur !== process.pid; i++) {
+  for (let i = 0; i < MAX_DEPTH && cur > 1 && cur !== self; i++) {
     chain.push(cur)
     const parent = procs.get(cur)?.ppid
     if (!parent || parent === cur) break
     cur = parent
   }
   return chain
+}
+
+/** Which pids to ask the operating system about, when looking for servers k0 did not start. */
+export function strayPids(ports, procs, kids, self = process.pid) {
+  const mine = procs.size ? subtree(kids, self) : new Set([self])
+  return [...ports.keys()].filter((pid) => !mine.has(pid))
+}
+
+/**
+ * Which server belongs to which repository — the whole of the deciding, with none of the asking.
+ *
+ * It is separated from `read` below for the reason every parser in k0 is separated from the
+ * command that feeds it: this is the part that can be wrong quietly. Everything it needs arrives
+ * as a value — who is listening on what, who descends from whom, who is working from where, and
+ * what k0 remembers starting — and what comes back is the answer, so it can be read and proved
+ * without a single process being spawned.
+ *
+ * @param {object} facts
+ * @param {Map<number, Set<number>>} facts.ports    pid -> the ports it holds open
+ * @param {Map<number, {ppid: number, cmd: string}>} facts.procs
+ * @param {Map<number, number[]>} facts.kids        who descends from whom
+ * @param {Map<number, string>} facts.cwds          pid -> where it is working from
+ * @param {{project_path: string, pid: number, command: string}[]} facts.rows  what k0 started
+ * @param {string[]} facts.repos                    the repositories on the board right now
+ * @param {(pid: number) => boolean} facts.isAlive
+ * @param {boolean} facts.canAdopt
+ */
+export function attribute({ ports, procs, kids, cwds, rows, repos, isAlive = alive, canAdopt = true, self = process.pid }) {
+  const byRepo = new Map()
+
+  // Servers k0 started: the root is known, so the only question is which of its children got the
+  // port.
+  //
+  // Except that a remembered pid is only a number, and the operating system hands numbers out
+  // again. A row written before a reboot can point at somebody else's process entirely — and this
+  // is the map that `stop` later kills by, so guessing here would be a way to kill the wrong
+  // thing. Where the process table can be read, the command it was started with has to still be
+  // the command it is running.
+  for (const row of rows) {
+    if (!isAlive(row.pid)) continue
+    if (procs.size && !(procs.get(row.pid)?.cmd ?? '').includes(row.command)) continue
+    const pids = procs.has(row.pid) ? [...subtree(kids, row.pid)] : [row.pid]
+    const held = new Set()
+    for (const pid of pids) for (const port of ports.get(pid) ?? []) held.add(port)
+    byRepo.set(row.project_path, { root: row.pid, pids, port: pickPort(held), adopted: false })
+  }
+
+  if (!canAdopt) return byRepo
+
+  // And the ones somebody started by hand. The listening process's own working directory is what
+  // ties it to a repository — `vite` and `next` both inherit it from the `npm run` that started
+  // them — and the top of the server is the highest ancestor still working from inside that same
+  // repository.
+  const strays = strayPids(ports, procs, kids, self)
+  for (const repo of repos.filter((r) => !byRepo.has(r))) {
+    let best = null
+    for (const pid of strays) {
+      if (!isInside(cwds.get(pid), repo)) continue
+      const port = pickPort(ports.get(pid))
+      if (port === null) continue
+      if (best && best.port <= port) continue
+      const chain = ancestry(procs, pid, self)
+      // The highest ancestor still inside the repository is the `npm run` that was typed, and
+      // stopping that is what stops the whole thing.
+      const root = [...chain].reverse().find((p) => isInside(cwds.get(p), repo)) ?? pid
+      best = { root, pids: procs.size ? [...subtree(kids, root)] : chain, port, adopted: true }
+    }
+    if (best) byRepo.set(repo, best)
+  }
+  return byRepo
 }
 
 /** The reading itself, with no regard for whether anybody asked. `cycle` is the polite one. */
@@ -218,63 +294,29 @@ function sample() {
   return sampling
 }
 
+/** The asking, which is all this does. The deciding is `attribute`, above. */
 async function read() {
   try {
     const ports = capabilities.servers.ports ? await os.listeners() : new Map()
     const t = tree()
     const procs = t?.procs ?? new Map()
     const kids = t?.kids ?? new Map()
+    const rows = db.listDevServers()
+    const canAdopt = capabilities.servers.adopt
 
-    // k0 itself listens on a port and works from a directory that may well be a repository on
-    // this board. It is not a dev server and it is certainly not one to offer to kill.
-    const mine = procs.size ? subtree(kids, process.pid) : new Set([process.pid])
-
-    const byRepo = new Map()
-
-    // Servers k0 started: the root is known, so the only question is which of its children got
-    // the port.
-    //
-    // Except that a remembered pid is only a number, and the operating system hands numbers out
-    // again. A row written before a reboot can point at somebody else's process entirely — and
-    // this is the map that `stop` later kills by, so guessing here would be a way to kill the
-    // wrong thing. Where the process table can be read, the command it was started with has to
-    // still be the command it is running.
-    for (const row of db.listDevServers()) {
-      if (!alive(row.pid)) continue
-      if (procs.size && !(procs.get(row.pid)?.cmd ?? '').includes(row.command)) continue
-      const pids = procs.has(row.pid) ? [...subtree(kids, row.pid)] : [row.pid]
-      const held = new Set()
-      for (const pid of pids) for (const port of ports.get(pid) ?? []) held.add(port)
-      byRepo.set(row.project_path, { root: row.pid, pids, port: pickPort(held), adopted: false })
-    }
-
-    // And the ones somebody started by hand. The listening process's own working directory is
-    // what ties it to a repository — `vite` and `next` both inherit it from the `npm run` that
-    // started them — and the top of the server is the highest ancestor still working from
-    // inside that same repository.
-    const strays = [...ports.keys()].filter((pid) => !mine.has(pid))
-    const unclaimed = watched.filter((repo) => !byRepo.has(repo))
-    if (capabilities.servers.adopt && strays.length && unclaimed.length) {
-      const chains = new Map(strays.map((pid) => [pid, ancestry(procs, pid)]))
-      const cwds = await os.cwds([...new Set([...chains.values()].flat())])
-      for (const repo of unclaimed) {
-        let best = null
-        for (const pid of strays) {
-          if (!isInside(cwds.get(pid), repo)) continue
-          const port = pickPort(ports.get(pid))
-          if (port === null) continue
-          if (best && best.port <= port) continue
-          const chain = chains.get(pid) ?? [pid]
-          // The highest ancestor still inside the repository is the `npm run` that was typed,
-          // and stopping that is what stops the whole thing.
-          const root = [...chain].reverse().find((p) => isInside(cwds.get(p), repo)) ?? pid
-          best = { root, pids: procs.size ? [...subtree(kids, root)] : chain, port, adopted: true }
-        }
-        if (best) byRepo.set(repo, best)
+    // Where a process is working from is a second question to the operating system, and it is
+    // only worth asking about the processes that could still turn out to be somebody's dev
+    // server: the ones listening that k0 did not start itself, and everything above them.
+    let cwds = new Map()
+    if (canAdopt) {
+      const strays = strayPids(ports, procs, kids)
+      const claimed = new Set(rows.map((r) => r.project_path))
+      if (strays.length && watched.some((repo) => !claimed.has(repo))) {
+        cwds = await os.cwds([...new Set(strays.flatMap((pid) => ancestry(procs, pid)))])
       }
     }
 
-    snap = { at: Date.now(), byRepo }
+    snap = { at: Date.now(), byRepo: attribute({ ports, procs, kids, cwds, rows, repos: watched, canAdopt }) }
   } catch {
     /* one bad reading does not throw away what was already known */
   }
@@ -304,7 +346,7 @@ export function stateOf(repo) {
   // row. Without a row and without a sighting there is simply nothing running.
   const up = !!found || (!!row && alive(row.pid))
   const port = found?.port ?? null
-  const phase = phaseOf({ running: up, port, startedAt: row?.started_at, sampled: !!snap })
+  const phase = phaseOf({ started: !!row, running: up, port, startedAt: row?.started_at, sampled: !!snap })
 
   const state = {
     state: phase,

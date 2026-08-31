@@ -14,6 +14,7 @@ process.env.K0_HOME = TMP
 const servers = await import('../server/servers.js')
 const store = await import('../server/db.js')
 const { detectCommand, pickPort, phaseOf, urlFor, isInside, logPathFor, lastLine } = servers
+const { attribute, ancestry, strayPids } = servers
 
 // ── Which repositories get a globe ───────────────────────────────────────────
 section('Which repositories get a globe')
@@ -61,9 +62,15 @@ const NOW = 1_700_000_000_000
 // "Up" is never a reply to a request — k0 makes no network requests. It is: the process is
 // alive AND the system says it is holding a port. That is stronger evidence anyway: a server
 // still compiling would answer a request with an error and this test with the truth.
-check('nothing running at all', phaseOf({ running: false, now: NOW }), 'off')
-check('a port held is up', phaseOf({ running: true, port: 4321, startedAt: NOW - 1000, now: NOW }), 'up')
-check('alive but silent, and young', phaseOf({ running: true, port: null, startedAt: NOW - 2000, now: NOW }), 'starting')
+check('nothing running, and nothing asked for', phaseOf({ started: false, running: false, now: NOW }), 'off')
+check('a port held is up', phaseOf({ started: true, running: true, port: 4321, startedAt: NOW - 1000, now: NOW }), 'up')
+check('alive but silent, and young', phaseOf({ started: true, running: true, port: null, startedAt: NOW - 2000, now: NOW }), 'starting')
+// The whole reason the globe can go red instead of quietly grey. k0 was told to start this and
+// there is no process: it fell over, and shrugging would hide the one thing worth saying.
+check('started, and gone', phaseOf({ started: true, running: false, startedAt: NOW - 2000, now: NOW }), 'failed')
+check('and a server nobody asked for is simply off', phaseOf({ started: false, running: false, now: NOW }), 'off')
+// A server somebody else started has no row at all, so it is up while it is seen and off after.
+check('an adopted server needs no row to be up', phaseOf({ started: false, running: true, port: 3000, now: NOW }), 'up')
 // `next dev` and a `velite && vite` chain both take their time, so the patience is generous —
 // but it is not infinite, because a globe that spun for ever would say less than a red one.
 check('still starting at 89 seconds', phaseOf({ running: true, port: null, startedAt: NOW - 89_000, now: NOW }), 'starting')
@@ -125,6 +132,23 @@ check('nothing said is nothing shown', lastLine(''), '')
 check('and neither is nothing at all', lastLine(undefined), '')
 check('a very long line is cut, and says it was', lastLine('x'.repeat(400)).length, 200)
 check('the cut is marked', lastLine('x'.repeat(400)).endsWith('…'), true)
+
+// The log itself is read from the END, because a dev server that has been up all afternoon has
+// written megabytes and only the last few lines are the reason it stopped.
+{
+  const file = path.join(TMP, 'a.log')
+  fs.writeFileSync(file, 'first\nsecond\nthird\n')
+  check('a small log is read whole', servers.logTail(file).trim().split('\n').length, 3)
+  fs.writeFileSync(file, 'buried\n' + 'y'.repeat(9000) + '\nthe last word\n')
+  const tail = servers.logTail(file, 64)
+  check('a big one gives back only its end', tail.length <= 64, true)
+  check('and the end is what was wanted', lastLine(tail), 'the last word')
+  check('the beginning is genuinely not in it', tail.includes('buried'), false)
+  // A server that never wrote anything, or a log that was never created: nothing to say, and
+  // certainly not a crash on the way to drawing a globe.
+  check('a log that is not there reads as nothing', servers.logTail(path.join(TMP, 'nope.log')), '')
+  check('and so does an empty one', servers.logTail((fs.writeFileSync(path.join(TMP, 'e.log'), ''), path.join(TMP, 'e.log'))), '')
+}
 
 // ── Reading the sockets, from lsof ───────────────────────────────────────────
 section('Reading the sockets, from lsof')
@@ -196,6 +220,117 @@ const NETSTAT = ['"LocalPort","OwningProcess"', '"4321","1234"', '"3000","5678"'
   check('a port past the end of the range is dropped', ports.has(9), false)
 }
 check('an empty answer is an empty map', parseNetTcp('').size, 0)
+
+// ── Which server belongs to which repository, in full ────────────────────────
+section('Which server belongs to which repository, in full')
+// One machine, written out once and read several ways. k0 is pid 100. Two dev servers: one k0
+// started in /w/site (the shell 200, npm 210, vite 220 holding 4321), and one somebody typed in
+// a terminal in /w/shop (the shell 300 — which is the TERMINAL's shell, working from home — npm
+// 310 and next 320 holding 3000).
+const PROCS = new Map([
+  [1, { ppid: 0, cmd: '/sbin/launchd' }],
+  [100, { ppid: 1, cmd: 'node server/index.js' }],
+  [110, { ppid: 100, cmd: 'lsof -nP -iTCP' }],
+  [200, { ppid: 1, cmd: '/bin/zsh -lc npm run dev' }],
+  [210, { ppid: 200, cmd: 'npm run dev' }],
+  [220, { ppid: 210, cmd: 'node vite' }],
+  [300, { ppid: 1, cmd: '-zsh' }],
+  [310, { ppid: 300, cmd: 'npm run dev' }],
+  [320, { ppid: 310, cmd: 'node next dev' }],
+])
+const KIDS = new Map([
+  [0, [1]], [1, [100, 200, 300]], [100, [110]], [200, [210]], [210, [220]], [300, [310]], [310, [320]],
+])
+const PORTS = new Map([
+  [100, new Set([4319])], // k0 itself
+  [220, new Set([4321, 24678])], // the one k0 started: vite, plus its second socket
+  [320, new Set([3000])], // the one typed by hand
+])
+const CWDS = new Map([
+  [200, '/w/site'], [210, '/w/site'], [220, '/w/site'],
+  [300, '/w/you'], [310, '/w/shop'], [320, '/w/shop'],
+])
+const ROWS = [{ project_path: '/w/site', pid: 200, command: 'npm run dev' }]
+const REPOS = ['/w/site', '/w/shop', '/w/quiet']
+const facts = (over = {}) =>
+  attribute({ ports: PORTS, procs: PROCS, kids: KIDS, cwds: CWDS, rows: ROWS, repos: REPOS, isAlive: () => true, self: 100, ...over })
+
+{
+  const by = facts()
+  check('both servers are found', [...by.keys()].sort().join(' '), '/w/shop /w/site')
+  check('a repository with nothing running is not in the map', by.has('/w/quiet'), false)
+  // The port is held by a grandchild, not by the process k0 spawned: finding it is the whole
+  // reason the subtree is walked.
+  check("the port of the one k0 started is its grandchild's", by.get('/w/site').port, 4321)
+  check('and the second socket vite opens is not the answer', by.get('/w/site').port === 24678, false)
+  check('it is not adopted, k0 started it', by.get('/w/site').adopted, false)
+  check('the root to stop is the process k0 spawned', by.get('/w/site').root, 200)
+  check('and the whole subtree goes with it', by.get('/w/site').pids.sort((a, b) => a - b).join(), '200,210,220')
+
+  check('the one typed by hand is found too', by.get('/w/shop').port, 3000)
+  check('and it is marked as somebody else’s', by.get('/w/shop').adopted, true)
+  // The terminal's own shell is working from HOME, not from the repository, so the climb stops
+  // at npm. Stopping the shell instead would close the user's terminal window to stop a server.
+  check('the climb stops before the terminal’s shell', by.get('/w/shop').root, 310)
+  check('so only npm and next are signalled', by.get('/w/shop').pids.sort((a, b) => a - b).join(), '310,320')
+}
+{
+  // k0 listens on a port and may well be working from a repository on this very board. It is not
+  // a dev server, and it is certainly not one to offer to kill.
+  const by = facts({ repos: ['/w/k0'], cwds: new Map([...CWDS, [100, '/w/k0'], [110, '/w/k0']]), rows: [] })
+  check('k0 never adopts itself', by.has('/w/k0'), false)
+}
+{
+  // The guard against a recycled pid: k0 remembers starting something in /w/quiet as pid 900,
+  // but 900 is now a stranger's process. Believing the row would mean a click on the globe
+  // killing whatever now wears that number.
+  const procs = new Map([...PROCS, [900, { ppid: 1, cmd: '/usr/bin/some-other-program' }]])
+  const rows = [{ project_path: '/w/quiet', pid: 900, command: 'npm run dev' }]
+  const by = facts({ procs, rows })
+  check('a pid that has been handed out again is not believed', by.has('/w/quiet'), false)
+}
+{
+  const rows = [{ project_path: '/w/quiet', pid: 900, command: 'npm run dev' }]
+  const by = facts({ rows, isAlive: (pid) => pid !== 900 })
+  check('nor is one whose process has gone', by.has('/w/quiet'), false)
+}
+{
+  // And the other side of that guard, which matters just as much: when the row is not believed
+  // but the server really IS running from that directory, it is adopted rather than lost. k0
+  // forgetting what it started is not a reason to show a green site as off.
+  const by = facts({ rows: [] })
+  check('a forgotten server is found again anyway', by.get('/w/site').port, 4321)
+  check('and it comes back as somebody else’s', by.get('/w/site').adopted, true)
+  // The climb reaches the shell k0 spawned, because that one really is working in the repository.
+  check('with the top of its tree to stop', by.get('/w/site').root, 200)
+}
+{
+  // Started, but nothing listening yet: it is still in the map — that is what makes the globe
+  // spin rather than go dark — with no port to show.
+  const by = facts({ ports: new Map(), repos: ['/w/site'] })
+  check('a server still coming up is known, with no port', by.get('/w/site').port, null)
+}
+{
+  // Windows: the working directory of another process cannot be read, so adoption is off. The
+  // servers k0 started are still governed; the others are not claimed on a guess.
+  const by = facts({ canAdopt: false })
+  check('without adoption only k0’s own are found', [...by.keys()].join(), '/w/site')
+}
+{
+  // A neighbour whose path merely starts the same must not be adopted as if it were the repo.
+  const by = facts({ repos: ['/w/sit'], rows: [] })
+  check('a near-miss on the path is not a match', by.has('/w/sit'), false)
+}
+
+section('Climbing to the top of a server')
+check('every process up to the top', ancestry(PROCS, 320, 100).join(), '320,310,300')
+check('a process with no parent known is on its own', ancestry(new Map(), 999, 100).join(), '999')
+check('the climb stops at k0 itself', ancestry(PROCS, 110, 100).join(), '110')
+check('and it stops at init', ancestry(PROCS, 200, 100).join(), '200')
+
+section('Who is worth asking about')
+check('k0 and its children are not', strayPids(PORTS, PROCS, KIDS, 100).sort((a, b) => a - b).join(), '220,320')
+check('with no process table, only k0 itself is excluded', strayPids(PORTS, new Map(), new Map(), 100).join(), '220,320')
 
 // ── The record of intent ─────────────────────────────────────────────────────
 section('The record of intent')
