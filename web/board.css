@@ -222,12 +222,13 @@ body {
    this is a hand-written heading, not a link in a paragraph: enough to say there is something
    underneath, not enough to turn the row into a web page. Under the pointer it firms up. */
 .column > h2 a.name {
-  /* Dashed and solid enough to be seen without being looked for. The first attempt was a 1.5px
-     dotted line at half opacity, which is present in the stylesheet and invisible on the board:
-     next to a green globe it read as nothing at all. A mark that has to be hunted for is not a
-     mark. */
+  /* Dashed, and the same green as the globe, so the two marks say one thing. The first attempt
+     was a grey dotted line at half opacity, which is in the stylesheet and invisible on the
+     board: next to a lit globe it read as nothing at all. What rescued it was the dash and the
+     colour, not weight — a hairline is enough once it is green, and anything thicker starts
+     underlining the heading rather than marking it. */
   text-decoration: underline dashed;
-  text-decoration-thickness: 2px;
+  text-decoration-thickness: 1px;
   text-underline-offset: 4px;
   text-decoration-color: var(--calm);
   /* The ellipsis needs `overflow: hidden`, and that clips the underline too. This is the room it
