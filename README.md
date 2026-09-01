@@ -306,10 +306,10 @@ dev server is running. **Grey** is off, **green** is up, and it **breathes** whi
 up. **Red** means it was started and did not come up — hover it for the reason and the log.
 
 **One click switches it on or off. Two restart it.** And when it is green the repository's
-**name is underlined with a dotted line** and becomes a link: click it and the site opens in
-another tab, on the port it is really listening on. The line stays there for as long as the
-server does, so a repository that is up is one you can tell apart at a glance, from across the
-board, without going near it. Hover the globe to read the rest — the port, the command it was
+**name is underlined with a green dashed line** and becomes a link: click it and the site opens
+in another tab, on the port it is really listening on. The line is the same green as the globe
+and stays for as long as the server does, so a repository that is up is one you can tell apart
+at a glance, from across the board, without going near it. Hover the globe to read the rest — the port, the command it was
 started with, and where its log is.
 
 A repository gets a globe when its `package.json` has a **`dev`** script, or failing that a
