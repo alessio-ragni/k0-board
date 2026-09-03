@@ -73,6 +73,7 @@ for (const [col, decl] of [
   ['imported_at', 'INTEGER'],
   ['work_path', 'TEXT'],
   ['head_at_start', 'TEXT'],
+  ['auto_closed', 'INTEGER NOT NULL DEFAULT 0'],
 ]) {
   const has = db.prepare('SELECT 1 FROM pragma_table_info(?) WHERE name = ?').get('card', col)
   if (!has) db.exec(`ALTER TABLE card ADD COLUMN ${col} ${decl}`)
@@ -211,6 +212,16 @@ export function setTerminalWindow(id, windowId) {
  */
 export function setWorkPath(id, workPath) {
   db.prepare('UPDATE card SET work_path = ? WHERE id = ?').run(workPath || null, id)
+  return getCard(id)
+}
+
+/**
+ * Who shut this session's terminal: you, or k0 tidying up after a long silence. The card says so
+ * in one word, and the word has to be right — a window you closed yourself two minutes ago must
+ * not claim k0 did it. Does not touch `updated_at`: this is not work on the card.
+ */
+export function setAutoClosed(id, on) {
+  db.prepare('UPDATE card SET auto_closed = ? WHERE id = ?').run(on ? 1 : 0, id)
   return getCard(id)
 }
 

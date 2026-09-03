@@ -47,6 +47,7 @@ repository the card belongs to and therefore the column it is drawn in.
 | `terminal_window_id` | TEXT | The terminal window it opened, so a double click can raise it |
 | `work_path` | TEXT | Where the session really works, when that is not the repository — an isolated worktree has a working tree of its own |
 | `head_at_start` | TEXT | Where the repository stood when the session started: everything after it is this session's doing |
+| `auto_closed` | INTEGER | `1` when it was k0 that shut the terminal after a long silence, rather than you. Only there to choose one word over another at the bottom of the note; cleared the moment there is a window again |
 | `imported_at` | INTEGER | Set only on cards dug out of past transcripts |
 | `created_at` | INTEGER | Milliseconds. On an imported card, when the session really started |
 | `updated_at` | INTEGER | Milliseconds. Moves when you create or edit a card and on every status change of a live session — which is what brings a repository to the top of the list |

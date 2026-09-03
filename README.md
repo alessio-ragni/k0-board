@@ -133,7 +133,7 @@ Nothing on this list happens before you have seen it and said yes. Everything on
 | What | Where | Why |
 |---|---|---|
 | A copy of k0 | `~/.k0/app` | so the service does not point at a temporary npx cache |
-| Your board, logs and cache | `~/.k0/` | `%LOCALAPPDATA%\k0` on Windows |
+| Your board, settings, logs and cache | `~/.k0/` | `%LOCALAPPDATA%\k0` on Windows |
 | A service that starts at login | LaunchAgents · systemd user unit · Task Scheduler | so k0 is simply there |
 | **macOS only** — one administrator rule | `/etc/sudoers.d/k0-pmset` | to keep the Mac awake with the lid closed. Asks for your password once, and grants exactly two command lines |
 | **macOS only** — one key binding | your Terminal profile (backed up first) | so Shift+Enter starts a new line |
@@ -200,8 +200,10 @@ k0 makes **no network requests**. Not one, not even for a font.
 - **double click** — brings that session's terminal back to the front, even if you had minimised
   it. It is what stops you losing track of which window is which.
 
-- **Resume** — appears once you have closed the terminal: it reopens the same conversation exactly
-  where it was.
+- **Resume** — appears once the terminal has been closed, by you or by k0 after a long silence: it
+  reopens the same conversation exactly where it was. The card's prompt is **not** put back in —
+  that conversation answered it hours ago, and typing it in again would be at best something stale
+  in the way.
 
 - **Done** — closes the work **and its terminal**, with no questions: undo it with **Reopen**, and
   pick the conversation up again with **Resume**. It is not on backlog cards: they never started.
@@ -512,6 +514,40 @@ Reading the process table costs little on a calm machine and a lot on a struggli
 exactly when you look at it. So it is sampled every three seconds, and **only while the board is
 open**.
 
+### And the ones you forget, k0 closes for you
+
+The paragraph above assumes you noticed. Most of the time nobody does: the window that is costing
+you a gigabyte is the one you stopped thinking about yesterday. So **after twelve hours with
+nothing happening, k0 does that `Close` itself** — the session is stopped, its window goes, and the
+memory comes back.
+
+Nothing is lost by it. The card stays exactly where it is with the status it had, and **Resume**
+picks the conversation up where it was. That is the whole reason this is safe: a closed terminal
+has never been a lost session.
+
+**Only yellow is ever touched** — *Your turn*, the ball in your court and nothing happening. The
+rest is left alone, and each for its own reason:
+
+- **Working** and **Planning** are somebody mid-thought. Stopping one is not memory saved, it is
+  work lost — the same rule the `Close` link has always followed.
+- **Needs answer** and **Needs approval** would lose the very thing they were showing you. A
+  question and a finished plan are drawn by the terminal and are not written to the transcript
+  until they are answered, so closing that window throws the question away.
+- A session sitting in a **shell** is left alone as well. That is a shell you dropped into, and
+  there may be a command of yours running in it; k0 cannot see what it is, so k0 does not touch it.
+  On the board it reads as yellow like any other, which is exactly why this one has to be said.
+
+And a window you were using an hour ago is never closed, whatever the card's history says. k0 has
+four clocks for a session — two of its own and two Claude Code keeps — and **the newest one wins**.
+Being wrong in that direction leaves a window open until tomorrow; being wrong the other way closes
+a terminal you were about to go back to.
+
+A card k0 tidied away says so: where one you closed yourself reads *session closed*, this one reads
+*closed automatically*. Same italic, same place, one word different.
+
+Twelve hours is what it does if you never say otherwise. `closeIdleTerminalsAfterHours` in the
+settings file changes it, and **`0` switches it off** — see below.
+
 ---
 
 ## Filling the board with what you have already done
@@ -722,6 +758,38 @@ Two side effects of the Cmd+V k0 uses to write your prompt, worth knowing:
 
 ---
 
+## Settings
+
+There is no settings page on the board, and there is not going to be one. The board is for what
+changes during a working day; a number you set once and then never look at again is the opposite of
+that, and putting it on screen would cost the one page that has to stay readable in exchange for
+nothing.
+
+So the settings are a file, and **the file is the list**:
+
+```
+~/.k0/config.json                        macOS and Linux
+%LOCALAPPDATA%\k0\config.json            Windows
+```
+
+k0 writes it on the first run with **every setting already in it at its default**, so opening it is
+how you find out what there is to change. It sits beside the board rather than inside the app —
+`npx` unpacks into a cache npm is free to wipe, and `k0-board install` overwrites the app
+directory, so a setting kept in there would not survive an update. Change it and k0 picks it up by
+itself on the next round: nothing to restart.
+
+| | |
+|---|---|
+| `closeIdleTerminalsAfterHours` | How long a yellow card's terminal may sit there before k0 closes it and gives the memory back. `12` if you say nothing. **`0` switches it off.** Anything under an hour is treated as an hour — below that this stops being a tidy-up and starts closing windows while you are using them. |
+
+Delete a line to go back to its default; a file k0 cannot read is ignored altogether and the
+defaults hold, rather than k0 refusing to start over a stray comma.
+
+**`k0-board doctor` prints the same list**, with the value actually in force and where the file is,
+for the times you would rather ask than go and look.
+
+---
+
 ## How it is put together
 
 No dependencies, nothing to compile. Change a file, reload the page.
@@ -744,7 +812,11 @@ server/
   guard.js       who is allowed to talk to this server at all: the Host and the Origin
   db.js          SQLite (node:sqlite): the card, session_event, pref and dev_server tables —
                  docs/database.md
-  paths.js       where the board, the logs and the cache live
+  paths.js       where the board, the logs, the settings and the cache live
+  settings.js    the few things you can change, and the file that is the list of them —
+                 ~/.k0/config.json, written out with everything in it and re-read when it changes
+  idle.js        which terminals have sat still long enough to be closed and given back. Only the
+                 deciding: it kills nothing, so every rule in it can be proved without a machine
   watcher.js     reads Claude Code's own files and derives the statuses; also renames a session
   git.js         the only one that talks to git: what is committed, what is pushed, whose it is,
                  and — for the ChangeLog — what the commits actually said

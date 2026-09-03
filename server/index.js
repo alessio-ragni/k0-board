@@ -16,6 +16,8 @@ import {
   relayoutWindows,
 } from './launcher.js'
 import * as mode from './mode.js'
+import * as settings from './settings.js'
+import { dueForClose } from './idle.js'
 import { listProjects, onDisk, projectName } from './projects.js'
 import { scanSessions } from './sessions.js'
 import * as git from './git.js'
@@ -65,7 +67,50 @@ function tick() {
   // The power levers are checked once a minute rather than every round: reading the power
   // state costs processes, and the things it has to follow — the mains plugged in or out, the
   // battery going down — do not change from one second to the next.
-  if (rounds++ % 60 === 0) mode.guard()
+  if (rounds % 60 === 0) mode.guard()
+  // The forgotten terminals, on the same cadence but half a minute off it, so the two jobs that
+  // only run once a minute never land in the same second as each other.
+  if (rounds % 60 === 30) sweepIdle(live)
+  rounds++
+}
+
+/**
+ * Gives back the memory of the windows you have stopped using.
+ *
+ * It does exactly what the `Close` link on a card does, and on purpose the same three moves and
+ * not a path of its own: stop the session, shut the window, forget the window. The card stays
+ * where it is with the status it had, `session_id` is untouched, and `Resume` picks the
+ * conversation up where it was — a closed terminal is not a lost session.
+ *
+ * Deliberately not awaited by `tick`: closing a terminal waits up to two seconds for the process
+ * to go, and the watching loop must not be held up by it. Hence the latch, the same one
+ * `machine.js` and `servers.js` keep for their own sampling — `setInterval` will happily start a
+ * second round on top of the first.
+ */
+let sweeping = false
+async function sweepIdle(live) {
+  if (sweeping) return
+  const hours = settings.read().closeIdleTerminalsAfterHours
+  const due = dueForClose({ cards: db.listCards(), live, hours })
+  if (!due.length) return
+  sweeping = true
+  try {
+    for (const card of due) {
+      try {
+        await closeTerminal({ winId: card.terminal_window_id, pid: live.get(card.session_id)?.pid })
+        db.setTerminalWindow(card.id, null) // that window is gone; Resume opens a new one
+        db.setAutoClosed(card.id, true)
+        console.log(`k0 — "${card.title}" sat still for ${hours}h: its terminal is closed, Resume picks it up`)
+      } catch (err) {
+        // One window that refuses to go must not take the others with it, and must certainly not
+        // take the server: nothing is awaiting this, so a rejection escaping here would end the
+        // process outright. It runs unattended — the next round is the retry.
+        console.error(`k0 — could not close the terminal of "${card.title}": ${String(err?.message || err)}`)
+      }
+    }
+  } finally {
+    sweeping = false
+  }
 }
 
 /** When somebody last looked at the board. */
@@ -623,6 +668,7 @@ async function api(req, res, url) {
       const pid = readLiveSessions().get(card.session_id)?.pid
       const out = await closeTerminal({ winId: card.terminal_window_id, pid })
       db.setTerminalWindow(id, null) // that window is gone; Resume opens a new one
+      db.setAutoClosed(id, false) // this one was you: the card must not say otherwise
       tick() // so the answer already carries the closed card, without waiting for the loop
       return send(res, 200, { ...out, card: db.getCard(id) })
     }
@@ -642,6 +688,7 @@ async function api(req, res, url) {
       try {
         const out = await launch({ card: db.getCard(id), sessionId, mode: resuming ? 'resume' : 'start' })
         db.setTerminalWindow(id, out.winId)
+        db.setAutoClosed(id, false) // there is a window again: whoever shut the last one is history
         tick()
         return send(res, 200, { ...out, card: db.getCard(id) })
       } catch (err) {
@@ -694,6 +741,9 @@ http
     }
   })
   .listen(PORT, '127.0.0.1', () => {
+    // The settings file, written out with everything in it the first time k0 runs: it is the only
+    // list of what can be changed, so it has to exist before anybody goes looking for it.
+    settings.ensure()
     tick()
     // The mode is remembered, and at startup it puts the machine back as it was: the sleep
     // levers and, where needed, the font size of terminals left open. The server restarts often

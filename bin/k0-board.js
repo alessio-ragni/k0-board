@@ -48,6 +48,7 @@ if (Number(process.versions.node.split('.')[0]) < MIN_NODE) {
 
 const { name: platformName, capabilities, notes, service, extras, shell } = await import('../platform/index.js')
 const paths = await import('../server/paths.js')
+const settings = await import('../server/settings.js')
 
 const APP_DIR = flag('from-source') ? SOURCE : paths.APP_DIR
 const ENTRY = path.join(APP_DIR, 'server', 'index.js')
@@ -419,6 +420,19 @@ async function doctor() {
     ['show a tray icon', capabilities.tray],
   ]
   for (const [what, yes] of rows) (yes ? ok : warn)(what)
+
+  // The settings, in full, with what is actually in force. k0 has no settings page and is not
+  // getting one, so this — and the file itself — is where the list lives. Printing every key
+  // rather than only the ones somebody has changed is the point: it is an inventory.
+  step('Settings')
+  const conf = settings.status()
+  say(dim(`  ${conf.path}${conf.exists ? '' : ' (not written yet — the defaults are in force)'}`))
+  if (conf.broken) warn('this file could not be read: it is being ignored and the defaults are in force')
+  for (const [key, value] of Object.entries(conf.values)) {
+    const dflt = settings.DEFAULTS[key]
+    const off = key === 'closeIdleTerminalsAfterHours' && value === 0
+    say(`  ${bold(key)}  ${off ? 'off' : value}${value === dflt ? dim(' (default)') : dim(` (default ${dflt})`)}`)
+  }
 
   const explained = Object.entries(notes)
   if (explained.length) {
