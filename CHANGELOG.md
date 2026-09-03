@@ -30,8 +30,14 @@ settings file that writes itself.
   running in it, and k0 cannot see what. A window you were using an hour ago is never closed,
   whatever the card's history says: every clock k0 has for that session is consulted and the
   newest one wins.
-- **A card says who closed it.** Where a card used to read *session closed* it now reads *closed
-  automatically* if it was k0 that tidied it away. Same italic, same place, one word different.
+- **A card says who closed it, and the top bar says the closing is on.** Where a card used to read
+  *session closed* it now reads *closed automatically* if it was k0 that tidied it away — same
+  italic, same place, one word different. And the memory chip at the end of the top bar carries the
+  hours in lighter type: **RAM 79% · CPU 19% · closes at 8h**, with the whole sentence on hover.
+  That is where it belongs, because that is where the memory is already being talked about, and
+  something that closes your windows for you should never be a surprise. Switched off, the chip
+  says nothing rather than *0h* — which would read as "closes immediately" — and the hover says so
+  instead.
 - **Settings, in a file that is the list of them.** `~/.k0/config.json` — on Windows
   `%LOCALAPPDATA%\k0\config.json` — written out on the first run with every setting already in it
   at its default, so opening it is how you find out what there is to change. It sits beside the

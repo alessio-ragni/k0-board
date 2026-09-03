@@ -231,6 +231,10 @@ function board() {
     mode: mode.current(),
     lid: mode.lid(),
     reason: mode.reason(),
+    // After how long a forgotten terminal is closed, so the machine chip can say that it is
+    // watching and after how long. Zero means it is switched off, and then the chip says nothing
+    // rather than saying "0h" — a number that would read as "closes immediately".
+    closeIdleAfterHours: settings.read().closeIdleTerminalsAfterHours,
     // What this machine can and cannot do, so the board greys out the rest and says why
     // instead of offering a button that quietly does nothing.
     platform: platformReport(),

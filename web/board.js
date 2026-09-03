@@ -565,7 +565,7 @@ function repoColumn(projects, shown) {
  * is nearly always. The colour is the kernel's judgement, not a threshold invented here: green
  * while it says all is well, amber at the first warning, red when it is critical.
  */
-function renderMachine(m, cards) {
+function renderMachine(m, cards, idleHours = 0) {
   const el = $('#gauge')
   if (!m?.mem) return el.setAttribute('hidden', '') // the first sample is not in yet
   el.removeAttribute('hidden')
@@ -573,7 +573,12 @@ function renderMachine(m, cards) {
 
   const ram = Math.round((m.mem.used / m.mem.total) * 100)
   const cpu = m.cpu === null ? '—' : `${Math.round(m.cpu * 100)}%`
-  el.innerHTML = `<i></i>RAM ${ram}% · CPU ${cpu}`
+  // Whether anybody is looking after the memory for you, and after how long. It belongs on this
+  // chip and nowhere else: this is where the memory is already being talked about, and a thing
+  // that quietly closes your windows should not be something you have to know about beforehand.
+  // Its presence is the whole message — switched off, there is nothing here rather than a nought.
+  const closes = idleHours > 0 ? `<span class="idle">· closes at ${idleHours}h</span>` : ''
+  el.innerHTML = `<i></i>RAM ${ram}% · CPU ${cpu}${closes}`
 
   const top = cards.find((c) => c.id === heaviest)
   const lines = [
@@ -583,6 +588,13 @@ function renderMachine(m, cards) {
   if (top?.load) lines.push(`heaviest: ${top.title} — ${weight(top.load.rss)}`)
   // What is heavy and is not k0: without it, the board would take blame that belongs to Chrome.
   if (m.others?.length) lines.push(`outside k0: ${m.others.map((o) => `${o.name} ${gb(o.rss)}`).join(' · ')}`)
+  // The chip has room for three words; the sentence that explains them goes here, and it is also
+  // the only place that can say the closing is switched off — the chip says that by staying quiet.
+  lines.push(
+    idleHours > 0
+      ? `a terminal nobody touches for ${idleHours}h is closed and its memory given back — the card stays, Resume picks it up`
+      : 'closing forgotten terminals is switched off'
+  )
   lines.push(showLoad ? 'click to hide the weight on each card' : 'click to show the weight on each card')
   el.title = lines.join('\n')
 }
@@ -863,7 +875,7 @@ async function refresh() {
     // What is eating most right now: it is what tints that one red and nobody else.
     heaviest =
       data.cards.filter((c) => c.load).sort((a, b) => b.load.rss - a.load.rss)[0]?.id ?? null
-    renderMachine(machine, data.cards)
+    renderMachine(machine, data.cards, data.closeIdleAfterHours)
 
     // Redraw only if something really changed, so the editor and the focus stay where they are.
     // The git state is inside the signature: without it, the mark would stay the one from the

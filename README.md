@@ -545,6 +545,13 @@ a terminal you were about to go back to.
 A card k0 tidied away says so: where one you closed yourself reads *session closed*, this one reads
 *closed automatically*. Same italic, same place, one word different.
 
+And the memory chip at the end of the top bar says it is watching, and from when: **RAM 79% · CPU
+19% · closes at 8h**, in lighter type than the numbers beside it. That is the whole announcement,
+and it is on that chip rather than anywhere else because that is where the memory is already being
+talked about — something that closes your windows for you should never be a surprise. Hover for
+the sentence. Switched off, the chip says nothing at all rather than *0h*, which would read as
+"closes immediately", and the hover is what tells you it is off.
+
 Twelve hours is what it does if you never say otherwise. `closeIdleTerminalsAfterHours` in the
 settings file changes it, and **`0` switches it off** — see below.
 

@@ -88,6 +88,10 @@ body {
   flex: none;
   background: var(--calm);
 }
+/* That k0 is looking after the memory for you is worth knowing once and then forgetting: it sits
+   on the same chip, lighter than the numbers beside it, because the numbers are what you came to
+   read and this is only there so the closing is never a surprise. */
+.gauge .idle { font-weight: 500; opacity: .6; margin-left: -2px; white-space: nowrap; }
 .gauge.warn i { background: var(--warn); }
 .gauge.bad i { background: var(--alert); }
 /* Solid red only when it is critical: the one moment it is allowed to interrupt. */
