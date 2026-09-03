@@ -19,14 +19,17 @@
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4.2-4.2"/></svg>
       </button>
       <input id="q" autocomplete="off" spellcheck="false" placeholder="search a file…">
-      <!-- The switch that lets the configuration through. Off by default: in a repository of
-           prose an `.env` is not what you came for, and on the day it is, it is the only thing
-           you came for. -->
-      <button type="button" class="nerd" id="nerd" aria-pressed="false"
-              title="Show configuration files too — .env, JSON, YAML" aria-label="Show configuration files too">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 6l-5 6 5 6"/><path d="M16 6l5 6-5 6"/></svg>
-      </button>
     </div>
+    <!-- The switch that lets the configuration through. Off by default: in a repository of prose
+         an `.env` is not what you came for, and on the day it is, it is the only thing you came
+         for. It sits beside the search and not inside it, and it says what it is in a word: put
+         in the pill as a bare glyph it read as part of the field's decoration, and nobody found
+         it. -->
+    <button type="button" class="nerd" id="nerd" aria-pressed="false"
+            title="Show configuration files too — .env, JSON, YAML, TOML, INI" aria-label="Show configuration files too">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 6l-5 6 5 6"/><path d="M16 6l5 6-5 6"/></svg>
+      config
+    </button>
     <span class="count" id="count"></span>
   </header>
 

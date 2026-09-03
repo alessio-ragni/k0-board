@@ -19,7 +19,7 @@ All notable changes to this project are documented here. The format follows
   button in the row above a file points the file out inside its own folder. It works on macOS,
   Windows and Linux; where a system gives k0 no way to do it, the button stays where it is, greyed
   out, with the reason in its tooltip rather than quietly doing nothing.
-- **The `<>` switch at the right of the search shows the configuration.** The viewer lists
+- **The `config` button beside the search shows the configuration.** The viewer lists
   documents, which is right until the day you want to check a key in an `.env`. Switch it on and
   `.env` (and `.env.local`, and the rest), `.json`, `.yml`, `.yaml`, `.toml` and `.ini` join the
   listing, the name search and the search inside the text — **including the ones git is told to

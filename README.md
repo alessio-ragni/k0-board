@@ -429,12 +429,12 @@ row above it, and there it points the file out inside its folder rather than ope
 system where k0 has no way to do that, the button stays where it is, greyed out, with the reason
 in its tooltip.
 
-### The switch on the right of the search
+### The `config` switch, beside the search
 
 The viewer lists documents. The one thing that was missing from that is **configuration**: an
 `.env` you want to check a key in, the `package.json`, a workflow's YAML. They are not documents,
-and in a repository of prose they would be noise — so they live behind a switch, the `<>` at the
-right of the search box.
+and in a repository of prose they would be noise — so they live behind a switch, the **`config`**
+button to the right of the search box.
 
 Switch it on and `.env` (and `.env.local`, and the rest of them), `.json`, `.yml`, `.yaml`,
 `.toml` and `.ini` join the listing, the name search and the search inside the text. **Including

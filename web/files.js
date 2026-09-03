@@ -374,8 +374,8 @@ function paint() {
         ? 'Nothing with that name.'
         : nerd
           ? 'Nothing here to read or to configure.'
-          : 'No documents here. This lists what you can read and print — and, with the switch on ' +
-            'the right of the search, the configuration too.'
+          : 'No documents here. This lists what you can read and print — and, with the config ' +
+            'button beside the search, the configuration too.'
   // An empty folder still shows the path across the top: it is the way back up, and taking it
   // away would leave you inside a folder with nothing in it and nothing to press.
   list.innerHTML = found ? html : (scope && !text ? trailHtml(scope.dir) : '') + `<p class="blank">${nothing}</p>`

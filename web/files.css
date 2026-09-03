@@ -74,24 +74,28 @@ body {
   width: 100%;
   color: var(--ink);
 }
-/* The switch that lets the configuration through. It sits inside the search pill because that is
-   what it changes — what the listing and the search can see — and it fills in when it is on, so
-   from across the room you can tell whether you are looking at everything or not. */
-.find .nerd {
+/* The switch that lets the configuration through. It was a bare glyph inside the search pill and
+   nobody found it: at that size, in that place, it read as part of the field rather than as
+   something you could press. So it is a button of its own, next to the search, outlined like the
+   ones over a document, and it says what it does in a word. Switched on it fills in, so from
+   across the room you can tell whether you are looking at everything or not. */
+.topbar .nerd {
   flex: none;
-  padding: 3px;
-  margin: -3px -6px -3px 0;
-  border: 0;
-  background: none;
-  border-radius: 999px;
-  color: var(--muted);
   display: flex;
   align-items: center;
+  gap: 5px;
+  padding: 5px 11px;
+  border: 1px solid var(--line);
+  background: #fff;
+  border-radius: 999px;
+  font: inherit;
+  font-size: .74rem;
+  color: var(--muted);
   cursor: pointer;
 }
-.find .nerd:hover { background: none; color: var(--ink); }
-.find .nerd.on { background: var(--ink); color: #fff; }
-.find .nerd.on:hover { background: var(--ink); color: #fff; }
+.topbar .nerd svg { width: 14px; height: 14px; display: block; flex: none; }
+.topbar .nerd:hover { color: var(--ink); border-color: #bdb6a5; background: #fff; }
+.topbar .nerd.on, .topbar .nerd.on:hover { background: var(--ink); border-color: var(--ink); color: #fff; }
 
 /* ── The two panes ───────────────────────────────────────────────────── */
 /* The divider is a column of the grid: drag it and the size stays. */
