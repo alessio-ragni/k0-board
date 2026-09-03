@@ -443,6 +443,12 @@ for. Code does not join: `.js`, `.py`, `.css` stay out either way.
 
 The switch is remembered, per browser. It is not a search, it is a way of working.
 
+And if you forget it is off, the search says so: when a hidden configuration file would have come
+**above** everything on screen — searching `.env` in a repository that has one — a line appears at
+the top of the results saying how many, and clicking it turns the switch on. Only then: a hidden
+file that merely matches somewhere does not raise it, or the line would be there on every search
+and you would stop seeing it.
+
 Each of them opens as the kind of thing it is:
 
 - a **JSON** file becomes a tree that folds, coloured by type, with the first two levels open;

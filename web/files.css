@@ -237,6 +237,26 @@ body {
 .from-text .x:hover { opacity: 1; text-decoration: none; }
 .from-text .x svg { width: 15px; height: 15px; display: block; }
 
+/* The line that says the switch is hiding what you asked for. It sits above everything, in the
+   same green as the other things that say "the listing is not showing you all of it", and it is a
+   button: the answer to "where is my .env" should be one click, not an instruction. */
+.nudge {
+  display: block;
+  width: 100%;
+  border: 0;
+  border-bottom: 1px solid rgba(0, 0, 0, .08);
+  border-radius: 0;
+  background: var(--IDLE);
+  padding: 9px 16px;
+  font: inherit;
+  font-size: .78rem;
+  font-weight: 600;
+  color: var(--ink);
+  text-align: left;
+  cursor: pointer;
+}
+.nudge:hover { background: var(--IDLE); text-decoration: underline; }
+
 /* The heading of a group that opens and closes: the guesses arrive closed. */
 .list h2.fold { cursor: pointer; user-select: none; }
 .list h2.fold::after {

@@ -96,6 +96,26 @@ const MAX_EDIT = 1 << 18
 /** The files on show right now: everything, or everything that is not configuration. */
 const listed = () => (nerd ? all : all.filter((f) => !f.c))
 
+/** The switch as it looks. */
+const markNerd = () => {
+  $('#nerd').setAttribute('aria-pressed', String(nerd))
+  $('#nerd').classList.toggle('on', nerd)
+}
+
+/**
+ * The switch, and everything that follows from it. The search inside the files has to be asked
+ * again straight away: that one runs on the server, and the server was told to look at a smaller
+ * set of files than it should now be looking at.
+ */
+function setNerd(on) {
+  nerd = on
+  localStorage.setItem('k0-files-nerd', on ? '1' : '0')
+  markNerd()
+  active = -1
+  paint()
+  lookInside()
+}
+
 function since(ms) {
   const m = Math.floor((Date.now() - ms) / 60000)
   if (m < 1) return 'now'
@@ -151,6 +171,33 @@ function groups() {
     { title: 'Recent', files: rest.slice(0, 30) },
     { title: 'All files', files: rest.slice(30).sort((a, b) => a.p.localeCompare(b.p)) },
   ].filter((g) => g.files.length)
+}
+
+/**
+ * How many configuration files the switch is hiding that would have come **above** everything it
+ * is showing.
+ *
+ * Without this, searching for `.env` with the switch off is the worst kind of answer: eighty files
+ * that merely happen to contain those four letters somewhere in their path, and no sign at all
+ * that the one you asked for is sitting right there behind a button.
+ *
+ * "Better than anything visible" and not "matches at all" is the whole rule. The name search
+ * matches letters in order, so nearly any word matches something somewhere: counting every hidden
+ * match would put this line above almost every search, and a warning that is always there is read
+ * as decoration within a day. This way it appears exactly when the answer really is the one being
+ * held back.
+ */
+function hiddenByTheSwitch(q) {
+  if (nerd || !q) return 0
+  let best = -1
+  const hidden = []
+  for (const f of all) {
+    const s = score(f.p, q)
+    if (s < 0) continue
+    if (f.c) hidden.push(s)
+    else if (s > best) best = s
+  }
+  return hidden.filter((s) => s > best).length
 }
 
 // ── The files a piece of chat names ───────────────────────────────────
@@ -332,9 +379,23 @@ function pastedHtml() {
  * them and you are in the list you already knew. While searching they are gone — you are looking
  * for a name, and the folders are not among the names you are looking at.
  */
+/**
+ * The line above the results when the switch is hiding something you were looking for. It is the
+ * button itself, not an instruction: one click, and the file appears.
+ */
+function nudgeHtml() {
+  const hidden = hiddenByTheSwitch($('#q').value.trim())
+  if (!hidden) return ''
+  return `<button type="button" class="nudge" id="show-config">${hidden} configuration file${
+    hidden === 1 ? '' : 's'
+  } also match — show them</button>`
+}
+
 function plainHtml() {
   const dirs = $('#q').value.trim() ? [] : foldersIn('')
-  const head = dirs.length ? `<h2>Folders<small>${dirs.length}</small></h2>${dirs.map(folderHtml).join('')}` : ''
+  const head =
+    nudgeHtml() +
+    (dirs.length ? `<h2>Folders<small>${dirs.length}</small></h2>${dirs.map(folderHtml).join('')}` : '')
   return (
     head +
     groups()
@@ -377,8 +438,14 @@ function paint() {
           : 'No documents here. This lists what you can read and print — and, with the config ' +
             'button beside the search, the configuration too.'
   // An empty folder still shows the path across the top: it is the way back up, and taking it
-  // away would leave you inside a folder with nothing in it and nothing to press.
-  list.innerHTML = found ? html : (scope && !text ? trailHtml(scope.dir) : '') + `<p class="blank">${nothing}</p>`
+  // away would leave you inside a folder with nothing in it and nothing to press. And a search
+  // that found nothing visible still says what the switch is holding back — that is the case
+  // where saying it matters most.
+  list.innerHTML = found
+    ? html
+    : (scope && !text ? trailHtml(scope.dir) : '') +
+      (scope ? '' : nudgeHtml()) +
+      `<p class="blank">${nothing}</p>`
 
   list.scrollTop = scroll
   $('#count').textContent = scope ? `${found} of ${shown}` : `${shown} file${shown === 1 ? '' : 's'}`
@@ -1072,21 +1139,8 @@ async function boot() {
     openPaste(t)
   })
 
-  // The switch that lets the configuration through. The search inside the files has to be asked
-  // again straight away: it runs on the server, and the server was told to look at a smaller set.
-  const paintNerd = () => {
-    $('#nerd').setAttribute('aria-pressed', String(nerd))
-    $('#nerd').classList.toggle('on', nerd)
-  }
-  paintNerd()
-  $('#nerd').onclick = () => {
-    nerd = !nerd
-    localStorage.setItem('k0-files-nerd', nerd ? '1' : '0')
-    paintNerd()
-    active = -1
-    paint()
-    lookInside()
-  }
+  markNerd()
+  $('#nerd').onclick = () => setNerd(!nerd)
 
   $('#paste-open').onclick = () => openPaste()
   $('#p-close').onclick = () => $('#paste').close()
@@ -1116,6 +1170,7 @@ async function boot() {
       opened.has(k) ? opened.delete(k) : opened.add(k)
       return paint()
     }
+    if (e.target.closest('#show-config')) return setNerd(true)
     if (e.target.closest('#paste-clear')) return clearScope()
     if (e.target.closest('#paste-again')) return openPaste()
     if (e.target.closest('#dir-open')) return void reveal(scope.dir)
