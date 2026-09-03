@@ -182,16 +182,16 @@ body {
   overflow: hidden;
 }
 .row q mark { background: #fde68a; color: var(--ink); border-radius: 3px; padding: 0 1px; }
-/* The letters that made this row match. Underlined and not highlighted, so the two answers stay
-   apart at a glance: yellow means the word was found inside the file, a line under the letters
-   means they were found in the path. */
-.row u {
+/* The letters that made this row match, in its name. Underlined and not highlighted, so the two
+   answers stay apart at a glance: yellow means the word was found inside the file, a line under
+   the letters means they are in its name. */
+.row b u {
+  color: var(--ink);
   text-decoration: underline;
   text-decoration-thickness: 2px;
   text-underline-offset: 2px;
   text-decoration-color: var(--alert);
 }
-.row b u { color: var(--ink); }
 .row:hover { background: rgba(0, 0, 0, .035); }
 .row.on { background: var(--WORKING); }
 .row.active { box-shadow: inset 3px 0 0 var(--ink); }

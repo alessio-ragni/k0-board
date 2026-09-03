@@ -478,9 +478,10 @@ The search at the top looks in two places and keeps them apart:
 
 - **Names** — not the exact word, but the letters you type in the order you type them: `audrep`
   finds `docs/audit-report.md`. It filters as you type, asking the server nothing. The letters
-  that matched are **underlined** where they were found, so every row says why it is there:
-  `aud`it-`rep`ort reads as two words you meant, while `.env` turning up a `.claud e/comma n ds/
-  v erify-events.md` shows at a glance that it is a coincidence and not your file.
+  that matched are **underlined in the name**, so every row says why it is there: `aud`it-`rep`ort
+  reads as the two words you meant, while a row where only one stray letter is marked — or none at
+  all, because it matched on the path — is visibly a coincidence and not your file. Only in the
+  name: marked in the path too, every row came out striped and the mark said nothing.
 - **In the text** — inside the documents, with the line the word appears on and the word
   highlighted in yellow. Because what you remember about a file is what was in it, not what it was
   called. Accents do not need typing — `cafe` finds `café`.
