@@ -36,6 +36,29 @@ const DOC_EXT = new Set([
 
 export const isDoc = (p) => DOC_EXT.has(path.extname(p).toLowerCase())
 
+// The other half of what is worth listing: the files that say how a project is set up. They are
+// not documents — nobody prints an `.env` — but they are the ones you go looking for by hand, and
+// until now the viewer was the only place in k0 you could not reach them from. They stay behind a
+// switch in the page, because in a repository of prose they would only be noise.
+const CONFIG_EXT = new Set(['.json', '.yml', '.yaml', '.toml', '.ini', '.cfg', '.conf'])
+
+// `.env.local` has extension `.local`, and `.env` has no extension at all: this rule reads the
+// name, not the end of it, or the commonest file of the lot would be the one that got away.
+const ENV_NAME = /^\.env(\..+)?$/
+
+export const isConfig = (p) =>
+  CONFIG_EXT.has(path.extname(p).toLowerCase()) || ENV_NAME.test(path.basename(p))
+
+/** Everything the listing carries: documents to read, configuration to check. */
+export const isListed = (p) => isDoc(p) || isConfig(p)
+
+// What can be written back from the page. Configuration, and the notes kept next to it — never
+// code: k0 is not an editor, and a `.js` changed in a browser tab with no undo and no syntax
+// check is a good way to break a project without noticing.
+const NOTE_EXT = new Set(['.md', '.markdown', '.mdx', '.txt'])
+
+export const isEditable = (p) => NOTE_EXT.has(path.extname(p).toLowerCase()) || isConfig(p)
+
 // ── What kind of file is this ─────────────────────────────────────────────────
 const MARKDOWN = new Set(['.md', '.markdown', '.mdx'])
 
@@ -213,7 +236,17 @@ const cache = new Map()
  */
 async function scan(root) {
   const names = hasGit() && fs.existsSync(path.join(root, '.git')) ? await tracked(root) : null
-  return { git: !!names, ...(names ? withStats(root, names) : walk(root)) }
+  if (!names) return { git: false, ...walk(root, isListed) }
+
+  // git's listing is missing exactly the file all this was built for: an `.env` is ignored by
+  // definition, so `ls-files -co --exclude-standard` will never name it. So the disk is walked a
+  // second time for configuration alone — a handful of names, under the same bounds as the other
+  // walk — and what git already gave is kept as it is.
+  const fromGit = withStats(root, names)
+  const seen = new Set(fromGit.files.map((f) => f.p))
+  const extra = walk(root, isConfig)
+  for (const f of extra.files) if (!seen.has(f.p)) fromGit.files.push(f)
+  return { git: true, files: fromGit.files, truncated: fromGit.truncated || extra.truncated }
 }
 
 const tracked = (root) =>
@@ -226,14 +259,14 @@ function withStats(root, names) {
   const files = []
   let truncated = false
   for (const p of names) {
-    if (!isDoc(p)) continue
+    if (!isListed(p)) continue
     if (files.length >= MAX_FILES) {
       truncated = true
       break
     }
     try {
       const s = fs.statSync(path.join(root, p))
-      if (s.isFile()) files.push({ p, m: Math.floor(s.mtimeMs), s: s.size })
+      if (s.isFile()) files.push(entry(p, s))
     } catch {
       /* deleted between the listing and now */
     }
@@ -241,7 +274,18 @@ function withStats(root, names) {
   return { files, truncated }
 }
 
-function walk(root) {
+/**
+ * One row of the listing. `c` marks a configuration file, so the page can leave it out without
+ * having to ask a second time: one byte on the wire, one switch on the other side.
+ */
+const entry = (p, s) => {
+  const row = { p, m: Math.floor(s.mtimeMs), s: s.size }
+  if (isConfig(p)) row.c = 1
+  return row
+}
+
+/** Everything under `root` that `pick` accepts. */
+function walk(root, pick) {
   const files = []
   let truncated = false
 
@@ -258,18 +302,20 @@ function walk(root) {
         truncated = true
         return
       }
-      if (e.name.startsWith('.')) continue
+      // A directory whose name starts with a dot is skipped whole: that one rule removes .git,
+      // the caches and the virtual environments in a single stroke. A dotted *file* is not —
+      // `.env` is a dotted name, and it is the one this walk was taught to find.
       const child = path.join(dir, e.name)
       const childRel = rel ? `${rel}/${e.name}` : e.name
       if (e.isDirectory()) {
-        if (!SKIP.has(e.name)) rec(child, childRel, depth + 1)
+        if (!e.name.startsWith('.') && !SKIP.has(e.name)) rec(child, childRel, depth + 1)
         continue
       }
       // No symbolic links: a loop would send the walk round forever.
-      if (!e.isFile() || !isDoc(e.name)) continue
+      if (!e.isFile() || !pick(e.name)) continue
       try {
         const s = fs.statSync(child)
-        files.push({ p: childRel, m: Math.floor(s.mtimeMs), s: s.size })
+        files.push(entry(childRel, s))
       } catch {
         /* gone in the meantime */
       }
@@ -392,9 +438,9 @@ export async function changed(root, headAtStart) {
           .catch(() => []) // the starting commit may not be there any more
       : [],
   ])
-  // Documents only here too: a "Changed 40" made of `.tsx` files would say there are forty
-  // things to read, when there is nothing to read at all.
-  return [...new Set([...now, ...mine])].filter(isDoc)
+  // What the listing carries, here too: a "Changed 40" made of `.tsx` files would say there are
+  // forty things to read, when there is nothing to read at all.
+  return [...new Set([...now, ...mine])].filter(isListed)
 }
 
 // ── Searching inside the files ────────────────────────────────────────────────
@@ -406,6 +452,8 @@ export async function changed(root, headAtStart) {
 // of a few KB, all already in the operating system's cache — it costs less than keeping an
 // index up to date, and an index goes stale.
 const TEXTY = new Set(['.md', '.markdown', '.mdx', '.txt', '.html', '.htm'])
+/** Read only when the page asks for them: they are hidden by default, and so are their lines. */
+const TEXTY_CONFIG = new Set(['.json', '.yml', '.yaml', '.toml', '.ini', '.cfg', '.conf'])
 const GREP_FILES = 80 // how many results are enough: past that nobody scrolls anyway
 const GREP_BYTES = 1 << 20
 const SNIPPET = 200
@@ -421,8 +469,13 @@ export const plain = (s) =>
     .toLowerCase()
     .replace(/[\u00C0-\u024F]/g, (c) => c.normalize('NFD')[0])
 
-/** The documents that contain all the words searched for, with the line they appear on. */
-export async function grep(root, query) {
+/**
+ * The documents that contain all the words searched for, with the line they appear on.
+ *
+ * With `nerd` the configuration files are looked inside as well. It has to follow what the page
+ * is showing: finding a line in a file the listing is hiding would be a result you cannot open.
+ */
+export async function grep(root, query, nerd = false) {
   const words = plain(query).split(/\s+/).filter(Boolean)
   if (!words.length) return []
 
@@ -430,7 +483,10 @@ export async function grep(root, query) {
   const hits = []
   for (const f of files) {
     if (hits.length >= GREP_FILES) break
-    if (!TEXTY.has(path.extname(f.p).toLowerCase()) || f.s > GREP_BYTES) continue
+    if (f.c && !nerd) continue
+    const ext = path.extname(f.p).toLowerCase()
+    const texty = TEXTY.has(ext) || (nerd && (TEXTY_CONFIG.has(ext) || ENV_NAME.test(path.basename(f.p))))
+    if (!texty || f.s > GREP_BYTES) continue
     let text
     try {
       text = fs.readFileSync(path.join(root, f.p), 'utf8')
@@ -484,5 +540,40 @@ export function read(abs) {
   return { kind, ...meta, text, truncated }
 }
 
+/**
+ * Writes the file back, or refuses.
+ *
+ * `was` is the modification time the page was handed when it opened the file. If the file on disk
+ * has moved on since, the write does not happen: somebody else — a session, an editor, a script —
+ * has written it in the meantime, and overwriting silently would throw their work away. The page
+ * is told, and it still has what you typed.
+ *
+ * The bytes go to a neighbouring name and are then renamed over the original, which on the same
+ * filesystem is one indivisible step: an interrupted save leaves the old file whole rather than
+ * half the new one. The mode is carried over, or a `.env` at 600 would come back readable by all.
+ */
+export function write(abs, text, was) {
+  const s = fs.statSync(abs)
+  if (!s.isFile()) throw new Error('Not a file')
+  if (Math.floor(s.mtimeMs) !== was) {
+    const clash = new Error('This file changed on disk while you were editing it. Nothing was saved.')
+    clash.conflict = true
+    throw clash
+  }
+  const tmp = `${abs}.k0-tmp`
+  try {
+    fs.writeFileSync(tmp, text, { mode: s.mode & 0o777 })
+    fs.renameSync(tmp, abs)
+  } catch (e) {
+    fs.rmSync(tmp, { force: true })
+    throw e
+  }
+  const now = fs.statSync(abs)
+  return { size: now.size, mtime: Math.floor(now.mtimeMs) }
+}
+
 /** Show it in the file manager: the only way to open what cannot be shown here. */
 export const reveal = (abs) => shell.revealInFileManager(abs)
+
+/** A folder is opened rather than pointed at: what you want is to be inside it. */
+export const openFolder = (abs) => shell.openInFileManager(abs)

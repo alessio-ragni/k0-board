@@ -7,6 +7,9 @@ const OPEN = () => which('open', ['/usr/bin/open'])
 
 export const revealInFileManager = (abs) => run(OPEN(), ['-R', abs], { timeout: 4000 })
 
+/** Without `-R` the Finder opens the directory instead of picking it out in the one above. */
+export const openInFileManager = (abs) => run(OPEN(), [abs], { timeout: 4000 })
+
 export const openBrowser = (url) => run(OPEN(), [url], { timeout: 4000 })
 
 /**
@@ -56,4 +59,4 @@ export function findClaude() {
   return claudeBin
 }
 
-export const capabilities = { revealInFileManager: true }
+export const capabilities = { revealInFileManager: true, openInFileManager: true }

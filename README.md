@@ -398,18 +398,75 @@ yet — a **lens** takes its place, so every card and every column still leads i
 
 Files on the left, what they say on the right, and a divider in between that you can drag.
 
-**Only documents are listed** — markdown, html, text, PDF, Word: things you read and print. In a
-real repository code is 95% of the files, and among two thousand `.tsx` files the document you
+**Documents are what is listed** — markdown, html, text, PDF, Word: things you read and print. In
+a real repository code is 95% of the files, and among two thousand `.tsx` files the document you
 were after cannot be found. This closes nothing off: a code file reached by a link inside a
-document still opens, and so do images.
+document still opens, and so do images — and the configuration is one switch away, below.
 
-The listing is flat, in three groups:
+At the top come the **folders**, then the files, in three groups:
 
 - **Changed** — what this session has touched: files still hanging in the working tree plus the
   ones inside commits made since it started.
 - **Recent** — the thirty most recently modified. It is the only group you can have where there is
   no git.
 - **All files** — everything else, in path order.
+
+### Going into a folder
+
+Click a folder and the listing narrows to it: the folders inside it first, then its files. At the
+top the path is written out one piece at a time, and **every piece is a way back up** — from
+`docs/backlog/handover` you get to `docs` in one click, and to the whole repository by clicking
+the repository's name. The path above an open document works the same way, so from a file you can
+step into the folder it lives in.
+
+The arrows walk folders like anything else and Enter goes in; Esc comes back out. A folder is a
+real link, so ⌘/Ctrl-click opens it in another tab, and the address follows you: reload it and
+you are still where you were.
+
+Next to it is a button that hands the folder to your **file manager** — the Finder on a Mac,
+Explorer on Windows, whatever your desktop uses on Linux. Every file has the same button in the
+row above it, and there it points the file out inside its folder rather than opening it. On a
+system where k0 has no way to do that, the button stays where it is, greyed out, with the reason
+in its tooltip.
+
+### The switch on the right of the search
+
+The viewer lists documents. The one thing that was missing from that is **configuration**: an
+`.env` you want to check a key in, the `package.json`, a workflow's YAML. They are not documents,
+and in a repository of prose they would be noise — so they live behind a switch, the `<>` at the
+right of the search box.
+
+Switch it on and `.env` (and `.env.local`, and the rest of them), `.json`, `.yml`, `.yaml`,
+`.toml` and `.ini` join the listing, the name search and the search inside the text. **Including
+the ones git is told to ignore** — an `.env` is ignored by definition, and it is the file you came
+for. Code does not join: `.js`, `.py`, `.css` stay out either way.
+
+The switch is remembered, per browser. It is not a search, it is a way of working.
+
+Each of them opens as the kind of thing it is:
+
+- a **JSON** file becomes a tree that folds, coloured by type, with the first two levels open;
+- an **.env** becomes a table of names and values, comments and all;
+- **YAML, TOML and INI** keep their shape, with keys, values and comments told apart by colour.
+
+A JSON tree has its **own search box**, and that is not a duplicate of the browser's: the
+browser's find does not look inside a branch that is closed, so on a folded tree ⌘F says "not
+found" for something three lines away. This one counts what it found and opens the branches
+holding it.
+
+### Editing a file
+
+Configuration and notes can be changed from here: `.env` and the rest of the configuration above,
+plus `.md` and `.txt`. Click the **pencil** in the row above the document and the file becomes a
+text box as tall as the pane — not a small window over it, because a README does not fit in one.
+**Save** (or ⌘/Ctrl+S) writes it; **Cancel** goes back to what is on disk.
+
+Nothing else is editable: no code, no PDFs, no images, and no creating or deleting files. That is
+what you opened the repository with Claude for.
+
+If the file **changed on disk** while you were editing — a session wrote it, or you did, in
+another window — the save stops and says so, and what you typed stays where it is. k0 will not
+quietly write over somebody else's work.
 
 The search at the top looks in two places and keeps them apart:
 
@@ -837,7 +894,8 @@ server/
   mode.js        the four modes: how awake to keep the machine, and whether the text goes large
   projects.js    the repositories, in the order you last used them
   sessions.js    digs already-lived sessions out of the transcripts, to import as cards
-  files.js       the only one that reads the projects' disk: what is there, what changed, what it says
+  files.js       the only one that reads the projects' disk — and the only one that writes back
+                 into it: what is there, what changed, what it says, and the one small write
   machine.js     the only one that looks at processes and memory: what it all costs, and who is costing it
   pdf.js         the document on paper, printed by a headless browser
 web/             the three pages (html, css, js served exactly as they are)
@@ -853,6 +911,8 @@ web/             the three pages (html, css, js served exactly as they are)
   fuzzy.js       searching the names: the letters you type, in the order you type them
   mentions.js    which of a repository's files a piece of text names
   refs.js        what a name written inside a document points at, and which of the nine READMEs
+  json.js        a JSON file as a tree that folds, and the search that opens the right branches
+  conf.js        an .env as the table it always was, and YAML/TOML/INI with their parts told apart
 .claude/skills/
   k0-import/     the skill that fills the board with sessions you have already had
   k0-changelog/  the one that turns the facts of a stretch of work into something readable. k0
@@ -870,6 +930,12 @@ test/            npm test — Node's own runner, no framework. See docs/testing.
 ```
 
 ### What it reads, and what it never does
+
+k0 reads your repositories. It writes into one of them in exactly one place: the pencil in the
+file viewer, on a configuration file or a note that is already there. That write is deliberately
+narrow — no code, no new files, no deletions — it carries the file's own permissions across, it
+lands as a rename so an interrupted save leaves the old file whole, and it refuses outright if the
+file has changed on disk since the page read it.
 
 k0 does not emulate a terminal and installs no hooks. It reads two things Claude Code already
 writes for itself:
@@ -984,11 +1050,12 @@ The full picture, and how to report a problem privately, is in [SECURITY.md](SEC
 
 ## What is not here yet
 
-Checkboxes inside a card. In the viewer only documents are listed: code opens if you arrive at it
-from a link, but it is not browsable and the text search does not look at it. Files are read only:
-they are not edited, not diffed, and you cannot talk to them — for that you open the repository
-with Claude. Sessions opened by hand outside k0 are picked up with `/k0-import`, on request:
-nothing notices them by itself yet.
+Checkboxes inside a card. In the viewer the listing is documents and configuration: code opens if
+you arrive at it from a link, but it is not browsable and the text search does not look at it.
+Only configuration and notes can be edited, one file at a time — nothing is diffed, no file is
+created or deleted, and you cannot talk to them; for that you open the repository with Claude.
+Sessions opened by hand outside k0 are picked up with `/k0-import`, on request: nothing notices
+them by itself yet.
 
 ## Contributing
 

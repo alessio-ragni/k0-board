@@ -119,8 +119,15 @@ quietly.
 The two big browser files, `web/board.js` and `web/files.js`, are not tested either: they are
 written against the DOM, and testing them would mean either a browser or a fake one, and the fake
 one is a dependency. What was worth extracting from them already has been — the markdown
-renderer, the fuzzy search, the mentions, the references and the rule that decides which
-repositories are still warm all live in files of their own and are covered.
+renderer, the fuzzy search, the mentions, the references, the rule that decides which repositories
+are still warm, and the two that turn a configuration file into something readable (`web/json.js`,
+`web/conf.js`) all live in files of their own and are covered.
+
+Those last two are worth a word, because they are the shape to copy. Both take a string and return
+a string of HTML: no DOM, no page, nothing to fake. So `test/json.test.mjs` can prove the thing
+that actually matters about the tree — that a search opens the branches holding a result, which is
+the whole reason it does not use the browser's own find — and both can prove that nothing arriving
+out of somebody else's repository gets out as markup, which is the failure that would be silent.
 
 `server/index.js` is not loaded by any test. The piece of it that carries a promise — who is
 allowed to talk to the server at all — was moved into `server/guard.js` so it could be read and

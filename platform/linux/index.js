@@ -24,6 +24,7 @@ export const capabilities = {
   service: service.capabilities(),
   tray: !!which('python3'),
   revealInFileManager: shell.capabilities().revealInFileManager,
+  openInFileManager: shell.capabilities().openInFileManager,
 }
 
 export const notes = {
@@ -60,6 +61,16 @@ export const notes = {
         'servers.ports':
           'Neither ss nor lsof was found, so k0 cannot see which port a dev server is listening ' +
           'on. Install iproute2 (for ss) and the globe will know where to send you.',
+      }),
+  ...(capabilities.openInFileManager
+    ? {}
+    : {
+        revealInFileManager:
+          'xdg-open was not found, so k0 has no way to hand a file or a folder to your file ' +
+          'manager. Install xdg-utils and the button will work.',
+        openInFileManager:
+          'xdg-open was not found, so k0 has no way to hand a file or a folder to your file ' +
+          'manager. Install xdg-utils and the button will work.',
       }),
   ...(capabilities.servers.adopt
     ? {}

@@ -31,6 +31,15 @@ export async function revealInFileManager(abs) {
   if (open) await runQuiet(open, [path.dirname(abs)])
 }
 
+/**
+ * Opening a directory needs none of the dance above: every desktop that has a file manager at
+ * all hands a directory to it through xdg-open.
+ */
+export async function openInFileManager(abs) {
+  const open = XDG_OPEN()
+  if (open) await runQuiet(open, [abs])
+}
+
 export const openBrowser = (url) => run(XDG_OPEN(), [url], { timeout: 4000 })
 
 const CHROME_CANDIDATES = [
@@ -94,4 +103,4 @@ export function findClaude() {
   return claudeBin
 }
 
-export const capabilities = () => ({ revealInFileManager: !!XDG_OPEN() })
+export const capabilities = () => ({ revealInFileManager: !!XDG_OPEN(), openInFileManager: !!XDG_OPEN() })
