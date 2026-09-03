@@ -27,7 +27,7 @@ import * as files from './files.js'
 import * as pdf from './pdf.js'
 import * as machine from './machine.js'
 import * as servers from './servers.js'
-import { report as platformReport } from '../platform/index.js'
+import { report as platformReport, capabilities, why } from '../platform/index.js'
 // The same front-matter reader the viewer uses: the PDF has to be called what the page is
 // called, and two different readings of the same header would give two different names.
 import { matter, titleOf } from '../web/md.js'
@@ -341,6 +341,11 @@ function site(req, res, seg) {
 // is a much smaller loss than that, so the header is gone.
 const SANDBOX = 'sandbox'
 
+// How much a save is allowed to carry. Well under the megabyte the body reader stops at, which
+// would otherwise refuse a large file with a message about requests instead of about the file —
+// and far above anything you would actually edit in a browser tab: k0's own README is 56 KB.
+const MAX_SAVE = 1 << 18
+
 // ── The recap of a window ────────────────────────────────────────────────────
 // Held for a minute, and not as a saved result: the page asks for the facts, then asks for the
 // write-up to start, then asks every second whether it is done. Reading every repository's git
@@ -540,8 +545,11 @@ async function api(req, res, url) {
     const card = Number.isInteger(cardId) && cardId > 0 ? db.getCard(cardId) : null
     // Searching inside the files: the page asks for it as you type, and it needs neither the
     // listing nor git's state.
+    // `nerd` is the switch in the page: with it on, the configuration files are listed, so the
+    // search inside the text has to look in them too.
+    const nerd = url.searchParams.get('nerd') === '1'
     if (url.searchParams.get('only') === 'text') {
-      return send(res, 200, { hits: await files.grep(root, url.searchParams.get('q') || '') })
+      return send(res, 200, { hits: await files.grep(root, url.searchParams.get('q') || '', nerd) })
     }
     const changed = await files.changed(root, card?.head_at_start)
     if (url.searchParams.get('only') === 'changed') return send(res, 200, { changed, now: Date.now() })
@@ -554,6 +562,13 @@ async function api(req, res, url) {
       truncated: all.truncated,
       changed,
       files: all.files,
+      // What this machine can do about a file, so the viewer greys the buttons out and says why
+      // rather than offering something that would quietly do nothing.
+      can: {
+        reveal: capabilities.revealInFileManager,
+        open: capabilities.openInFileManager,
+        whyNot: why('revealInFileManager') || why('openInFileManager'),
+      },
       now: Date.now(),
     })
   }
@@ -609,9 +624,26 @@ async function api(req, res, url) {
       return res.end(out)
     }
 
+    // One button, two neighbouring things: a file is pointed at inside its folder, a folder is
+    // opened. Which of the two is decided here rather than in the page, because the page would
+    // have to guess and the disk already knows.
     if (idRaw === 'reveal' && req.method === 'POST') {
-      await files.reveal(abs)
+      if (fs.statSync(abs).isDirectory()) await files.openFolder(abs)
+      else await files.reveal(abs)
       return send(res, 200, { ok: true })
+    }
+
+    // The first thing k0 writes into one of your repositories. Only configuration and notes, only
+    // a file that is already there, and only if nobody has touched it since the page read it.
+    if (idRaw === 'save' && req.method === 'POST') {
+      if (!files.isEditable(rel)) return send(res, 400, { error: 'This kind of file is not edited here' })
+      if (typeof body.text !== 'string') return send(res, 400, { error: 'Nothing to save' })
+      if (Buffer.byteLength(body.text) > MAX_SAVE) return send(res, 400, { error: 'That is too big to save from here' })
+      try {
+        return send(res, 200, files.write(abs, body.text, Number(body.mtime)))
+      } catch (e) {
+        return send(res, e.conflict ? 409 : 500, { error: e.message })
+      }
     }
     if (!idRaw && req.method === 'GET') return send(res, 200, { path: rel, ...files.read(abs) })
   }

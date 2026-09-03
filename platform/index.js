@@ -65,6 +65,7 @@ const unsupported = {
   },
   shell: {
     revealInFileManager: async () => {},
+    openInFileManager: async () => {},
     openBrowser: async () => {},
     findChrome: () => null,
     homeSkipList: () => new Set(),

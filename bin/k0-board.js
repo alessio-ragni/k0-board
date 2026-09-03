@@ -418,6 +418,8 @@ async function doctor() {
     ['read the kernel memory-pressure verdict', capabilities.metrics.pressure],
     ['start at login', capabilities.service.autostart],
     ['show a tray icon', capabilities.tray],
+    ['show a file in the file manager', capabilities.revealInFileManager],
+    ['open a folder in the file manager', capabilities.openInFileManager],
   ]
   for (const [what, yes] of rows) (yes ? ok : warn)(what)
 

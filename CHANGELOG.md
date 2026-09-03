@@ -6,6 +6,39 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+### Added
+
+- **Folders, at last.** The file viewer's listing starts with the folders, and clicking one takes
+  you inside it: the folders it holds first, then its files. The path is written across the top
+  one piece at a time and **every piece is a way back up** — from `docs/backlog/handover` you
+  reach `docs` in one click, and the whole repository by clicking its name. The path above an open
+  document does the same, so from a file you can step out into the folder it lives in. Arrow keys
+  walk folders, Enter goes in, Esc comes out, ⌘-click opens one in another tab, and the address
+  follows you so a reload puts you back where you were.
+- **Open in Finder.** A button on a folder opens that folder in your file manager, and the same
+  button in the row above a file points the file out inside its own folder. It works on macOS,
+  Windows and Linux; where a system gives k0 no way to do it, the button stays where it is, greyed
+  out, with the reason in its tooltip rather than quietly doing nothing.
+- **The `<>` switch at the right of the search shows the configuration.** The viewer lists
+  documents, which is right until the day you want to check a key in an `.env`. Switch it on and
+  `.env` (and `.env.local`, and the rest), `.json`, `.yml`, `.yaml`, `.toml` and `.ini` join the
+  listing, the name search and the search inside the text — **including the ones git is told to
+  ignore**, because an `.env` is ignored by definition and it is the file you came for. Code stays
+  out either way. The switch is remembered, per browser.
+- **Configuration opens as the kind of thing it is.** A **JSON** file becomes a tree that folds,
+  coloured by type, with the first two levels open — and with **its own search box**, because the
+  browser's find does not look inside a closed branch: on a folded tree ⌘F says "not found" for
+  something three lines away. This one counts what it found and opens the branches holding it. An
+  **.env** becomes a table of names and values, comments kept. **YAML, TOML and INI** keep their
+  shape, with keys, values and comments told apart by colour.
+- **Configuration and notes can be edited here, with a Save button.** The pencil in the row above
+  a document turns it into a text box as tall as the pane — not a small window over it, because a
+  README does not fit in one. ⌘S saves, Cancel goes back to what is on disk. Only `.env` and the
+  other configuration, `.md` and `.txt`: no code, no PDFs, no images, and no creating or deleting
+  files. If the file **changed on disk while you were editing it** — a session wrote it, or you
+  did, in another window — the save stops and says so, and what you typed stays exactly where it
+  is. k0 will not write over somebody else's work without telling you.
+
 ## [0.3.0]
 
 k0 could already tell you what each session was costing you in memory, and `Close` on a card was

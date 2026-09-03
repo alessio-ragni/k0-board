@@ -2,8 +2,10 @@ import { check, section, after } from './harness.mjs'
 import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
+import { spawnSync } from 'node:child_process'
 import {
-  safePath, parseChanged, kindOf, mimeOf, isPage, attachment, list, read, changed, isDoc, hasDocs, grep, plain,
+  safePath, parseChanged, kindOf, mimeOf, isPage, attachment, list, read, write, changed, isDoc, isConfig,
+  isListed, isEditable, hasDocs, grep, plain,
 } from '../server/files.js'
 import { score, search } from '../web/fuzzy.js'
 import { render, esc, matter, titleOf } from '../web/md.js'
@@ -36,6 +38,10 @@ fs.writeFileSync(path.join(REPO, 'docs', 'backlog', 'note.txt'), 'hello')
 fs.writeFileSync(path.join(REPO, 'node_modules', 'stuff', 'index.js'), 'no')
 fs.writeFileSync(path.join(REPO, '.hidden', 'secret.md'), 'no')
 fs.writeFileSync(path.join(REPO, 'binary.bin'), Buffer.from([0, 1, 2, 3, 0, 255]))
+// The configuration: a dotted name the walk has to let through, and a `.json` that is not a
+// document but is one of the things you go looking for by hand.
+fs.writeFileSync(path.join(REPO, '.env'), 'TOKEN=abc\n')
+fs.writeFileSync(path.join(REPO, 'docs', 'settings.json'), '{"a":1}\n')
 
 // ── The path guard ───────────────────────────────────────────────────────────
 section('The path guard')
@@ -151,7 +157,22 @@ section('The walk over a repository with no git')
   const found = await list(REPO)
   const names = found.files.map((f) => f.p).sort()
   check('it is not a git repository', found.git, false)
-  check('every document is there', names.join(','), 'README.md,docs/audit-report.md,docs/backlog/note.txt')
+  check(
+    'every document is there, and the configuration with it',
+    names.join(','),
+    '.env,README.md,docs/audit-report.md,docs/backlog/note.txt,docs/settings.json'
+  )
+  // The mark is what lets the page hide the configuration without asking a second time.
+  check(
+    'the configuration is marked as such',
+    found.files.filter((f) => f.c).map((f) => f.p).sort().join(','),
+    '.env,docs/settings.json'
+  )
+  check(
+    'and the documents are not',
+    found.files.filter((f) => !f.c).some((f) => f.p.endsWith('.json')),
+    false
+  )
   check(
     'code and binaries are not listed',
     names.some((n) => n.endsWith('.bin')),
@@ -305,6 +326,36 @@ check('a json is not', isDoc('src/config/settings.json'), false)
 check('an image is not: it is not a document you read', isDoc('images/x.png'), false)
 check('and the extension does not care about case', isDoc('READMEFIRST.MD'), true)
 
+// ── Configuration ────────────────────────────────────────────────────────────
+section('Configuration')
+// The other half of what the listing carries, behind a switch in the page. `.env` is the whole
+// reason it exists, and it is also the one name that has no extension to recognise it by.
+check('a bare .env', isConfig('.env'), true)
+check('and the ones next to it', isConfig('.env.local'), true)
+check('one in a subdirectory too', isConfig('apps/web/.env.production'), true)
+check('a name that merely begins that way is not one', isConfig('.envelope'), false)
+check('a json is configuration', isConfig('package.json'), true)
+check('so is a yaml', isConfig('.github/workflows/ci.yml'), true)
+check('so is a toml and an ini', `${isConfig('pyproject.toml')} ${isConfig('setup.ini')}`, 'true true')
+check('code is not', isConfig('server/index.js'), false)
+check('a document is not configuration', isConfig('README.md'), false)
+check('but both are listed', `${isListed('README.md')} ${isListed('.env')}`, 'true true')
+check('and code is listed as neither', isListed('server/index.js'), false)
+
+// ── What can be written back ─────────────────────────────────────────────────
+section('What can be written back')
+// k0 reads your repositories and writes into exactly this much of them: the configuration, and
+// the notes kept beside it. A `.js` changed from a browser tab with no undo is how you break a
+// project without noticing.
+check('an .env can be edited', isEditable('.env'), true)
+check('a json can be edited', isEditable('package.json'), true)
+check('a note can be edited', isEditable('docs/plan.md'), true)
+check('and a plain text file', isEditable('notes.txt'), true)
+check('code cannot', isEditable('web/board.js'), false)
+check('nor a PDF', isEditable('invoice.pdf'), false)
+check('nor an image', isEditable('images/x.png'), false)
+check('nor a page, which is looked at and not read', isEditable('site/index.html'), false)
+
 // ── Searching inside the files ───────────────────────────────────────────────
 section('Searching inside the files')
 // The name is almost never what makes you remember a document: what stays with you about a
@@ -317,6 +368,9 @@ section('Searching inside the files')
   )
   fs.writeFileSync(path.join(INSIDE, 'shopping.md'), '# Shopping\n\nBread and milk.\n')
   fs.writeFileSync(path.join(INSIDE, 'data.ndjson'), '{"strap": true}')
+  // Written now and not later: the listing is cached for a few seconds, and a file that arrives
+  // after the first search would not be in the listing the second one reads.
+  fs.writeFileSync(path.join(INSIDE, '.env'), 'STRIPE_KEY=sk_live_x\n')
 
   const hits = await grep(INSIDE, 'strap')
   check('it finds the document by what is in it', hits.length, 1)
@@ -329,6 +383,14 @@ section('Searching inside the files')
     'strap'
   )
   check('what is not a document is not even read', (await grep(INSIDE, 'true')).length, 0)
+
+  // The search has to follow what the page is showing. A line found inside a file the listing is
+  // hiding would be a result you cannot open.
+  check('with the configuration hidden, it is not searched', (await grep(INSIDE, 'stripe')).length, 0)
+  const deep = await grep(INSIDE, 'stripe', true)
+  check('with it shown, it is', deep.length, 1)
+  check('and it is the file you would have gone looking for', deep[0]?.p, '.env')
+  check('the documents are still found either way', (await grep(INSIDE, 'strap', true)).length, 1)
 
   // The words can be far apart: "strap over" is not a phrase to find whole, it is two words
   // that both have to be there.
@@ -344,6 +406,72 @@ section('Searching inside the files')
   check('and it really does drop the accent', plain('Café'), 'cafe')
 
   fs.rmSync(INSIDE, { recursive: true, force: true })
+}
+
+// ── Writing a file back ──────────────────────────────────────────────────────
+section('Writing a file back')
+// The one place k0 writes into a repository. What is proved here is the refusal, not the write:
+// a save that quietly lands on top of somebody else's work is the failure that costs something.
+{
+  const target = path.join(REPO, 'docs', 'settings.json')
+  const before = read(target)
+  const saved = write(target, '{"a":2}\n', before.mtime)
+  check('the file on disk really changed', fs.readFileSync(target, 'utf8'), '{"a":2}\n')
+  check('and the new time comes back', saved.mtime > 0, true)
+  check('with the new size', saved.size, 8)
+
+  // The page holds the time it was given when it opened the file. If the file has moved on since,
+  // somebody else has written it, and this save is not allowed to erase them.
+  let refused = null
+  try {
+    write(target, 'later\n', before.mtime)
+  } catch (e) {
+    refused = e
+  }
+  check('a stale save is refused', !!refused?.conflict, true)
+  check('and it says so in words', refused?.message.includes('changed on disk'), true)
+  check('and the file is untouched', fs.readFileSync(target, 'utf8'), '{"a":2}\n')
+  check(
+    'nothing is left lying beside it',
+    fs.existsSync(`${target}.k0-tmp`),
+    false
+  )
+
+  // A directory is not a file, and the guard above this one only proves the path is inside the
+  // repository — it says nothing about what is at the end of it.
+  let notAFile = null
+  try {
+    write(path.join(REPO, 'docs'), 'x', 0)
+  } catch (e) {
+    notAFile = e
+  }
+  check('a directory cannot be written as a file', notAFile?.message, 'Not a file')
+}
+
+// ── Configuration that git is told to ignore ─────────────────────────────────
+section('Configuration that git is told to ignore')
+// The whole reason the disk is walked a second time. `ls-files -co --exclude-standard` will never
+// name an `.env`: it is ignored by definition, and it is the file people come here looking for.
+{
+  const GITREPO = fs.mkdtempSync(path.join(os.tmpdir(), 'k0-git-'))
+  const ok = spawnSync('git', ['init', '-q', GITREPO], { stdio: 'ignore' }).status === 0
+  if (ok) {
+    fs.writeFileSync(path.join(GITREPO, '.gitignore'), '.env\n')
+    fs.writeFileSync(path.join(GITREPO, '.env'), 'TOKEN=abc\n')
+    fs.writeFileSync(path.join(GITREPO, 'README.md'), '# hi\n')
+    fs.writeFileSync(path.join(GITREPO, 'package.json'), '{"name":"x"}\n')
+    const found = await list(GITREPO)
+    const names = found.files.map((f) => f.p).sort()
+    check('git is what provides the listing', found.git, true)
+    check('an ignored .env is listed all the same', names.includes('.env'), true)
+    check('together with what git did name', names.join(','), '.env,README.md,package.json')
+    check(
+      'and nothing is listed twice',
+      names.length,
+      new Set(names).size
+    )
+  }
+  fs.rmSync(GITREPO, { recursive: true, force: true })
 }
 
 // ── The front matter at the top of a document ────────────────────────────────

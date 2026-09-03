@@ -40,7 +40,8 @@
  * @property {object} service
  * @property {boolean} service.autostart             can register a service that starts at login
  * @property {boolean} tray                          a menu bar / system tray icon is available
- * @property {boolean} revealInFileManager
+ * @property {boolean} revealInFileManager           can show a file selected in the file manager
+ * @property {boolean} openInFileManager             can open a directory in the file manager
  */
 
 /**
@@ -55,6 +56,7 @@ export const NO_CAPABILITIES = {
   service: { autostart: false },
   tray: false,
   revealInFileManager: false,
+  openInFileManager: false,
 }
 
 /**
@@ -133,6 +135,10 @@ export const NO_CAPABILITIES = {
 /**
  * @typedef {object} ShellAdapter
  * @property {(absPath: string) => Promise<unknown>} revealInFileManager
+ *   Shows the file in its own folder, selected. A folder handed to this gets selected in its
+ *   parent, which is the neighbouring thing and not the same one.
+ * @property {(absDir: string) => Promise<unknown>} openInFileManager
+ *   Opens the directory itself, so you are looking at what is inside it.
  * @property {(url: string) => Promise<unknown>} openBrowser
  * @property {() => string|null} findChrome        a Chromium-family browser able to print
  * @property {() => Set<string>} homeSkipList      directories under $HOME that are never projects

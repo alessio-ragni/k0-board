@@ -8,6 +8,9 @@ const EXPLORER = () => which('explorer') || 'explorer.exe'
 /** `explorer /select,` opens the folder with the file already highlighted. */
 export const revealInFileManager = (abs) => runQuiet(EXPLORER(), [`/select,${path.normalize(abs)}`])
 
+/** The same command without `/select,` opens the folder itself. */
+export const openInFileManager = (abs) => runQuiet(EXPLORER(), [path.normalize(abs)])
+
 export const openBrowser = (url) => runQuiet('cmd', ['/c', 'start', '', url])
 
 const programFiles = [
@@ -61,4 +64,4 @@ export function findClaude() {
   return claudeBin
 }
 
-export const capabilities = () => ({ revealInFileManager: true })
+export const capabilities = () => ({ revealInFileManager: true, openInFileManager: true })

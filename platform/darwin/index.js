@@ -18,6 +18,7 @@ export const capabilities = {
   service: service.capabilities,
   tray: true,
   revealInFileManager: true,
+  openInFileManager: true,
 }
 
 /**

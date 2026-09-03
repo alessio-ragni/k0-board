@@ -24,6 +24,7 @@ export const capabilities = {
   service: service.capabilities(),
   tray: hasPowerShell(),
   revealInFileManager: true,
+  openInFileManager: true,
 }
 
 export const notes = {

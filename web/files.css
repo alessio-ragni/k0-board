@@ -74,6 +74,24 @@ body {
   width: 100%;
   color: var(--ink);
 }
+/* The switch that lets the configuration through. It sits inside the search pill because that is
+   what it changes — what the listing and the search can see — and it fills in when it is on, so
+   from across the room you can tell whether you are looking at everything or not. */
+.find .nerd {
+  flex: none;
+  padding: 3px;
+  margin: -3px -6px -3px 0;
+  border: 0;
+  background: none;
+  border-radius: 999px;
+  color: var(--muted);
+  display: flex;
+  align-items: center;
+  cursor: pointer;
+}
+.find .nerd:hover { background: none; color: var(--ink); }
+.find .nerd.on { background: var(--ink); color: #fff; }
+.find .nerd.on:hover { background: var(--ink); color: #fff; }
 
 /* ── The two panes ───────────────────────────────────────────────────── */
 /* The divider is a column of the grid: drag it and the size stays. */
@@ -239,6 +257,45 @@ body {
 .row.fold b::after { content: ' ▸'; opacity: .6; font-weight: 400; }
 .row.fold.open b::after { content: ' ▾'; }
 
+/* ── Folders ──────────────────────────────────────────────────────────
+   A folder is a row like any other, and deliberately so: the arrow keys walk it, ⌘-click opens
+   it in another tab, and nothing about it has to be learnt separately. The only difference is the
+   mark in front of the name and the slash after it, which is how a folder has always been told
+   apart from a file. */
+.row.folder b::before {
+  content: '';
+  display: inline-block;
+  width: 12px;
+  height: 9px;
+  margin-right: 7px;
+  border: 1px solid var(--muted);
+  border-radius: 1px 2px 2px 2px;
+  border-top-width: 3px;
+  vertical-align: middle;
+  opacity: .75;
+}
+.row.folder b::after { content: '/'; opacity: .45; }
+
+/* Where you are, one piece of the path at a time. It sits in the same green strip as the label of
+   a pasted text: both say the listing is a slice, and they must look like the same statement. */
+.from-text.trail { gap: 3px; overflow-x: auto; scrollbar-width: none; }
+.from-text.trail::-webkit-scrollbar { display: none; }
+.from-text a, .from-text b {
+  font: inherit;
+  font-size: .78rem;
+  font-weight: 600;
+  color: var(--ink);
+  text-decoration: none;
+  white-space: nowrap;
+  cursor: pointer;
+}
+.from-text a:hover { text-decoration: underline; }
+/* The last piece is where you are: it does not lead anywhere, and it does not pretend to. */
+.from-text b { cursor: default; opacity: .95; }
+.from-text i { font-style: normal; font-size: .72rem; opacity: .4; }
+.from-text .act { margin-left: auto; padding: 2px 7px; background: rgba(255, 255, 255, .7); }
+.from-text .act + .x { margin-left: 4px; }
+
 /* "7 more": it sits under the row it belongs to, off to one side. */
 .more {
   display: block;
@@ -328,6 +385,10 @@ body {
 .crumb b { font: 600 .82rem var(--mono); color: var(--ink); }
 .crumb i { font-style: normal; opacity: .5; }
 .crumb em { margin-left: auto; font-style: normal; }
+/* The path above a document is the way to its neighbours: each piece opens the folder it names,
+   in the list on the left. It stays grey — it is still the path, not a row of buttons. */
+.crumb a.up { color: inherit; text-decoration: none; border-bottom: 1px dotted transparent; }
+.crumb a.up:hover { color: var(--ink); border-bottom-color: var(--muted); }
 
 /* ── What to do with it ───────────────────────────────────────────────
    Print the document, take it away as it is, or have it laid out into a PDF. They sit here at
@@ -350,7 +411,114 @@ body {
 }
 .act:hover { color: var(--ink); border-color: #bdb6a5; }
 .act svg { width: 14px; height: 14px; display: block; flex: none; }
+/* A button this machine cannot honour stays where it is, faint, with the reason in its title. One
+   that vanished would leave you looking for it; one that did nothing would leave you wondering. */
+.act[disabled] { opacity: .3; cursor: default; }
+.act[disabled]:hover { color: var(--muted); border-color: var(--line); }
+/* Save is the one that changes something, so it is the one that is filled in. */
+.act.keep { background: var(--ink); border-color: var(--ink); color: #fff; font-weight: 600; }
+.act.keep:hover { color: #fff; border-color: var(--ink); }
 .cut { padding: 12px 32px; color: var(--muted); font-size: .82rem; font-style: italic; }
+
+/* ── Searching inside one file ────────────────────────────────────────
+   Only where the browser's own find cannot go: a tree is mostly folded, and ⌘F says "not found"
+   for something that is three lines away behind a closed branch. */
+.findin { display: flex; align-items: center; gap: 6px; margin-left: 12px; }
+.findin input {
+  border: 1px solid var(--line);
+  background: #fff;
+  border-radius: 999px;
+  padding: 4px 11px;
+  font: inherit;
+  font-size: .72rem;
+  color: var(--ink);
+  outline: 0;
+  width: 170px;
+}
+.findin input:focus { border-color: #bdb6a5; }
+.findin em {
+  font-style: normal;
+  font-size: .72rem;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+  min-width: 1.4em;
+}
+
+/* ── A JSON file, as a tree ───────────────────────────────────────────
+   The folding is `<details>`: the browser already knows how to do it, so there is no state here
+   and it works before a single line of script has run. The colours are the types — you learn them
+   in one glance and then never read them again, you just see them. */
+.tree { padding: 18px 32px; font: .8rem/1.55 var(--mono); }
+.json .kids { margin-left: 1.05rem; padding-left: .7rem; border-left: 1px solid var(--line); }
+.json summary { cursor: pointer; list-style: none; padding: 1px 0; border-radius: 4px; }
+.json summary::-webkit-details-marker { display: none; }
+.json summary::before {
+  content: '▸';
+  display: inline-block;
+  width: .9em;
+  opacity: .5;
+  transition: transform .12s;
+}
+.json details[open] > summary::before { transform: rotate(90deg); }
+.json summary:hover { background: rgba(0, 0, 0, .04); }
+.json .leaf { padding: 1px 0 1px .9em; }
+.json .key { font-weight: 600; color: #1e40af; }
+.json .key::after { content: ':'; opacity: .45; font-weight: 400; margin-right: .35em; }
+.json .brace { opacity: .45; margin-left: .35em; }
+.json em { font-style: normal; margin-left: .6em; font-size: .9em; color: var(--muted); }
+.json .v.str { color: #15803d; }
+.json .v.str::before, .json .v.str::after { content: '"'; opacity: .4; }
+.json .v.num { color: #b45309; }
+.json .v.bool { color: #7c3aed; }
+.json .v.nil, .json .v.empty { color: var(--muted); font-style: italic; }
+.json mark { background: #fde68a; color: var(--ink); border-radius: 3px; padding: 0 1px; }
+
+/* ── An .env file, as the table it always was ─────────────────────────
+   Two columns and one line each: the reason you open one is to compare a name with a value, and
+   as text the values start in a different place on every line. The comments stay — a comment
+   above a key is what the key is for, and a view that dropped it would be a different file. */
+.env { width: calc(100% - 64px); margin: 20px 32px; border-collapse: collapse; font: .8rem var(--mono); }
+.env th, .env td { padding: 6px 10px; border-bottom: 1px solid var(--line); text-align: left; vertical-align: top; }
+.env th { width: 34%; font-weight: 600; color: #1e40af; overflow-wrap: anywhere; }
+.env .val { color: var(--ink); overflow-wrap: anywhere; }
+.env .val.none { color: var(--muted); font-style: italic; }
+.env .note td { color: var(--muted); font-style: italic; border-bottom: 0; padding-top: 14px; }
+.env .odd td { color: var(--muted); }
+.env .gap td { padding: 0; height: 8px; border-bottom: 0; }
+
+/* ── YAML, TOML, INI ──────────────────────────────────────────────────
+   Not a table: the nesting is the meaning, and flattening it would throw away the one thing you
+   opened the file to see. So the file keeps its shape and only gets its parts told apart. */
+.conf {
+  margin: 0;
+  padding: 20px 32px;
+  font: .82rem/1.6 var(--mono);
+  white-space: pre;
+  overflow-x: auto;
+}
+.conf .key { color: #1e40af; font-weight: 600; }
+.conf .sep, .conf .dash { opacity: .45; }
+.conf .sec { color: #7c3aed; font-weight: 600; }
+.conf .c { color: var(--muted); font-style: italic; }
+
+/* ── Writing a file ───────────────────────────────────────────────────
+   In the pane where the document was, not in a window over it: a dialog is the right size for a
+   title and the wrong size for a README, and here the pane is already as tall as the file. */
+.crumb.editing { background: var(--IDLE); }
+.crumb.editing em { font-style: italic; }
+.edit {
+  display: block;
+  width: 100%;
+  height: calc(100vh - 96px);
+  border: 0;
+  outline: 0;
+  resize: none;
+  padding: 20px 32px;
+  background: #fff;
+  color: var(--ink);
+  font: .82rem/1.6 var(--mono);
+  tab-size: 2;
+}
 
 /* ── The label ────────────────────────────────────────────────────────
    What is written between the two rules at the top of the file. It is not text of the document —
@@ -511,7 +679,10 @@ body {
   .split { display: block; }
   .doc { overflow: visible; padding: 0 14mm; background: #fff; }
 
-  .md, .plain { padding: 0; font-size: 10.5pt; line-height: 1.5; }
+  .md, .plain, .tree, .conf { padding: 0; font-size: 10.5pt; line-height: 1.5; }
+  .env { width: 100%; margin: 0; }
+  /* A file half-written is not a document: there is nothing to put on paper. */
+  .edit { display: none !important; }
   /* The label is hidden, but it is still there: the space that held it down is not. */
   .plate + .md { padding-top: 0; }
   .md a { color: #000; }

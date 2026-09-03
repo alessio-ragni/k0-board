@@ -1,4 +1,6 @@
 import { render, esc, matter, titleOf } from '/md.js'
+import { tree as jsonTree } from '/json.js'
+import { envTable, highlight as confText } from '/conf.js'
 import { score } from '/fuzzy.js'
 import { mentions, countIn } from '/mentions.js'
 import { resolveRel, index as refIndexOf, resolve as resolveRef, candidates, worth, trim, TOKEN_SRC } from '/refs.js'
@@ -64,10 +66,35 @@ let open = null // { path, mtime }
 // slice of the listing with a label at the top and a way out — so it is one piece of state.
 let scope = null
 let opened = new Set() // rows opened by hand: directories, and names that fit several files
+// Whether the configuration files are shown as well. It is remembered because it is not a search
+// but a way of working: somebody who wants to see the `.env` today wants to see it tomorrow.
+let nerd = localStorage.getItem('k0-files-nerd') === '1'
+// What this machine can do with a file outside the browser. Until the listing arrives we assume
+// it can, which is what every machine k0 has met so far does.
+let can = { reveal: true, open: true, whyNot: null }
+// The file being written, while it is being written: `{ path, mtime }`. Everything that would
+// redraw the right-hand pane has to stand aside while this is set, or what you have typed goes.
+let editing = null
 
 // ── The list on the left ──────────────────────────────────────────────
 const dirOf = (p) => p.slice(0, p.lastIndexOf('/') + 1).replace(/\/$/, '')
 const nameOf = (p) => p.slice(p.lastIndexOf('/') + 1)
+const extOf = (p) => (/\.[^./]+$/.exec(nameOf(p))?.[0] ?? '').toLowerCase()
+
+// The same rules as the server's, written a second time on purpose: a browser cannot import a
+// module that reads the filesystem, and this decides only what to *offer*. What is really allowed
+// is decided over there, on the file it is about to write. Change one, change the other.
+const ENV_NAME = /^\.env(\..+)?$/
+const CONF_EXT = new Set(['.json', '.yml', '.yaml', '.toml', '.ini', '.cfg', '.conf'])
+const NOTE_EXT = new Set(['.md', '.markdown', '.mdx', '.txt'])
+const isConfig = (p) => CONF_EXT.has(extOf(p)) || ENV_NAME.test(nameOf(p))
+const canEdit = (p) => NOTE_EXT.has(extOf(p)) || isConfig(p)
+// The same ceiling the server puts on a save, so the pencil is not offered for a file that would
+// then be refused. Far above anything anybody edits in a browser tab.
+const MAX_EDIT = 1 << 18
+
+/** The files on show right now: everything, or everything that is not configuration. */
+const listed = () => (nerd ? all : all.filter((f) => !f.c))
 
 function since(ms) {
   const m = Math.floor((Date.now() - ms) / 60000)
@@ -98,9 +125,10 @@ function quoted(h) {
  */
 function groups() {
   const q = $('#q').value.trim()
+  const here = listed()
   if (q) {
     const hits = []
-    for (const f of all) {
+    for (const f of here) {
       const s = score(f.p, q)
       if (s >= 0) hits.push({ f, s })
     }
@@ -116,8 +144,8 @@ function groups() {
     ].filter((g) => g.files.length)
   }
 
-  const touched = all.filter((f) => changed.has(f.p)).sort((a, b) => b.m - a.m)
-  const rest = all.filter((f) => !changed.has(f.p)).sort((a, b) => b.m - a.m)
+  const touched = here.filter((f) => changed.has(f.p)).sort((a, b) => b.m - a.m)
+  const rest = here.filter((f) => !changed.has(f.p)).sort((a, b) => b.m - a.m)
   return [
     { title: 'Changed', files: touched },
     { title: 'Recent', files: rest.slice(0, 30) },
@@ -192,29 +220,84 @@ function entryHtml(e) {
 }
 
 /** The files inside a directory. Only its own, not the tree below it. */
-const filesIn = (d) => all.filter((f) => dirOf(f.p) === d).sort((a, b) => b.m - a.m)
+const filesIn = (d) => listed().filter((f) => dirOf(f.p) === d).sort((a, b) => b.m - a.m)
 
 /**
- * The label at the top of the listing: where you are, and how to get out. The first button is
- * also the way back to whatever brought you here — the text, to correct it — while for a
- * directory there is nothing to correct and it simply says so.
+ * The directories directly inside `d`, with how many files each one holds below it — all the way
+ * down, not only its own floor. The number is what tells you whether it is worth going in, and a
+ * folder of folders would otherwise say nothing at all.
+ *
+ * There is no separate listing of directories, and there does not need to be one: a directory is
+ * a piece of the path of the files inside it, and the listing is already here.
  */
-function chipHtml(label, again) {
-  const back = `<button type="button" id="paste-clear" class="x" title="Back to all files (Esc)" aria-label="Back to all files"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg></button>`
-  const head = again
-    ? `<button type="button" id="paste-again" title="See and change the text">${label}</button>`
-    : `<span>${label}</span>`
-  return `<div class="from-text">${head}${back}</div>`
+function foldersIn(d) {
+  const prefix = d ? `${d}/` : ''
+  const kids = new Map()
+  for (const f of listed()) {
+    if (prefix && !f.p.startsWith(prefix)) continue
+    const rest = f.p.slice(prefix.length)
+    const at = rest.indexOf('/')
+    if (at === -1) continue
+    const name = rest.slice(0, at)
+    kids.set(name, (kids.get(name) ?? 0) + 1)
+  }
+  return [...kids]
+    .sort((a, b) => a[0].localeCompare(b[0]))
+    .map(([name, n]) => ({ dir: prefix + name, name, n }))
 }
 
-/** The listing when a directory is what governs it. */
+/**
+ * A folder, in the same list and the same shape as the files: it is a real link, so it opens in
+ * another tab like everything else here, and it goes into `rows` so the arrow keys walk it too.
+ */
+function folderHtml(f) {
+  rows.push(f)
+  return `<a class="row folder" href="${esc(dirUrl(f.dir))}" data-dir="${esc(f.dir)}"><b>${esc(
+    f.name
+  )}</b><em>${f.n} file${f.n === 1 ? '' : 's'}</em></a>`
+}
+
+/** The way out of a narrowed listing, drawn the same wherever the narrowing came from. */
+const backOut = `<button type="button" id="paste-clear" class="x" title="Back to all files (Esc)" aria-label="Back to all files"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg></button>`
+
+/**
+ * The label at the top of the listing when a pasted text is what narrowed it: how many files it
+ * named, the way back to the text itself to correct it, and the way out.
+ */
+const chipHtml = (label) =>
+  `<div class="from-text"><button type="button" id="paste-again" title="See and change the text">${label}</button>${backOut}</div>`
+
+/**
+ * Where you are, one piece of the path at a time, each one a way back up. The first piece is the
+ * repository itself, which is the way out altogether.
+ *
+ * It is a trail rather than a "back" button because you never climb only one floor: from
+ * `docs/backlog/handover` what you want is `docs`, and a button would make you press it twice
+ * without telling you where you were going to land.
+ */
+function trailHtml(d) {
+  const parts = d.split('/')
+  const road = parts
+    .map((name, i) => {
+      const upto = parts.slice(0, i + 1).join('/')
+      const last = i === parts.length - 1
+      return last
+        ? `<b>${esc(name)}</b>`
+        : `<a href="${esc(dirUrl(upto))}" data-dir="${esc(upto)}">${esc(name)}</a>`
+    })
+    .join('<i>/</i>')
+  const home = `<a href="?${qs()}" data-dir="">${esc($('#repo').textContent || 'all files')}</a>`
+  return `<div class="from-text trail">${home}<i>/</i>${road}${finderButton('dir-open', 'Open this folder in your file manager', can.open)}${backOut}</div>`
+}
+
+/** The listing when a directory is what governs it: what is under it, then what is in it. */
 function dirHtml() {
+  const dirs = foldersIn(scope.dir)
   const fs = filesIn(scope.dir)
-  return (
-    chipHtml(`${fs.length} file${fs.length === 1 ? '' : 's'} in ${esc(scope.dir)}`, false) +
-    `<h2>${esc(nameOf(scope.dir))}<small>${fs.length}</small></h2>` +
-    fs.map((f) => rowHtml(f)).join('')
-  )
+  let html = trailHtml(scope.dir)
+  if (dirs.length) html += `<h2>Folders<small>${dirs.length}</small></h2>${dirs.map(folderHtml).join('')}`
+  if (fs.length) html += `<h2>${esc(nameOf(scope.dir))}<small>${fs.length}</small></h2>${fs.map((f) => rowHtml(f)).join('')}`
+  return html
 }
 
 /** The listing when a pasted text is what governs it. */
@@ -223,7 +306,7 @@ function pastedHtml() {
   const n = howMany(out)
   // Where you are stays visible at the top: the number, the way out, and the text itself one
   // click away so it can be corrected without pasting it again.
-  let html = chipHtml(`${n} file${n === 1 ? '' : 's'} from your text`, true)
+  let html = chipHtml(`${n} file${n === 1 ? '' : 's'} from your text`)
   if (out.named.length) {
     html += `<h2>From your text<small>${countIn(out.named)}</small></h2>`
     html += out.named.map(entryHtml).join('')
@@ -242,14 +325,25 @@ function pastedHtml() {
   return html
 }
 
-/** The usual listing: the groups, and the files under them. */
+/**
+ * The usual listing: the folders, then the groups and the files under them.
+ *
+ * The folders come first because they are the only thing here that is not a document: skip past
+ * them and you are in the list you already knew. While searching they are gone — you are looking
+ * for a name, and the folders are not among the names you are looking at.
+ */
 function plainHtml() {
-  return groups()
-    .map(
-      (g) =>
-        `<h2>${g.title}<small>${g.files.length}</small></h2>` + g.files.map((f) => rowHtml(f)).join('')
-    )
-    .join('')
+  const dirs = $('#q').value.trim() ? [] : foldersIn('')
+  const head = dirs.length ? `<h2>Folders<small>${dirs.length}</small></h2>${dirs.map(folderHtml).join('')}` : ''
+  return (
+    head +
+    groups()
+      .map(
+        (g) =>
+          `<h2>${g.title}<small>${g.files.length}</small></h2>` + g.files.map((f) => rowHtml(f)).join('')
+      )
+      .join('')
+  )
 }
 
 function paint() {
@@ -266,23 +360,28 @@ function paint() {
   // Empty does not mean "no rows on screen": with a pasted text the guesses arrive closed, and a
   // result made only of those has no rows to show while still having found everything it should.
 
-  const found = text ? howMany(mentioned()) : scope ? filesIn(scope.dir).length : rows.length
-  list.innerHTML = !found
-    ? `<p class="blank">${
-        text
-          ? 'Nothing of that text is here any more.'
-          : scope
-            ? 'Nothing in that folder any more.'
-            : $('#q').value.trim()
-              ? 'Nothing with that name.'
-              : 'No documents here. This only lists what you can read and print — text, not code.'
-      }</p>`
-    : html
+  const shown = listed().length
+  const found = text
+    ? howMany(mentioned())
+    : scope
+      ? filesIn(scope.dir).length + foldersIn(scope.dir).length
+      : rows.length
+  const nothing = text
+    ? 'Nothing of that text is here any more.'
+    : scope
+      ? 'Nothing in that folder any more.'
+      : $('#q').value.trim()
+        ? 'Nothing with that name.'
+        : nerd
+          ? 'Nothing here to read or to configure.'
+          : 'No documents here. This lists what you can read and print — and, with the switch on ' +
+            'the right of the search, the configuration too.'
+  // An empty folder still shows the path across the top: it is the way back up, and taking it
+  // away would leave you inside a folder with nothing in it and nothing to press.
+  list.innerHTML = found ? html : (scope && !text ? trailHtml(scope.dir) : '') + `<p class="blank">${nothing}</p>`
 
   list.scrollTop = scroll
-  $('#count').textContent = scope
-    ? `${found} of ${all.length}`
-    : `${all.length} file${all.length === 1 ? '' : 's'}`
+  $('#count').textContent = scope ? `${found} of ${shown}` : `${shown} file${shown === 1 ? '' : 's'}`
   mark()
 }
 
@@ -343,6 +442,24 @@ function applyPaste(text) {
  * A directory is also in the address, because it is a page that can be reloaded and sent: on the
  * way out it has to be taken off, otherwise a reload would put you back inside.
  */
+/**
+ * Into a folder. The file open on the right stays open: you go looking for the next one without
+ * losing the one you were reading.
+ *
+ * The address follows, because a folder is a real page — it reloads into the same place and the
+ * link can be sent to somebody.
+ */
+function enterDir(d) {
+  scope = { kind: 'dir', dir: d }
+  opened = new Set()
+  active = -1
+  $('#q').value = ''
+  inText = []
+  paint()
+  document.title = `${nameOf(d) || '/'} — ${REPO.split('/').pop()}`
+  history.replaceState(null, '', open ? `?${qs({ dir: d, f: open.path })}` : dirUrl(d))
+}
+
 function clearScope() {
   const wasDir = scope?.kind === 'dir'
   scope = null
@@ -480,7 +597,9 @@ async function show(p, { keepScroll = false } = {}) {
     doc.innerHTML = `<p class="blank">${esc(e.message)}</p>`
     return
   }
-  open = { path: p, mtime: file.mtime }
+  // The text is kept as well as shown: the search inside a tree rebuilds it from here, and the
+  // editor starts from it rather than asking the server for what it has just been given.
+  open = { path: p, mtime: file.mtime, size: file.size, truncated: !!file.truncated, text: file.text ?? null }
 
   // What this document names, before laying it out: the layout engine is synchronous, and for the
   // names the listing does not have there is a question to ask the server.
@@ -500,7 +619,7 @@ async function show(p, { keepScroll = false } = {}) {
     head = plate(matter(file.text).data)
     body = `<article class="md">${render(file.text, link)}</article>`
   } else if (file.kind === 'text') {
-    body = `<pre class="plain">${esc(file.text)}</pre>`
+    body = textBody(p, file.text)
   } else if (file.kind === 'image') {
     body = `<div class="media"><img src="${esc(rawUrl(p))}" alt="${esc(nameOf(p))}"></div>`
   } else if (file.kind === 'pdf') {
@@ -511,14 +630,15 @@ async function show(p, { keepScroll = false } = {}) {
     // costs nothing and still holds if the frame ever changes.
     body = `<iframe class="page" sandbox src="${esc(siteUrl(p))}" title="${esc(nameOf(p))}"></iframe>`
   } else {
-    body = `<div class="blank"><p>There's no way to show this one here.</p><button id="reveal">Reveal in Finder</button></div>`
+    // The way out is the button in the path row above, the same one every other file has: there
+    // is no reason for this case to have a second one of its own.
+    body = `<div class="blank"><p>There's no way to show this one here. Open it in your file manager, or take it away with the button above.</p></div>`
   }
 
   const cut = file.truncated ? '<p class="cut">Only the first 2 MB are shown.</p>' : ''
   doc.innerHTML = crumb + head + body + cut
   linkRefs(doc.querySelector('.md') ?? doc, refs)
   doc.scrollTop = scroll
-  $('#reveal')?.addEventListener('click', reveal)
 
   // The name of the page is the document's title: it is what the browser offers as the file name
   // when you save to PDF, and it is worth far more than "k0 — Files".
@@ -533,12 +653,64 @@ async function show(p, { keepScroll = false } = {}) {
   paint()
 }
 
+/**
+ * A text file, shown as the kind of thing it is.
+ *
+ * A `package.json` is a tree, an `.env` is a table, a YAML file is a shape you must not flatten,
+ * and everything else is text. Deciding it here rather than on the server is deliberate: the
+ * server says what a file *is* — text, image, page — and that answer is already used by printing,
+ * by the PDF and by the download. What it should *look like* is the page's business.
+ */
+function textBody(p, text) {
+  if (extOf(p) === '.json') {
+    const out = jsonTree(text, '')
+    // A broken JSON is usually exactly why you opened it: the reason first, then the file as it
+    // really is, so you can see the line that is wrong.
+    if (out.error) return `<p class="cut">${esc(out.error)}</p><pre class="plain">${esc(text)}</pre>`
+    return `<div class="tree" data-json>${out.html}</div>`
+  }
+  if (ENV_NAME.test(nameOf(p))) return envTable(text)
+  if (CONF_EXT.has(extOf(p))) return confText(text)
+  return `<pre class="plain">${esc(text)}</pre>`
+}
+
+/** The box that searches inside the tree, and what it found. Only where the browser cannot. */
+const findBox = () =>
+  `<span class="findin"><input id="jfind" type="search" autocomplete="off" spellcheck="false" placeholder="find in this file…"><em id="jcount"></em></span>`
+
+/**
+ * The tree again, with what is in the box picked out. Only the tree is rebuilt, so the box keeps
+ * the cursor and what you have typed — and the branches holding a result come back open, which is
+ * the whole reason this search exists rather than the browser's.
+ */
+function findInJson() {
+  const box = $('#jfind')
+  const host = $('#doc [data-json]')
+  if (!box || !host || !open?.text) return
+  const q = box.value.trim()
+  const out = jsonTree(open.text, q)
+  if (out.error) return
+  host.innerHTML = out.html
+  $('#jcount').textContent = q ? `${out.matches}` : ''
+}
+
 function crumbs(p, file) {
   const parts = p.split('/')
   const last = parts.pop()
-  const road = parts.map((x) => `<span>${esc(x)}</span>`).join('<i>/</i>')
   const meta = `${bytes(file.size)} · ${since(file.mtime)}`
-  return `<div class="crumb">${road ? `${road}<i>/</i>` : ''}<b>${esc(last)}</b><em>${meta}</em>${acts(p, file.kind)}</div>`
+  // The pieces of the path lead into the folders they name: from a file, the way to its
+  // neighbours is the path that is already written above it.
+  const walk = parts
+    .map((x, i) => {
+      const upto = parts.slice(0, i + 1).join('/')
+      return `<a class="up" href="${esc(dirUrl(upto))}" data-dir="${esc(upto)}">${esc(x)}</a>`
+    })
+    .join('<i>/</i>')
+  const find = extOf(p) === '.json' && file.kind === 'text' ? findBox() : ''
+  return `<div class="crumb">${walk ? `${walk}<i>/</i>` : ''}<b>${esc(last)}</b><em>${meta}</em>${find}${acts(
+    p,
+    file.kind
+  )}</div>`
 }
 
 /** Drawn by hand like the others in the house: same stroke, same grid. */
@@ -546,6 +718,22 @@ const ICON = {
   print:
     '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9V3h12v6"/><path d="M6 18H4a2 2 0 0 1-2-2v-4a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v4a2 2 0 0 1-2 2h-2"/><path d="M6 14h12v7H6z"/></svg>',
   down: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v11"/><path d="M7.5 9.5 12 14l4.5-4.5"/><path d="M4 20h16"/></svg>',
+  finder:
+    '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7a2 2 0 0 1 2-2h4l2 2.5h8a2 2 0 0 1 2 2V17a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>',
+  edit: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20h4L19.5 8.5a2.1 2.1 0 0 0-3-3L5 17z"/><path d="M14.5 6.5l3 3"/></svg>',
+}
+
+/**
+ * The button that hands a file or a folder to the file manager — or the same button, in the same
+ * place, switched off with the reason in its title. A control that disappears when the machine
+ * cannot do the thing teaches you nothing; one that stays and says why teaches you what is
+ * missing.
+ */
+function finderButton(id, label, allowed) {
+  const why = allowed ? label : can.whyNot || `${label} — this system gives k0 no way to do that.`
+  return `<button class="act" id="${id}" data-act="reveal" type="button" title="${esc(why)}" aria-label="${esc(
+    label
+  )}"${allowed ? '' : ' disabled'}>${ICON.finder}</button>`
 }
 
 /**
@@ -557,12 +745,19 @@ const ICON = {
  * printing a `.docx` that cannot even be shown here does not, and asking for the PDF of something
  * that is already a PDF does not either — that one is simply downloaded.
  */
-function acts(p, kind) {
+function acts(p, file) {
+  const kind = file.kind
   const paper = kind === 'markdown' || kind === 'text'
   // In capitals and without the dot, like the PDF next to it: they are two buttons that do the
   // same thing, and writing them two different ways made them look like two different things.
   const ext = /\.([^./]+)$/.exec(p)?.[1].toUpperCase() || 'FILE'
   const out = []
+  // Not on a file that is only half here. What is on screen when a document is cut is the first
+  // two megabytes of it, and saving that back would throw the rest away without a word.
+  if (paper && canEdit(p) && !file.truncated && file.size <= MAX_EDIT) {
+    out.push(`<button class="act" data-act="edit" type="button" title="Edit this file here" aria-label="Edit">${ICON.edit}</button>`)
+  }
+  out.push(finderButton('reveal', 'Show this file in your file manager', can.reveal))
   if (paper || kind === 'image') {
     out.push(`<button class="act" data-act="print" type="button" title="Print (⌘P)" aria-label="Print">${ICON.print}</button>`)
   }
@@ -621,20 +816,87 @@ function plate(data) {
 
 const TITLE_KEYS = new Set(['title', 'titolo', 'name', 'nome'])
 
-async function reveal() {
+/**
+ * Hand a path to the file manager. The same call for a file and for a folder: which of the two
+ * gestures it is — point at it, or open it — is decided on the other side, by looking at what is
+ * really there.
+ */
+async function reveal(rel) {
   try {
-    await api('/api/file/reveal', { method: 'POST', body: JSON.stringify({ repo: REPO, path: open.path }) })
+    await api('/api/file/reveal', { method: 'POST', body: JSON.stringify({ repo: REPO, path: rel }) })
   } catch (e) {
     toast(e.message)
   }
 }
 
-function toast(msg) {
+// ── Writing a file ────────────────────────────────────────────────────
+// k0 reads your repositories; this is the one place it writes into one. It is deliberately small:
+// configuration and notes only, a file that is already there, and no saving over somebody else's
+// work. Anything larger than that is what you opened the repository with Claude for.
+//
+// The editing happens where the document was, not in a dialog over it: a dialog is the right size
+// for a title and the wrong size for a README, and here the pane is already as tall as the file.
+
+/** Turns the open document into the text it is made of. */
+function startEdit() {
+  if (!open || open.text == null || !canEdit(open.path)) return
+  // The same refusal the button already makes, said again here: what is on screen when a document
+  // is cut is only the first two megabytes of it, and saving that back would lose the rest.
+  if (open.truncated || open.size > MAX_EDIT) return toast('This file is too big to edit here.')
+  editing = { path: open.path, mtime: open.mtime }
+  const parts = open.path.split('/')
+  const last = parts.pop()
+  const road = parts.map((x) => `<span>${esc(x)}</span>`).join('<i>/</i>')
+  $('#doc').innerHTML =
+    `<div class="crumb editing">${road ? `${road}<i>/</i>` : ''}<b>${esc(last)}</b><em>editing</em>` +
+    `<span class="acts"><button class="act" data-act="cancel" type="button">Cancel</button>` +
+    `<button class="act keep" data-act="save" type="button" title="Save (⌘S)">Save</button></span></div>` +
+    // The newline after the tag is not decoration: the HTML parser eats the first one inside a
+    // `<textarea>`, and without it a file that begins with a blank line would quietly lose it.
+    `<textarea class="edit" spellcheck="false" autocomplete="off">\n${esc(open.text)}</textarea>`
+  const box = $('#doc .edit')
+  box.focus()
+  box.setSelectionRange(0, 0)
+}
+
+/** Back to reading, with whatever is on disk. What was typed and not saved is gone, as it says. */
+function cancelEdit() {
+  const p = editing.path
+  editing = null
+  show(p)
+}
+
+let writing = false
+async function saveEdit() {
+  const box = $('#doc .edit')
+  if (!box || writing) return
+  writing = true
+  try {
+    await api('/api/file/save', {
+      method: 'POST',
+      body: JSON.stringify({ repo: REPO, path: editing.path, text: box.value, mtime: editing.mtime }),
+    })
+    const p = editing.path
+    editing = null
+    toast('Saved.')
+    // Straight back to the file as it now is — read again from disk, not from what we sent, so
+    // what you are looking at is what is really there.
+    await show(p)
+  } catch (e) {
+    // Including the clash: the message says what happened and the text stays exactly where it is,
+    // so it can be copied out or saved again once you have looked.
+    toast(e.message, 8000)
+  } finally {
+    writing = false
+  }
+}
+
+function toast(msg, ms = 4000) {
   const t = $('#toast')
   t.textContent = msg
   t.classList.add('show')
   clearTimeout(toast.timer)
-  toast.timer = setTimeout(() => t.classList.remove('show'), 4000)
+  toast.timer = setTimeout(() => t.classList.remove('show'), ms)
 }
 
 // ── The divider ───────────────────────────────────────────────────────
@@ -668,6 +930,7 @@ async function loadAll() {
   all = data.files
   known = new Set(all.map((f) => f.p))
   changed = new Set(data.changed)
+  can = data.can ?? can
   document.title = `k0 — ${data.name}`
   $('#repo').textContent = data.name
   $('#ctx').textContent = data.title ? `· ${data.title}` : data.git ? '' : '· not a git repository'
@@ -692,8 +955,10 @@ async function poll() {
     changed = new Set(now)
     if (fresh) await loadAll()
     else if (moved) paint()
-    // The open file is changing under your eyes: it is re-read, and you stay where you are.
-    if (open && changed.has(open.path)) {
+    // The open file is changing under your eyes: it is re-read, and you stay where you are. Not
+    // while it is being edited, though — redrawing the pane there would take away what you have
+    // typed. The save is the one that finds out, and it says so instead of overwriting.
+    if (!editing && open && changed.has(open.path)) {
       const f = await api(`/api/file?${qs({ path: open.path })}`)
       if (f.mtime !== open.mtime) await show(open.path, { keepScroll: true })
     }
@@ -716,7 +981,7 @@ function lookInside() {
   }
   lookInside.timer = setTimeout(async () => {
     try {
-      const { hits } = await api(`/api/files?${qs({ only: 'text', q })}`)
+      const { hits } = await api(`/api/files?${qs({ only: 'text', q, nerd: nerd ? '1' : '0' })}`)
       if (q !== $('#q').value.trim()) return
       inText = hits
       paint()
@@ -731,6 +996,19 @@ function keys() {
     // With the paste dialog open the keys belong to it: `/` must not jump into the search while
     // you are typing, and Esc is `<dialog>`'s own business.
     if ($('#paste').open) return
+    // While a file is being written the page's shortcuts step aside altogether: `/` is a
+    // character, the arrows move the cursor, and Escape must not throw the work away by accident.
+    // The one that is added is the one every editor has.
+    if (editing) {
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 's') {
+        e.preventDefault()
+        saveEdit()
+      }
+      return
+    }
+    // The box that searches inside a tree owns its keys too: it is a text field, and the arrows
+    // belong to the cursor in it.
+    if (document.activeElement?.id === 'jfind') return
     const typing = document.activeElement === $('#q')
     // Ctrl/Cmd+P is already the browser's print: here it is enough not to get in its way.
     if (e.key === '/' && !typing) {
@@ -761,7 +1039,8 @@ function keys() {
     }
     if (e.key === 'Enter' && rows[active]) {
       e.preventDefault()
-      show(rows[active].p)
+      const row = rows[active]
+      row.dir ? enterDir(row.dir) : show(row.p)
     }
   }
 }
@@ -793,6 +1072,22 @@ async function boot() {
     openPaste(t)
   })
 
+  // The switch that lets the configuration through. The search inside the files has to be asked
+  // again straight away: it runs on the server, and the server was told to look at a smaller set.
+  const paintNerd = () => {
+    $('#nerd').setAttribute('aria-pressed', String(nerd))
+    $('#nerd').classList.toggle('on', nerd)
+  }
+  paintNerd()
+  $('#nerd').onclick = () => {
+    nerd = !nerd
+    localStorage.setItem('k0-files-nerd', nerd ? '1' : '0')
+    paintNerd()
+    active = -1
+    paint()
+    lookInside()
+  }
+
   $('#paste-open').onclick = () => openPaste()
   $('#p-close').onclick = () => $('#paste').close()
   $('#p-cancel').onclick = () => $('#paste').close()
@@ -823,6 +1118,15 @@ async function boot() {
     }
     if (e.target.closest('#paste-clear')) return clearScope()
     if (e.target.closest('#paste-again')) return openPaste()
+    if (e.target.closest('#dir-open')) return void reveal(scope.dir)
+
+    // A folder, in the list or in the trail above it. Empty means the repository itself, which is
+    // the way back out to the whole listing.
+    const into = e.target.closest('[data-dir]')
+    if (into && !e.metaKey && !e.ctrlKey && !e.shiftKey && e.button === 0) {
+      e.preventDefault()
+      return into.dataset.dir ? enterDir(into.dataset.dir) : clearScope()
+    }
 
     const row = e.target.closest('.row')
     if (!row || e.metaKey || e.ctrlKey || e.shiftKey || e.button !== 0) return
@@ -844,7 +1148,22 @@ async function boot() {
   // are rebuilt on every opening: the click is listened for once, here.
   $('#doc').onclick = (e) => {
     const act = e.target.closest('.crumb button[data-act]')
-    if (act) return void (act.dataset.act === 'print' ? window.print() : savePdf())
+    if (act) {
+      const what = act.dataset.act
+      if (what === 'print') return void window.print()
+      if (what === 'pdf') return void savePdf()
+      if (what === 'reveal') return void reveal(open.path)
+      if (what === 'edit') return void startEdit()
+      if (what === 'save') return void saveEdit()
+      if (what === 'cancel') return void cancelEdit()
+      return
+    }
+    // A piece of the path above the document: it opens the folder it names, in the list.
+    const into = e.target.closest('.crumb a[data-dir]')
+    if (into && !e.metaKey && !e.ctrlKey && !e.shiftKey) {
+      e.preventDefault()
+      return void enterDir(into.dataset.dir)
+    }
     // File names found in the text open a new tab: they are real links, and nothing is intercepted
     // here — the browser deals with it. References written by hand inside the document instead stay
     // as they were, and open here.
@@ -854,6 +1173,11 @@ async function boot() {
     e.preventDefault()
     show(new URLSearchParams(a.getAttribute('href').slice(1)).get('f'))
   }
+  // Searching inside a tree: it runs here, on the data, because the browser's own find does not
+  // look inside a branch that is closed.
+  $('#doc').addEventListener('input', (e) => {
+    if (e.target.id === 'jfind') findInJson()
+  })
 
   await loadAll()
   // A directory named inside a document opens a page of its own: the listing starts already
