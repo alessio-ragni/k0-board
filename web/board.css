@@ -387,10 +387,18 @@ body {
   gap: 7px;
   margin-bottom: 3px;
 }
+/* The repository's name takes the room that is left, so everything after it — the git mark, the
+   memory chip — sits against the right edge of the note. The same shape as the heading of a
+   column, and for the same reason: hanging off the end of the name those marks landed in a
+   different place on every note, and a row of notes had no line to read down. */
 .postit .tag {
+  flex: 1;
   font: 500 1.05rem/1 var(--hand);
   color: rgba(0, 0, 0, .5);
   min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 /* The name is the session's: it is in monospace like the k0 mark at the top.
    Monospace is heavier at the same size, which is why it drops to .94rem. */

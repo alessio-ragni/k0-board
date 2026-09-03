@@ -7,7 +7,7 @@ import {
   safePath, parseChanged, kindOf, mimeOf, isPage, attachment, list, read, write, changed, isDoc, isConfig,
   isListed, isEditable, hasDocs, grep, plain,
 } from '../server/files.js'
-import { score, search } from '../web/fuzzy.js'
+import { score, search, positions, runs } from '../web/fuzzy.js'
 import { render, esc, matter, titleOf } from '../web/md.js'
 import { icon } from '../web/favicon.js'
 import { weight, bytes } from '../web/units.js'
@@ -523,6 +523,38 @@ check('letters together beat letters apart', score('board.css', 'board') > score
   check('with no matches nothing comes back', search(files, 'zzzz').length, 0)
   check('with no search everything comes back', search(files, '').length, 4)
 }
+
+// ── Why a row matched ────────────────────────────────────────────────────────
+section('Why a row matched')
+// The letters that earned the score, so the listing can underline them. They come out of the same
+// walk the score does — underlining letters the ranking had not used would be a row lying about
+// why it is there — so what is proved here is mostly that the two agree.
+check('the positions are the letters, in order', positions('docs/audit-report.md', 'audrep').join(','), '5,6,7,11,12,13')
+check('and there is one for every letter typed', positions('docs/audit-report.md', 'audrep').length, 6)
+check('an exact name is matched from the first letter', positions('.env', '.env').join(','), '0,1,2,3')
+// The case that made this necessary: `.env` finds a document three words wide, and only the
+// underline explains why.
+check('scattered letters say where they were found', positions('.claude/commands/verify-events.md', '.env').join(','), '0,6,13,17')
+check('no match, no positions', positions('a.md', 'zz'), null)
+check('nothing searched for, nothing to underline', positions('a.md', '  '), null)
+check(
+  'they agree with the score: found means scored',
+  positions('docs/plan.md', 'plan') !== null === (score('docs/plan.md', 'plan') >= 0),
+  true
+)
+check(
+  'and not found means not scored',
+  positions('docs/plan.md', 'zzz') !== null === (score('docs/plan.md', 'zzz') >= 0),
+  true
+)
+
+// Letters that sit next to each other are one stretch, not several: `audrep` found two pieces of
+// two words, and marking six separate letters would say it found six coincidences.
+check('neighbours become one stretch', JSON.stringify(runs([5, 6, 7, 11, 12, 13])), '[[5,8],[11,14]]')
+check('a lone letter is a stretch of one', JSON.stringify(runs([3])), '[[3,4]]')
+check('a gap of one still breaks them apart', JSON.stringify(runs([0, 2])), '[[0,1],[2,3]]')
+check('nothing found, nothing to mark', JSON.stringify(runs([])), '[]')
+check('and no positions at all is the same answer', JSON.stringify(runs(null)), '[]')
 
 // ── Markdown ─────────────────────────────────────────────────────────────────
 section('Markdown')

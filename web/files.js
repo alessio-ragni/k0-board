@@ -1,7 +1,7 @@
 import { render, esc, matter, titleOf } from '/md.js'
 import { tree as jsonTree } from '/json.js'
 import { envTable, highlight as confText } from '/conf.js'
-import { score } from '/fuzzy.js'
+import { score, positions, runs } from '/fuzzy.js'
 import { mentions, countIn } from '/mentions.js'
 import { resolveRel, index as refIndexOf, resolve as resolveRef, candidates, worth, trim, TOKEN_SRC } from '/refs.js'
 import { bytes } from '/units.js'
@@ -228,11 +228,34 @@ const howMany = (out) => countIn(out.named) + countIn(out.maybe)
 function rowHtml(f) {
   rows.push(f)
   const dir = dirOf(f.p)
+  // Which letters put this row here. The search matches letters in order and scattered, so
+  // without them a result is a riddle: `.env` brings up `verify-events.md` and there is no way to
+  // see that it was the dot, the e, the n and the v, three words apart. Underlined, the search
+  // explains itself — including when the answer is "this is not what you meant".
+  const at = positions(f.p, $('#q').value.trim())
+  const nameAt = dir ? dir.length + 1 : 0
+  const name = lit(nameOf(f.p), at?.filter((i) => i >= nameAt).map((i) => i - nameAt))
+  const road = dir ? `<i>${lit(dir, at?.filter((i) => i < dir.length))}</i>` : ''
   return `<a class="row${f.p === open?.path ? ' on' : ''}${changed.has(f.p) ? ' hot' : ''}" href="${esc(
     viewUrl(f.p)
-  )}" data-p="${esc(f.p)}"><b>${esc(nameOf(f.p))}</b>${
-    dir ? `<i>${esc(dir)}</i>` : ''
-  }<em>${since(f.m)}</em>${f.line ? `<q>${quoted(f)}</q>` : ''}</a>`
+  )}" data-p="${esc(f.p)}"><b>${name}</b>${road}<em>${since(f.m)}</em>${
+    f.line ? `<q>${quoted(f)}</q>` : ''
+  }</a>`
+}
+
+/** A piece of text with the stretches that matched underlined. */
+function lit(text, at) {
+  const spans = runs(at)
+  if (!spans.length) return esc(text)
+  let out = ''
+  let from = 0
+  for (const [start, stop] of spans) {
+    if (start >= text.length) break
+    const end = Math.min(stop, text.length)
+    out += `${esc(text.slice(from, start))}<u>${esc(text.slice(start, end))}</u>`
+    from = end
+  }
+  return out + esc(text.slice(from))
 }
 
 /**
