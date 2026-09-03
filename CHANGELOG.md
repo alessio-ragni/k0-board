@@ -6,6 +6,15 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.3.0]
+
+k0 could already tell you what each session was costing you in memory, and `Close` on a card was
+already how you gave it back. This version is k0 remembering to do that for you: a terminal left
+untouched all day is shut by itself, and the card it belongs to stays exactly where it was, ready
+to be picked up again. It is careful about which ones — never one that is working, never one with
+a question on screen — and it is the first thing in k0 you can change without changing k0, in a
+settings file that writes itself.
+
 ### Added
 
 - **The terminals you have stopped using close themselves, and the work stays.** A session left
@@ -259,7 +268,9 @@ here is everything that had to change for it to be somebody else's tool as well.
 - The personal fixtures k0 grew up on. `test/clean.test.mjs` now fails the build if any of them
   come back.
 
-[Unreleased]: https://github.com/alessio-ragni/k0-board/compare/v0.1.2...HEAD
+[Unreleased]: https://github.com/alessio-ragni/k0-board/compare/v0.3.0...HEAD
+[0.3.0]: https://github.com/alessio-ragni/k0-board/compare/v0.2.0...v0.3.0
+[0.2.0]: https://github.com/alessio-ragni/k0-board/compare/v0.1.2...v0.2.0
 [0.1.2]: https://github.com/alessio-ragni/k0-board/compare/v0.1.1...v0.1.2
 [0.1.1]: https://github.com/alessio-ragni/k0-board/compare/v0.1.0...v0.1.1
 [0.1.0]: https://github.com/alessio-ragni/k0-board/releases/tag/v0.1.0
