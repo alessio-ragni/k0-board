@@ -111,7 +111,13 @@ function postit(card, now) {
         : ''
     }
     <div class="foot">
-      ${dead ? '<span class="dead">session closed</span>' : ''}
+      ${
+        // Whoever shut the window, said in the same breath and the same weight — this line is
+        // already only an italic, and it stays one. Which of the two it is does not need its own
+        // place in the redraw signature: `auto_closed` never moves without `session_alive`
+        // moving with it, and that one is in there.
+        dead ? `<span class="dead">${card.auto_closed ? 'closed automatically' : 'session closed'}</span>` : ''
+      }
       <span class="since" title="${LABEL[card.status]} for ${since(card.status_since, now)}">${since(card.status_since, now)}</span>
     </div>
     <div class="actions"></div>`

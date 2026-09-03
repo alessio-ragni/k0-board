@@ -6,6 +6,39 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+### Added
+
+- **The terminals you have stopped using close themselves, and the work stays.** A session left
+  open goes on costing memory whether or not anybody is looking at it — the `claude` process, the
+  MCP servers it started, the browsers those opened — and `Close` on a card has always been the
+  cure. Now k0 remembers to do it for you: **after twelve hours with nothing happening, a yellow
+  card's terminal is shut and its memory given back**. Nothing is lost. The card stays exactly
+  where it is with the status it had, and **Resume** picks the conversation up where it was, the
+  same as it always did. Only yellow — *Your turn* — is ever touched: a card that is **working**
+  is somebody mid-thought, and a card with a **question or a plan on screen** would lose the very
+  thing it was showing you, because a dialog that is open has not been written to the transcript
+  yet. A session sitting in a **shell** is left alone too — there may be a command of yours
+  running in it, and k0 cannot see what. A window you were using an hour ago is never closed,
+  whatever the card's history says: every clock k0 has for that session is consulted and the
+  newest one wins.
+- **A card says who closed it.** Where a card used to read *session closed* it now reads *closed
+  automatically* if it was k0 that tidied it away. Same italic, same place, one word different.
+- **Settings, in a file that is the list of them.** `~/.k0/config.json` — on Windows
+  `%LOCALAPPDATA%\k0\config.json` — written out on the first run with every setting already in it
+  at its default, so opening it is how you find out what there is to change. It sits beside the
+  board rather than inside the app, so an update cannot throw it away, and k0 picks up a change by
+  itself without anything being restarted. `closeIdleTerminalsAfterHours` is the first entry:
+  **set it to `0` and the closing above never happens**. There is no settings page on the board and
+  there is not going to be one — the board is for what changes during a working day —
+  so `k0-board doctor` prints the whole list too, with what is in force and where the file is.
+
+### Fixed
+
+- **Resuming a session no longer types the old prompt back in.** A card's prompt belongs to the
+  moment the session starts; on **Resume** the conversation had already answered it hours ago, and
+  putting it back under the cursor was at best something stale in the way — at worst it was sent,
+  because where pasting is not available k0 types it instead. Start is unchanged.
+
 ## [0.2.0]
 
 k0 could always tell you how the work stood. This version lets it tell you whether the work is

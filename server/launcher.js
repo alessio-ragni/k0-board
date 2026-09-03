@@ -105,7 +105,11 @@ export async function launch({ card, sessionId, mode = 'start' }) {
   const up = await waitForSession(sessionId)
 
   if (autoSend) return { name, up, winId, pasted: true, autoSent: true }
-  if (!up || !card.prompt?.trim()) return { name, up, winId, pasted: false }
+  // The prompt belongs to the beginning. Resuming picks up a conversation that answered it hours
+  // ago, and putting it back under the cursor is at best a stale instruction in the way — at
+  // worst it is sent, because where pasting is unavailable the fallback below types it. This
+  // matters more now that k0 closes forgotten terminals by itself: a Resume is no longer rare.
+  if (resume || !up || !card.prompt?.trim()) return { name, up, winId, pasted: false }
 
   await waitForPrompt(winId)
 

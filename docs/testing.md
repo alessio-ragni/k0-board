@@ -65,7 +65,9 @@ ends in `.test.mjs`, but the error is a backstop, not the plan. The same goes fo
 directory — `os.homedir()` honours `$HOME` on POSIX and `%USERPROFILE%` on Windows, so both are
 pointed at a temporary directory when a test reads or writes under the home. `K0_HOME` moves the
 whole `~/.k0` tree in one go, which is what a test touching the logs wants: it is read by
-`server/paths.js` before anything else decides where to write.
+`server/paths.js` before anything else decides where to write. `K0_CONFIG` does the same for the
+settings file on its own, and a test that touches settings must set it: `server/settings.js` writes
+that file out, and a run that forgot would rewrite the settings of the machine it ran on.
 
 **Tidy up in `after`, and close the database before deleting its file.** Teardown written at the
 bottom of the file runs before the tests do. `after` is imported from the harness alongside
@@ -104,6 +106,15 @@ and what it would prove is that `spawn` works. What *can* be wrong quietly is th
 script a project should be run with, which of several open ports to show, when a slow start
 becomes a failure, and whether a directory is really inside a repository — and all of that lives
 in functions that take values and return values, in `server/servers.js`, and is covered.
+
+Closing a forgotten terminal is the same split again. Killing a process and shutting a window
+needs a machine and proves `kill`; deciding *which* terminal has sat still long enough is where a
+mistake is quiet and expensive — a window closed while somebody was about to go back to it. So
+`server/idle.js` takes a list of cards, a map of live sessions and a `now`, returns the ones to
+close, and touches nothing; `test/idle.test.mjs` proves every rule in it, including all the ones
+about what to leave alone, without a terminal anywhere. The settings that feed it are in the same
+file, because a number arriving from a hand-edited file is the other thing that can be wrong
+quietly.
 
 The two big browser files, `web/board.js` and `web/files.js`, are not tested either: they are
 written against the DOM, and testing them would mean either a browser or a fake one, and the fake

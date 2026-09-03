@@ -12,10 +12,11 @@ import { fileURLToPath } from 'node:url'
  * there is on borrowed time. Data now lives in a directory owned by the user, and the
  * installed copy of the app is disposable.
  *
- *   ~/.k0/k0.db      the board
- *   ~/.k0/app/       the installed copy of k0 (written by `k0-board install`)
- *   ~/.k0/logs/      service stdout/stderr
- *   ~/.k0/cache/     pasted images, the Chrome profile used for PDF export
+ *   ~/.k0/k0.db        the board
+ *   ~/.k0/config.json  the settings, written out with everything in it on the first run
+ *   ~/.k0/app/         the installed copy of k0 (written by `k0-board install`)
+ *   ~/.k0/logs/        service stdout/stderr
+ *   ~/.k0/cache/       pasted images, the Chrome profile used for PDF export
  *
  * On Windows the same tree goes under %LOCALAPPDATA%\k0, which is the local-only,
  * not-roamed location Windows expects for this kind of state.
