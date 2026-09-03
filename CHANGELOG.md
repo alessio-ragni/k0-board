@@ -39,6 +39,11 @@ All notable changes to this project are documented here. The format follows
   did, in another window — the save stops and says so, and what you typed stays exactly where it
   is. k0 will not write over somebody else's work without telling you.
 
+### Changed
+
+- Nothing a user can see: the coverage floor moves up to 87% of lines and 85% of branches, which
+  is where the two new modules leave it.
+
 ## [0.3.0]
 
 k0 could already tell you what each session was costing you in memory, and `Close` on a card was

@@ -19,8 +19,13 @@ section('The tree')
 
 check('an array counts items', tree('{"tags":["a","b"]}').html.includes('<em>2 items</em>'), true)
 check('an object counts keys', tree('{"a":{"b":1}}').html.includes('<em>1 key</em>'), true)
-// A fold with nothing inside it is a fold that lies: there is nothing to open.
-check('an empty object does not become a fold', tree('{"a":{}}').html.includes('<details'), false)
+// A fold with nothing inside it is a fold that lies: there is nothing to open. Only the file
+// itself is a fold here — the empty object inside it is a leaf.
+check(
+  'an empty object does not become a fold',
+  (tree('{"a":{}}').html.match(/<details/g) || []).length,
+  1
+)
 check('and it says it is empty', tree('{"a":{}}').html.includes('class="v empty">{}'), true)
 
 section('What it arrives showing')

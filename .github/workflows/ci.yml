@@ -51,5 +51,5 @@ jobs:
         run: >
           node --test --experimental-test-coverage
           --test-coverage-exclude="platform/**" --test-coverage-exclude="test/**"
-          --test-coverage-lines=84 --test-coverage-branches=83
+          --test-coverage-lines=87 --test-coverage-branches=85
           "test/*.test.mjs"
