@@ -476,18 +476,18 @@ quietly write over somebody else's work.
 
 The search at the top looks in two places and keeps them apart:
 
-- **Names** — not the exact word, but the letters you type in the order you type them: `audrep`
-  finds `docs/audit-report.md`. It filters as you type, asking the server nothing. The letters
-  that matched are **underlined in the name**, so every row says why it is there: `aud`it-`rep`ort
-  reads as the two words you meant, while a row where only one stray letter is marked — or none at
-  all, because it matched on the path — is visibly a coincidence and not your file. Only in the
-  name: marked in the path too, every row came out striped and the mark said nothing.
+- **Names** — not the exact word, but the letters you type in the order you type them, **inside
+  the file's own name**: `audrep` finds `docs/audit-report.md`. It filters as you type, asking the
+  server nothing. The directory is never searched — it used to be, and `.env` would turn up a
+  `v1.0-ROADMAP.md` that merely had those four letters scattered across its folder, three of them
+  in a name nobody was reading. The letters that matched are **underlined**, so every row says why
+  it is there: `aud`it-`rep`ort reads as the two words you meant.
 - **In the text** — inside the documents, with the line the word appears on and the word
   highlighted in yellow. Because what you remember about a file is what was in it, not what it was
   called. Accents do not need typing — `cafe` finds `café`.
 
-The two marks are different on purpose: a line under the letters means they were found in the
-path, yellow means the word was found inside the file.
+The two marks are different on purpose: a line under the letters means they are in the file's
+name, yellow means the word was found inside the file.
 
 There is no index. The documents are read every time: a few hundred files of a few KB, all
 already in the operating system's cache. An index would cost more and go stale.

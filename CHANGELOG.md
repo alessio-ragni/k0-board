@@ -46,16 +46,14 @@ All notable changes to this project are documented here. The format follows
   on. It appears only when a hidden file would have come **above** everything on screen, so it is
   not there on the searches where it would only be noise.
 
-- **The name search underlines the letters it matched, so every row says why it is there.** The
-  search looks for your letters in order and scattered, which is what makes `audrep` find
-  `docs/audit-report.md` — and also what made a search for `.env` come back with
-  `verify-events.md` and no way to see why. Now the letters are marked in the file's name:
-  `aud`it-`rep`ort reads as the two words you meant, and a row with one stray letter marked reads
-  as the coincidence it is. Neighbouring letters are underlined as one stretch, not one by one,
-  and the path underneath is left alone — marked there too, every row came out striped and the
-  mark stopped meaning anything. The mark is a line and not the yellow used for the text search,
-  so the two answers stay apart: yellow means the word is inside the file, a line means it is in
-  the name.
+- **The name search looks only inside the file's own name, and underlines what it found.** The
+  directory used to be searched too, scattered letters and all, which is how `.env` once turned up
+  `v1.0-ROADMAP.md` — three of its four letters came from `.planning/milestones/`, a folder nobody
+  was reading, with no way to see that from the row. Now the directory is never searched, and the
+  letters that matched are underlined right in the name: `aud`it-`rep`ort reads as the two words
+  you meant. Neighbouring letters are underlined as one stretch, not one by one. The mark is a
+  line and not the yellow used for the text search, so the two answers stay apart: yellow means
+  the word is inside the file, a line means it is in the name.
 
 ### Changed
 

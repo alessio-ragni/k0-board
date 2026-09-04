@@ -515,7 +515,11 @@ section('Searching the names')
 check('scattered letters are enough', score('docs/audit-report.md', 'audrep') >= 0, true)
 check('if one letter is missing, nothing', score('docs/audit-report.md', 'audxyz'), -1)
 check('an empty search scores zero for everybody', score('anything', '   '), 0)
-check('the file name beats the directory', score('report/x.md', 'report') < score('x/report.md', 'report'), true)
+// The directory is never searched: the case that made this the rule was `.env` scattering its
+// four letters across `.planning/milestones/` and turning up a roadmap file that has nothing to
+// do with what was typed, with no way to see why it was there at all.
+check('a match only in the directory is no match', score('report/x.md', 'report'), -1)
+check('the same word in the name matches', score('x/report.md', 'report') >= 0, true)
 check('letters together beat letters apart', score('board.css', 'board') > score('b-o-a-r-d.css', 'board'), true)
 {
   const files = ['server/sessions.js', 'web/board.css', 'docs/audit-report.md', 'README.md']
@@ -532,9 +536,11 @@ section('Why a row matched')
 check('the positions are the letters, in order', positions('docs/audit-report.md', 'audrep').join(','), '5,6,7,11,12,13')
 check('and there is one for every letter typed', positions('docs/audit-report.md', 'audrep').length, 6)
 check('an exact name is matched from the first letter', positions('.env', '.env').join(','), '0,1,2,3')
-// The case that made this necessary: `.env` finds a document three words wide, and only the
-// underline explains why.
-check('scattered letters say where they were found', positions('.claude/commands/verify-events.md', '.env').join(','), '0,6,13,17')
+// The case that made the directory search go away: three of these four letters used to come
+// from `.claude/commands/`, and the row that found them had no honest way to explain itself.
+check('a match built mostly out of the directory does not happen', positions('.claude/commands/verify-events.md', '.env'), null)
+// The dot in the name itself still matches: `.env.md` is a name, not a coincidence of folders.
+check('the same query against a name that really has it', positions('notes/.env.md', '.env').join(','), '6,7,8,9')
 check('no match, no positions', positions('a.md', 'zz'), null)
 check('nothing searched for, nothing to underline', positions('a.md', '  '), null)
 check(

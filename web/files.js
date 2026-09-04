@@ -228,17 +228,12 @@ const howMany = (out) => countIn(out.named) + countIn(out.maybe)
 function rowHtml(f) {
   rows.push(f)
   const dir = dirOf(f.p)
-  // Which letters put this row here. The search matches letters in order and scattered, so
-  // without them a result is a riddle: `.env` brings up `verify-events.md` and there is no way to
-  // see that it was the dot, the e, the n and the v, three words apart. Underlined, the search
-  // explains itself — including when the answer is "this is not what you meant".
-  //
-  // In the name only. Marked in the path as well it was noise: a directory is long, every search
-  // finds a few of its letters somewhere, and the row ended up striped in a way that said nothing.
-  // The name is what you read, so it is the one that has to answer for itself.
+  // Which letters put this row here — the search only ever looks inside the name, so every
+  // position `positions()` hands back already falls inside it; the offset just undoes what it
+  // added to make that position mean something against the whole path.
   const at = positions(f.p, $('#q').value.trim())
   const nameAt = dir ? dir.length + 1 : 0
-  const name = lit(nameOf(f.p), at?.filter((i) => i >= nameAt).map((i) => i - nameAt))
+  const name = lit(nameOf(f.p), at?.map((i) => i - nameAt))
   const road = dir ? `<i>${esc(dir)}</i>` : ''
   return `<a class="row${f.p === open?.path ? ' on' : ''}${changed.has(f.p) ? ' hot' : ''}" href="${esc(
     viewUrl(f.p)
