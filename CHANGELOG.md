@@ -38,14 +38,12 @@ All notable changes to this project are documented here. The format follows
   files. If the file **changed on disk while you were editing it** — a session wrote it, or you
   did, in another window — the save stops and says so, and what you typed stays exactly where it
   is. k0 will not write over somebody else's work without telling you.
-
 - **A search whose best answer is switched off says so.** Looking for `.env` with the switch off
   used to give eighty files that merely contain those four letters somewhere in their path, and no
   hint that the one you wanted was a click away. Now a line appears above the results — *3
   configuration files also match — show them* — and it is the button: clicking it turns the switch
   on. It appears only when a hidden file would have come **above** everything on screen, so it is
   not there on the searches where it would only be noise.
-
 - **The name search looks only inside the file's own name, and underlines what it found.** The
   directory used to be searched too, scattered letters and all, which is how `.env` once turned up
   `v1.0-ROADMAP.md` — three of its four letters came from `.planning/milestones/`, a folder nobody

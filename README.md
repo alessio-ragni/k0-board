@@ -411,6 +411,28 @@ At the top come the **folders**, then the files, in three groups:
   no git.
 - **All files** — everything else, in path order.
 
+### Searching
+
+The search at the top looks in two places and keeps them apart:
+
+- **Names** — not the exact word, but the letters you type in the order you type them, **inside
+  the file's own name**: `audrep` finds `docs/audit-report.md`. It filters as you type, asking the
+  server nothing. The directory is never searched — it used to be, and `.env` would turn up a
+  `v1.0-ROADMAP.md` that merely had those four letters scattered across its folder, three of them
+  in a name nobody was reading. The letters that matched are **underlined**, so every row says why
+  it is there: `aud`it-`rep`ort reads as the two words you meant.
+- **In the text** — inside the documents, with the line the word appears on and the word
+  highlighted in yellow. Because what you remember about a file is what was in it, not what it was
+  called. Accents do not need typing — `cafe` finds `café`.
+
+The two marks are different on purpose: a line under the letters means they are in the file's
+name, yellow means the word was found inside the file.
+
+There is no index. The documents are read every time: a few hundred files of a few KB, all
+already in the operating system's cache. An index would cost more and go stale.
+
+`/` puts the cursor in the search, arrows scroll, Enter opens, Esc clears.
+
 ### Going into a folder
 
 Click a folder and the listing narrows to it: the folders inside it first, then its files. At the
@@ -473,26 +495,6 @@ what you opened the repository with Claude for.
 If the file **changed on disk** while you were editing — a session wrote it, or you did, in
 another window — the save stops and says so, and what you typed stays where it is. k0 will not
 quietly write over somebody else's work.
-
-The search at the top looks in two places and keeps them apart:
-
-- **Names** — not the exact word, but the letters you type in the order you type them, **inside
-  the file's own name**: `audrep` finds `docs/audit-report.md`. It filters as you type, asking the
-  server nothing. The directory is never searched — it used to be, and `.env` would turn up a
-  `v1.0-ROADMAP.md` that merely had those four letters scattered across its folder, three of them
-  in a name nobody was reading. The letters that matched are **underlined**, so every row says why
-  it is there: `aud`it-`rep`ort reads as the two words you meant.
-- **In the text** — inside the documents, with the line the word appears on and the word
-  highlighted in yellow. Because what you remember about a file is what was in it, not what it was
-  called. Accents do not need typing — `cafe` finds `café`.
-
-The two marks are different on purpose: a line under the letters means they are in the file's
-name, yellow means the word was found inside the file.
-
-There is no index. The documents are read every time: a few hundred files of a few KB, all
-already in the operating system's cache. An index would cost more and go stale.
-
-`/` puts the cursor in the search, arrows scroll, Enter opens, Esc clears.
 
 ### Pasting a chunk of chat
 
