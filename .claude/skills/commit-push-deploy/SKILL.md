@@ -1,6 +1,6 @@
 ---
 name: commit-push-deploy
-description: The whole way out of a working tree — documentation, tests, one commit, the push to GitHub, and, when it is a release, the tag that publishes k0 to npm. Use this skill whenever the user asks for the work to be shipped, in whatever words and whatever language — "commit and push", "ship it", "cut a release", "publish", "committa e pusha", "manda in produzione", "fai una release", "/commit-push-deploy". It calls the changelog skill rather than repeating it, runs the tests and the coverage floor before anything leaves the machine, watches the run on GitHub, and stops to ask exactly once, before the tag that cannot be taken back. Do not use it to write a commit message on its own, to inspect what changed, or when the user only wants the changelog.
+description: The whole way out of a working tree — documentation, tests, one commit, the push to GitHub, and, when it is a release, the tag that publishes k0 to npm. Use this skill whenever the user asks for the work to be shipped, in whatever words and whatever language — "commit and push", "ship it", "cut a release", "publish", "committa e pusha", "manda in produzione", "fai una release", "/commit-push-deploy". It calls the changelog skill rather than repeating it, runs the tests and the coverage floor before anything leaves the machine, watches the run on GitHub, and — Alessio having asked for the confirmation to go away for good, see "Why there is no question here" — pushes the tag that publishes without stopping to ask. Do not use it to write a commit message on its own, to inspect what changed, or when the user only wants the changelog.
 ---
 
 # Getting the work out
@@ -157,32 +157,40 @@ Only when the user asked for one. Steps 1–5 have already happened; what follow
 5. **Push `main` first**, before the tag. The released commit has to be reachable on the branch;
    a tag pointing at a commit no branch contains is how a release becomes archaeology.
 6. **Tag it:** `git tag -a vx.y.z -m "…"`.
-7. **Stop. Ask.** See below.
-8. **`git push origin vx.y.z`** — this, and nothing else, is what publishes.
-9. **Watch it:**
+7. **`git push origin vx.y.z`** — this, and nothing else, is what publishes. No question first;
+   see *Why there is no question here* below.
+8. **Watch it:**
    ```bash
    gh run list --workflow=Release --limit 1
    gh run watch <id> --exit-status
    ```
-10. **Check the registry actually has it, and that it is provably ours:**
-    ```bash
-    npm view k0-board version
-    npm view k0-board@x.y.z dist.attestations --json
-    ```
-    The second one has to come back with a `provenance` block and a `slsa.dev` predicate. If it
-    does not, the tarball went out without the signed statement and that is worth saying out loud.
+9. **Check the registry actually has it, and that it is provably ours:**
+   ```bash
+   npm view k0-board version
+   npm view k0-board@x.y.z dist.attestations --json
+   ```
+   The second one has to come back with a `provenance` block and a `slsa.dev` predicate. If it
+   does not, the tarball went out without the signed statement and that is worth saying out loud.
 
-### The one question
+### Why there is no question here
 
-Everything above happens because the user asked for the work to be shipped. Pushing the tag is
-different, and it is the only place this skill stops:
+This skill used to stop once, right before step 7, and ask before the tag that publishes. On
+5 September 2026, right after watching that question fire on an ordinary release he had already
+asked for in as many words, Alessio asked for it to go away for good — so that it would never ask
+again, not even once more. Asking again there was not caution; it was not believing him the first
+time.
 
-> About to publish **k0-board x.y.z** to npm. \<one line on what the version is about\>. This
-> cannot be undone. Go ahead?
+So nothing above is skipped **except that one question**. Everything else that made the question
+safe to remove is still exactly as strict as it was: a release only starts because the user asked
+for one (the line at the top of *The release*), the tests and the tag/version check still run
+inside the workflow itself and can still fail it, and step 9 above still checks the registry
+afterward rather than assuming. What is gone is the pause between a tag that has already been
+decided on and the push that makes it real — the same trust step 4's push to `main` already
+runs on without asking.
 
-Ask it once, plainly, and wait. Do not ask it again later, and do not ask anything else along the
-way — a second question teaches the user to wave questions through, which is exactly what must not
-happen at this one.
+If this ever needs to be undone — the release stopped saying anything before it happened, and it
+should say something again — that is a sentence to Alessio, not a thing to notice and fix quietly:
+put the question back, and record here when and why.
 
 ## When it goes wrong
 
