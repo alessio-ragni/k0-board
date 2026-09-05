@@ -6,6 +6,15 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.4.0]
+
+The file viewer stops being read-only, and stops being just a pile of documents. It now shows the
+folders a repository is built from, and behind a switch it shows the configuration too — an
+`.env`, a `package.json`, a workflow's YAML — laid out as the kind of thing each one is, and
+editable in place with a Save button. The name search, meanwhile, turns out to have been quietly
+wrong the whole time: it matched letters scattered across a whole path rather than the file you
+meant, and it now looks only at the name and shows you why a row is there at all.
+
 ### Added
 
 - **Folders, at last.** The file viewer's listing starts with the folders, and clicking one takes
