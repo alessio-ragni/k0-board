@@ -100,7 +100,12 @@ function load() {
  * because there neither component is zero.
  */
 function velocity() {
-  if (held || !inside || document.querySelector('dialog[open]')) return [0, 0]
+  // A note being dragged from one state column to another is a button held down, and the board
+  // has to stand still for it exactly as it does for one — but a native drag is not a pointer
+  // gesture: the browser cancels the pointer when it starts and reports no move until it ends, so
+  // `held` goes false and the last position before the drag stands. Without this the board slides
+  // under a note in the air, on the reading of where the pointer was a second ago.
+  if (held || !inside || document.querySelector('dialog[open], .dragging')) return [0, 0]
   const ramp = (d) => {
     const t = 1 - d / EDGE
     return t > 0 ? t * t : 0
@@ -205,7 +210,7 @@ export function initView() {
     wake()
   })
   // Outside the page, or with a button held, the board stands still: that way a click near the
-  // edge lands instead of chasing a card that is running away. A pointer that has left the window
+  // edge lands instead of chasing a post-it that is running away. A pointer that has left the window
   // stops reporting, and without this the last report would stand — "I am at the edge" — and the
   // board would scroll forever on its own.
   document.documentElement.addEventListener('pointerleave', () => (inside = false))

@@ -258,7 +258,7 @@ async function install() {
     note(`Where: ${extra.target}`)
   }
 
-  // Last of all, on purpose: by now the imported cards are on the board, so what opens is
+  // Last of all, on purpose: by now the imported stories are on the board, so what opens is
   // somebody's own work rather than an empty grid they would have to reload.
   if (up && !flag('no-open')) {
     say(`\n${bold('Done.')} The board is open at ${await openBoard()}`)
@@ -268,23 +268,48 @@ async function install() {
   if (process.platform === 'win32') note(`If that name does not resolve, use http://127.0.0.1:${PORT}`)
 }
 
+// The commands you type at Claude Code, and every one of them ships in the package. Claude Code
+// only ever looks in two places for a skill — the repository you have open, and your own
+// `~/.claude/skills/` — and neither of them is where npm puts k0, so a command that is not copied
+// out is a command that does not exist however carefully it was written. `k0-whatsnew` and
+// `k0-changelog` are deliberately not here: k0 runs those two itself, from its own directory, and
+// nobody types them.
+const SKILLS = [
+  ['k0-import', 'fills the board from sessions you already have'],
+  ['k0-epic', 'an epic, discussed in rounds, then a tree of stories'],
+  ['k0-story', 'one story, straight onto the board'],
+  ['k0-discuss', 'the same rounds against a story that exists'],
+  ['k0-split', 'a story that will not close, cut into tasks'],
+  ['k0-plan', 'plan mode, with the decisions written in as constraints'],
+  ['k0-work', 'the worktree, the work, the log, the merge back'],
+  ['k0-verify', 'the counter-check, one decision at a time'],
+  ['k0-next', 'what to pick up now, and why'],
+  ['k0-order', 'priority and dependencies, dictated'],
+]
+
 /**
- * The import skill lives in the repository, which is enough for anybody who cloned it. For
- * anybody who installed with one command there is no repository to open Claude Code in, so it is
- * offered as a copy into their own skills directory — where it works from any project.
+ * The skills live in the repository, which is enough for anybody who cloned it. For anybody who
+ * installed with one command there is no repository to open Claude Code in, so they are offered
+ * as a copy into their own skills directory — where they work from any project.
+ *
+ * One question for all of them, and it is asked only about the ones that are not already there:
+ * somebody upgrading has answered it once, and being asked ten times is how a yes becomes a no.
  */
 async function offerSkill() {
-  const from = path.join(APP_DIR, '.claude', 'skills', 'k0-import')
-  const to = path.join(os.homedir(), '.claude', 'skills', 'k0-import')
-  if (!fs.existsSync(from) || fs.existsSync(to)) return
+  const home = path.join(os.homedir(), '.claude', 'skills')
+  const missing = SKILLS.filter(
+    ([name]) => fs.existsSync(path.join(APP_DIR, '.claude', 'skills', name)) && !fs.existsSync(path.join(home, name))
+  )
+  if (!missing.length) return
   say('')
+  for (const [name, what] of missing) note(`${bold(`/${name}`)} ${dim(`— ${what}`)}`)
   const yes = await confirm(
-    `Install the ${bold('/k0-import')} skill for Claude Code? ${dim('(fills the board from sessions you already have)')}`,
+    `Install ${bold(String(missing.length))} ${missing.length === 1 ? 'command' : 'commands'} for Claude Code?`,
     { fallback: true }
   )
   if (!yes) return
-  copyTree(from, to)
-  ok(`copied into ${to}`)
+  for (const [name] of missing) copyTree(path.join(APP_DIR, '.claude', 'skills', name), path.join(home, name))
+  ok(`copied into ${home}`)
 }
 
 /**
@@ -327,7 +352,7 @@ async function offerImport() {
     const res = await api('/api/sessions/import', { items: items.slice(i, i + 30) })
     created += res.created
   }
-  ok(`${created} cards on the board`)
+  ok(`${created} stories on the board`)
   note('Run /k0-import inside Claude Code for titles written by reading the conversation.')
 }
 

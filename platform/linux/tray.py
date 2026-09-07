@@ -152,7 +152,7 @@ def _forget(notification):
         _shown.remove(notification)
 
 
-def notify(card_id, title, body):
+def notify(story_id, title, body):
     """Say that a session is waiting, and let the click take you to it.
 
     The action is named `default`, which is what a notification daemon calls the click on the
@@ -163,7 +163,7 @@ def notify(card_id, title, body):
     if Notify is not None:
         try:
             note = Notify.Notification.new(title, body, None)
-            note.add_action("default", "Open", lambda *_: api(f"/api/card/{card_id}/focus", {}))
+            note.add_action("default", "Open", lambda *_: api(f"/api/story/{story_id}/focus", {}))
             note.connect("closed", _forget)
             _shown.append(note)
             if note.show():
@@ -212,12 +212,12 @@ class Tray:
         return True
 
     def announce(self, waiting):
-        """Notify about cards that have just started waiting, not about every one every time."""
-        now = {(card["id"], card["status"]) for card in waiting}
+        """Notify about stories that have just started waiting, not about every one every time."""
+        now = {(story["id"], story["status"]) for story in waiting}
         if not self.first_pass:
-            for card in waiting:
-                if (card["id"], card["status"]) not in self.seen:
-                    notify(card["id"], LABELS.get(card["status"], "k0"), card.get("title", ""))
+            for story in waiting:
+                if (story["id"], story["status"]) not in self.seen:
+                    notify(story["id"], LABELS.get(story["status"], "k0"), story.get("title", ""))
         self.seen = now
         self.first_pass = False
 
@@ -231,9 +231,9 @@ class Tray:
         elif not waiting:
             self.add_item("Nothing waiting for you", None, enabled=False)
         else:
-            for card in waiting:
-                label = f"{LABELS.get(card['status'], card['status'])} — {card.get('title', '')}"
-                self.add_item(label, lambda _w, c=card: api(f"/api/card/{c['id']}/focus", {}))
+            for story in waiting:
+                label = f"{LABELS.get(story['status'], story['status'])} — {story.get('title', '')}"
+                self.add_item(label, lambda _w, c=story: api(f"/api/story/{c['id']}/focus", {}))
 
         self.menu.append(Gtk.SeparatorMenuItem())
         for value, label in MODES:

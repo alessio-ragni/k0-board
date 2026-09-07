@@ -66,7 +66,7 @@ export async function open({ command, title }) {
 
 /**
  * Windows Terminal owns its tab titles and does not take instructions about them from
- * outside, so a card renamed after its session started keeps the old name in the title bar
+ * outside, so a story renamed after its session started keeps the old name in the title bar
  * until the session is restarted. Reported as unavailable rather than failing silently.
  */
 export async function setTitle() {
@@ -74,7 +74,7 @@ export async function setTitle() {
 }
 
 export async function focus(handle) {
-  if (!handle) return { ok: false, error: 'This card has no terminal window of its own' }
+  if (!handle) return { ok: false, error: 'This story has no terminal window of its own' }
   const found = await psJson(
     `${USER32}
      $p = ${findWindow(handle)}

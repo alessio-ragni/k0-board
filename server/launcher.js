@@ -69,11 +69,14 @@ async function waitForPrompt(handle, timeoutMs = 15000) {
 }
 
 /**
- * Starts (or resumes) a card's session.
+ * Starts (or resumes) a story's session.
  * mode: 'start' assigns a new session id, 'resume' reopens the existing one.
+ *
+ * `story` is the flat row `db.listStories()` hands over, session and all: `auto_send` lives on
+ * the session now, and it is read from there through the same row rather than looked up again.
  */
-export async function launch({ card, sessionId, mode = 'start' }) {
-  const name = sessionName(card.title)
+export async function launch({ story, sessionId, mode = 'start' }) {
+  const name = sessionName(story.title)
   const bin = findClaude()
   const resume = mode === 'resume'
   const args = []
@@ -97,10 +100,10 @@ export async function launch({ card, sessionId, mode = 'start' }) {
   args.push('-n', name)
   // With "send it for me" the prompt goes straight to the CLI and starts without touching
   // anything.
-  const autoSend = mode === 'start' && card.auto_send && card.prompt?.trim()
-  if (autoSend) args.push(card.prompt.trim())
+  const autoSend = mode === 'start' && story.auto_send && story.prompt?.trim()
+  if (autoSend) args.push(story.prompt.trim())
 
-  const command = terminal.buildCommand({ cwd: card.project_path, bin, args })
+  const command = terminal.buildCommand({ cwd: story.project_path, bin, args })
   const winId = await terminal.open({ command, title: name, fontSize: await fontSize() })
   const up = await waitForSession(sessionId)
 
@@ -109,17 +112,17 @@ export async function launch({ card, sessionId, mode = 'start' }) {
   // ago, and putting it back under the cursor is at best a stale instruction in the way — at
   // worst it is sent, because where pasting is unavailable the fallback below types it. This
   // matters more now that k0 closes forgotten terminals by itself: a Resume is no longer rare.
-  if (resume || !up || !card.prompt?.trim()) return { name, up, winId, pasted: false }
+  if (resume || !up || !story.prompt?.trim()) return { name, up, winId, pasted: false }
 
   await waitForPrompt(winId)
 
   if (capabilities.terminal.pasteWithoutSending) {
-    const res = await terminal.paste(card.prompt.trim(), winId)
+    const res = await terminal.paste(story.prompt.trim(), winId)
     if (res.pasted) return { name, up, winId, ...res }
   }
 
   // Pasting is unavailable or was refused — on macOS that means no Accessibility permission.
   // We type it instead, which sends it.
-  const fallback = await terminal.type(card.prompt.trim(), winId)
+  const fallback = await terminal.type(story.prompt.trim(), winId)
   return { name, up, winId, pasted: false, autoSent: fallback.written, ...fallback }
 }

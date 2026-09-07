@@ -14,19 +14,19 @@ export const DAY = 24 * 60 * 60 * 1000
  *
  * `IDLE` is deliberately not one of them, and it is the only debatable line in this file. It
  * means "your turn", so it looks like it belongs — but it is also the resting state of every
- * terminal you have left open, and on a real board nearly every live card is sitting in it. Let
+ * terminal you have left open, and on a real board nearly every live story is sitting in it. Let
  * it hold a column and nothing ever folds: a session you finished with three weeks ago and never
  * closed would keep its column at full width for ever. So `IDLE` gets the same treatment as
  * everything else — recent, and it stays; a fortnight old, and it goes to `Old`, where it is one
- * click away. Nothing is closed either way: the terminal is still open, and the card is still
+ * click away. Nothing is closed either way: the terminal is still open, and the story is still
  * exactly where you left it.
  */
 const DEMANDING = new Set(['ASK', 'PLANNED', 'WORKING', 'PLANNING'])
 
-/** The last time each repository was touched: the freshest of its cards. */
-export function lastTouched(cards) {
+/** The last time each repository was touched: the freshest of its stories. */
+export function lastTouched(stories) {
   const map = new Map()
-  for (const c of cards) {
+  for (const c of stories) {
     const t = Number(c.updated_at) || 0
     if (t > (map.get(c.project_path) ?? 0)) map.set(c.project_path, t)
   }
@@ -34,9 +34,9 @@ export function lastTouched(cards) {
 }
 
 /** The repositories with something going on in them right now. */
-export function busy(cards) {
+export function busy(stories) {
   const set = new Set()
-  for (const c of cards) if (DEMANDING.has(c.status)) set.add(c.project_path)
+  for (const c of stories) if (DEMANDING.has(c.status)) set.add(c.project_path)
   return set
 }
 
@@ -71,10 +71,10 @@ export function cutoff(touched) {
  *
  * The order of `paths` is kept: whoever asked has already sorted them.
  */
-export function split({ paths, cards, folded = new Set(), held = new Set() }) {
-  const touched = lastTouched(cards)
+export function split({ paths, stories, folded = new Set(), held = new Set() }) {
+  const touched = lastTouched(stories)
   const line = cutoff(touched)
-  const alive = busy(cards)
+  const alive = busy(stories)
   const open = []
   const old = []
   for (const p of paths) {

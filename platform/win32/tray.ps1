@@ -75,12 +75,12 @@ $menu = New-Object System.Windows.Forms.ContextMenuStrip
 $notify.ContextMenuStrip = $menu
 
 # Clicking the balloon brings that session's terminal up front, which is the whole point of being
-# told. Windows shows one balloon at a time and replaces it rather than queueing, so the card the
+# told. Windows shows one balloon at a time and replaces it rather than queueing, so the story the
 # click belongs to is always the last one announced — there is nothing else it could be.
 $script:LastNotified = $null
 $notify.Add_BalloonTipClicked({
     if ($null -ne $script:LastNotified) {
-      Invoke-K0 "/api/card/$($script:LastNotified)/focus" @{} | Out-Null
+      Invoke-K0 "/api/story/$($script:LastNotified)/focus" @{} | Out-Null
     }
   }) | Out-Null
 
@@ -100,10 +100,10 @@ function Update-K0Menu($Waiting, [bool]$Down) {
   } elseif (-not $Waiting -or $Waiting.Count -eq 0) {
     Add-K0Item 'Nothing waiting for you' $null $false | Out-Null
   } else {
-    foreach ($card in $Waiting) {
-      $label = "$($Labels[$card.status]) - $($card.title)"
-      $id = $card.id
-      Add-K0Item $label ([System.EventHandler]{ Invoke-K0 "/api/card/$id/focus" @{} | Out-Null }.GetNewClosure()) | Out-Null
+    foreach ($story in $Waiting) {
+      $label = "$($Labels[$story.status]) - $($story.title)"
+      $id = $story.id
+      Add-K0Item $label ([System.EventHandler]{ Invoke-K0 "/api/story/$id/focus" @{} | Out-Null }.GetNewClosure()) | Out-Null
     }
   }
 
@@ -126,17 +126,17 @@ function Update-K0Menu($Waiting, [bool]$Down) {
     }) | Out-Null
 }
 
-# Notify about cards that have just started waiting, not about every one on every pass.
+# Notify about stories that have just started waiting, not about every one on every pass.
 function Show-K0Notifications($Waiting) {
   $now = @{}
-  foreach ($card in $Waiting) { $now["$($card.id):$($card.status)"] = $true }
+  foreach ($story in $Waiting) { $now["$($story.id):$($story.status)"] = $true }
   if (-not $script:FirstPass) {
-    foreach ($card in $Waiting) {
-      $key = "$($card.id):$($card.status)"
+    foreach ($story in $Waiting) {
+      $key = "$($story.id):$($story.status)"
       if (-not $script:Seen.ContainsKey($key)) {
-        $script:LastNotified = $card.id
-        $notify.BalloonTipTitle = $Labels[$card.status]
-        $notify.BalloonTipText = $card.title
+        $script:LastNotified = $story.id
+        $notify.BalloonTipTitle = $Labels[$story.status]
+        $notify.BalloonTipText = $story.title
         $notify.ShowBalloonTip(4000)
       }
     }

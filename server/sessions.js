@@ -5,7 +5,7 @@ import { StringDecoder } from 'node:string_decoder'
 import { PROJECTS_DIR } from './watcher.js'
 
 /**
- * Claude Code sessions that have already happened, ready to become cards.
+ * Claude Code sessions that have already happened, ready to become stories.
  *
  * Nothing is written here: it only reads ~/.claude/projects, where Claude Code keeps the
  * transcript of every session in a JSONL file.
@@ -238,13 +238,13 @@ function digest(file) {
 }
 
 /**
- * The sessions worth offering as cards, most recent first.
+ * The sessions worth offering as stories, most recent first.
  *
  * Two passes, because the second one is expensive: first the head of every transcript in the
  * window is checked, to keep only the real sessions and work out which repository they belong
  * to; then only the ones that actually fit under the per-repository cap are read in full.
  *
- * `exclude` are the session ids already on a card: re-importing must not make duplicates.
+ * `exclude` are the session ids already on a story: re-importing must not make duplicates.
  * `live` are the sessions still running, which can be attached too.
  * `root` only changes in the tests, to look at a directory of fake transcripts.
  */
@@ -316,7 +316,7 @@ export function scanSessions({
     for (const c of list) {
       if (taken >= perRepo) break
       const d = digest(c.file)
-      // Not one word of yours in the transcript: there is nothing for a card to say.
+      // Not one word of yours in the transcript: there is nothing for a story to say.
       if (!d.turns) continue
       taken++
       out.push({

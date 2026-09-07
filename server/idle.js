@@ -2,8 +2,8 @@
  * Which terminals have been sitting there long enough to be worth giving back.
  *
  * A session left open costs memory whether or not anybody is looking at it: the `claude` process,
- * the MCP servers it started, the browsers those opened. `Close` on a card has always been the
- * cure — it stops the session and shuts its window, leaves the card exactly where it is, and
+ * the MCP servers it started, the browsers those opened. `Close` on a post-it has always been the
+ * cure — it stops the session and shuts its window, leaves the story exactly where it is, and
  * `Resume` picks the conversation up where it was. This is that same gesture, remembered for you.
  *
  * Only the deciding lives here. Nothing in this file kills anything, opens anything or reads a
@@ -13,7 +13,7 @@
 const HOUR = 3600000
 
 /**
- * The cards whose terminal should go, most of the rules being about what to leave alone.
+ * The stories whose terminal should go, most of the rules being about what to leave alone.
  *
  * Yellow only — `IDLE`, the ball in your court. Not because the others are less forgotten but
  * because of what closing them would destroy: a question and a finished plan are drawn by the
@@ -22,15 +22,15 @@ const HOUR = 3600000
  * Code reports as `shell` is a shell you dropped into, which may well have a command of yours
  * running in it — k0 does not know what, so k0 does not touch it.
  */
-export function dueForClose({ cards, live, hours, now = Date.now() }) {
+export function dueForClose({ stories, live, hours, now = Date.now() }) {
   if (!(hours > 0)) return [] // switched off, and nothing to think about
   const deadline = now - hours * HOUR
-  return cards.filter((card) => {
-    if (card.completed_at || !card.session_id || !card.session_alive) return false
-    if (card.status !== 'IDLE') return false
-    const session = live.get(card.session_id)
+  return stories.filter((story) => {
+    if (story.completed_at || !story.session_id || !story.session_alive) return false
+    if (story.status !== 'IDLE') return false
+    const session = live.get(story.session_id)
     if (!session || session.status !== 'idle') return false
-    return lastSignOfLife(card, session) <= deadline
+    return lastSignOfLife(story, session) <= deadline
   })
 }
 
@@ -48,9 +48,11 @@ export function dueForClose({ cards, live, hours, now = Date.now() }) {
  * changes state and are not a heartbeat — a session that had been busy for twenty-three minutes
  * was carrying timestamps twenty-three minutes old — so they say what they appear to say.
  *
- * `updated_at` matters for the case none of the others cover: resuming a card leaves the status at
- * `IDLE`, so no new event is written and `status_since` stays as old as it was.
+ * `updated_at` matters for the case none of the others cover: resuming a story leaves the status
+ * at `IDLE`, so no new event is written and `status_since` stays as old as it was. It is also why
+ * a session changing status still touches the story's `updated_at` now that the two live in
+ * different tables — see `applyDerivedStatus` in db.js.
  */
-export function lastSignOfLife(card, session) {
-  return Math.max(card.updated_at || 0, card.status_since || 0, session.updatedAt || 0, session.statusUpdatedAt || 0)
+export function lastSignOfLife(story, session) {
+  return Math.max(story.updated_at || 0, story.status_since || 0, session.updatedAt || 0, session.statusUpdatedAt || 0)
 }

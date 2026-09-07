@@ -79,7 +79,7 @@ section('Written down, not released')
 // nobody reads by Thursday.
 section('Which repositories are worth mentioning')
 
-const repo = (name, { commits = [], dirty = [], cards = [] } = {}) => ({
+const repo = (name, { commits = [], dirty = [], stories = [] } = {}) => ({
   name,
   path: `/repo/${name}`,
   remote: true,
@@ -88,7 +88,7 @@ const repo = (name, { commits = [], dirty = [], cards = [] } = {}) => ({
   dirty,
   dirtyTotal: dirty.length,
   unreleased: null,
-  cards,
+  stories,
 })
 const commit = (subject, at, online = true) => ({ sha: 'abc1234', at: new Date(at).toISOString(), subject, body: '', online })
 const names = (list) => list.map((r) => r.name).join(' ')
@@ -96,7 +96,7 @@ const names = (list) => list.map((r) => r.name).join(' ')
 {
   check('a commit is enough', isActive(repo('a', { commits: [commit('x', NOW)] })), true)
   check('so is a file you saved', isActive(repo('b', { dirty: [{ path: 'x.js', at: NOW }] })), true)
-  check('so is a card that moved', isActive(repo('c', { cards: [{ title: 'x', touched: NOW, done: false }] })), true)
+  check('so is a story that moved', isActive(repo('c', { stories: [{ title: 'x', touched: NOW, done: false }] })), true)
   check('an untouched repository is not news', isActive(repo('d')), false)
 }
 
@@ -124,7 +124,7 @@ section('The arithmetic')
   const repos = [
     repo('one', {
       commits: [commit('out', NOW), commit('out too', NOW), commit('still here', NOW, false)],
-      cards: [{ title: 'a', touched: NOW, done: true }, { title: 'b', touched: NOW, done: false }],
+      stories: [{ title: 'a', touched: NOW, done: true }, { title: 'b', touched: NOW, done: false }],
     }),
     repo('two', { dirty: [{ path: 'a.js', at: NOW }, { path: 'b.js', at: NOW }] }),
   ]
@@ -134,7 +134,7 @@ section('The arithmetic')
   check('what got out is counted', t.online, 2)
   check('what did not is counted apart', t.local, 1)
   check('the files left hanging are counted', t.dirty, 2)
-  check('a card that is finished is not a card still open', `${t.cardsDone} ${t.cardsOpen}`, '1 1')
+  check('a story that is finished is not a story still open', `${t.storiesDone} ${t.storiesOpen}`, '1 1')
   // A repository with no remote cannot have anything "waiting to be pushed": there is nowhere
   // for it to go. Counting it as outstanding would turn every local experiment into a chore.
   const nowhere = { ...repo('nowhere', { commits: [{ ...commit('local only', NOW), online: null }] }), remote: false }
@@ -170,19 +170,19 @@ section('The commits, as git prints them')
   check('nothing to strip is not an error', stripTrailers(null), '')
 }
 
-// ── The cards that moved ─────────────────────────────────────────────────────
+// ── The stories that moved ───────────────────────────────────────────────────
 // `session_event` has been keeping this diary since the beginning; this is the first thing that
 // ever read it as a history rather than as "how old is this status".
-section('The cards that moved')
+section('The stories that moved')
 {
-  const card = db.createCard({ title: 'Yesterday', project_path: '/repo/one' })
-  const other = db.createCard({ title: 'Untouched', project_path: '/repo/two' })
+  const story = db.createStory({ title: 'Yesterday', project_path: '/repo/one' })
+  const other = db.createStory({ title: 'Untouched', project_path: '/repo/two' })
   const now = Date.now()
-  db.default.prepare('UPDATE session_event SET at = ? WHERE card_id = ?').run(now - 36 * 3600e3, card.id)
-  db.default.prepare('UPDATE session_event SET at = ? WHERE card_id = ?').run(now - 400 * 24 * 3600e3, other.id)
+  db.default.prepare('UPDATE session_event SET at = ? WHERE story_id = ?').run(now - 36 * 3600e3, story.id)
+  db.default.prepare('UPDATE session_event SET at = ? WHERE story_id = ?').run(now - 400 * 24 * 3600e3, other.id)
 
   const moved = db.eventsBetween(now - 2 * DAY, now)
-  check('the card that moved in the window is there', moved.map((c) => c.title).join(' '), 'Yesterday')
+  check('the story that moved in the window is there', moved.map((c) => c.title).join(' '), 'Yesterday')
   check('the one that moved a year ago is not', moved.length, 1)
   check('it says which repository it belongs to', moved[0].project_path, '/repo/one')
   check('a window with nothing in it is empty, not an error', db.eventsBetween(now - 60e3, now).length, 0)

@@ -27,7 +27,7 @@ export function transcriptPath(cwd, sessionId) {
 }
 
 /**
- * Changes the name of a session that has already ended, so that renaming a card makes the new
+ * Changes the name of a session that has already ended, so that renaming a story makes the new
  * name show up in the list of sessions you can resume.
  *
  * These are the two lines Claude Code writes for itself at the end of the transcript on every
@@ -170,23 +170,30 @@ export function forgetSession(sessionId) {
 export const busy = (status) => status === 'WORKING' || status === 'PLANNING'
 
 /**
- * Translates Claude Code's signals into the board's statuses.
+ * Translates Claude Code's signals into the board's five live statuses.
  * Returns { status, alive }.
+ *
+ * Five, not seven: `BACKLOG` and `COMPLETED` were never things a session does — one means the
+ * story has no session at all, the other means you have ticked it off — and they are the story's
+ * business now, on the other axis. What is left here is what the process is actually doing.
  */
-export function deriveStatus(card, live) {
-  if (card.completed_at) return { status: 'COMPLETED', alive: false }
-  if (!card.session_id) return { status: 'BACKLOG', alive: false }
+export function deriveStatus(story, live) {
+  // Ticked off. The terminal was closed when you said Done, so whatever the session was in the
+  // middle of, it is not in the middle of it any more — and until the process really goes, the
+  // post-it must not go on breathing.
+  if (story.completed_at) return { status: story.session_status || 'IDLE', alive: false }
+  if (!story.session_id) return { status: story.session_status || 'IDLE', alive: false }
 
-  const session = live.get(card.session_id)
+  const session = live.get(story.session_id)
   if (!session) {
     // Process dead: the session can still be resumed. We keep the last status only if it said
     // something about you (an open question, a plan left sitting there); WORKING and PLANNING
     // would be a lie, nothing is grinding away any more.
-    const stale = busy(card.status) || card.status === 'BACKLOG'
-    return { status: stale ? 'IDLE' : card.status, alive: false }
+    const last = story.session_status || 'IDLE'
+    return { status: busy(last) ? 'IDLE' : last, alive: false }
   }
 
-  const t = scanTranscript(session.cwd || card.project_path, card.session_id)
+  const t = scanTranscript(session.cwd || story.project_path, story.session_id)
 
   switch (session.status) {
     case 'busy':

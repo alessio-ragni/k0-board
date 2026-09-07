@@ -121,6 +121,86 @@ body {
   color: var(--muted);
 }
 .log:hover { background: #fff; border-color: #c9c3b4; color: var(--ink); }
+/* `display: flex` beats the browser's `[hidden]`, the same trap the gauge and the What's New mark
+   fall into. The door to the backlog is drawn hidden and put on the bar only when the server says
+   there is a backlog behind the board; without this it would sit there whatever the answer was,
+   leading to a page whose whole content is the sentence "The k0 backlog is switched off." */
+.log[hidden] { display: none; }
+
+/* ── The mark that says k0 moved ──────────────────────────────────────
+   It sits against the name and it is a dot, not a badge with a number on it: there is nothing to
+   count. It only exists at all when the server says so — after a version jump, or when npm has
+   something newer — so it is never one more thing on the bar that means nothing today. */
+.whatsnew {
+  flex: none;
+  margin-left: -6px;
+  align-self: flex-start;
+  padding: 4px;
+  display: flex;
+  border-radius: 999px;
+}
+/* `display: flex` beats the browser's `[hidden]`, the same trap the gauge falls into: the mark
+   ships hidden and is shown only when the server has something to say. Without this the dot sits
+   against the name for ever on a board where nothing is new, and with no sentence on it either —
+   the title is only written when there is one. */
+.whatsnew[hidden] { display: none; }
+.whatsnew span {
+  width: 7px;
+  height: 7px;
+  border-radius: 999px;
+  background: var(--warn);
+  display: block;
+}
+.whatsnew:hover span { transform: scale(1.3); }
+
+/* ── What a column means ──────────────────────────────────────────────
+   One control with two halves, not two buttons: a column is a repository, which is what the board
+   has always been, or it is a state. It stands before the filters because it decides what they are
+   filtering, and it is on the bar at all only where there is a backlog behind the board — with the
+   feature off there is one answer, and a switch offering it would be a switch that does nothing. */
+.columns {
+  flex: none;
+  display: flex;
+  gap: 2px;
+  padding: 2px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--paper);
+}
+/* `display: flex` beats the browser's `[hidden]`, the same trap the gauge and the What's New mark
+   fall into: without this the switch stands on the bar of a board that has no backlog behind it. */
+.columns[hidden] { display: none; }
+.columns button {
+  border: none;
+  background: none;
+  border-radius: 999px;
+  padding: 4px 12px;
+  font-size: .82rem;
+  font-weight: 600;
+  color: var(--muted);
+}
+.columns button:hover { background: rgba(0, 0, 0, .05); border: none; }
+/* The lit half is dark, the same ink as the primary button in a dialog. Two greys would read as
+   two buttons waiting to be pressed rather than as one answer already given. */
+.columns button[aria-checked="true"] { background: var(--ink); color: var(--paper); }
+.columns button[aria-checked="true"]:hover { background: var(--ink); }
+
+/* And the repository the state columns are showing. It stands next to the switch because it
+   exists only for it: where the columns ARE the repositories there is nothing to filter to. */
+.repo-filter {
+  flex: none;
+  font: inherit;
+  font-size: .82rem;
+  font-weight: 600;
+  color: var(--ink);
+  background: var(--paper);
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  padding: 5px 11px;
+  max-width: 200px;
+  cursor: pointer;
+}
+.repo-filter:hover { border-color: #bdb6a5; }
 
 /* ── The four modes ───────────────────────────────────────────────────
    At the end of the bar, a row of four: how awake the machine has to stay. Switched off they are
@@ -176,6 +256,58 @@ body {
    lid closed it will not hold. It is not an error worth stopping everything for, it is a promise
    not to make: an amber ring around it, and the title says the rest. */
 .modes button[data-partial] { box-shadow: 0 0 0 2px #e0a72e; }
+
+/* ── Inside an epic ───────────────────────────────────────────────────
+   A strip under the bar, on the page only once you have gone into a lane. It says the four things
+   there are to say about standing in one: which epic, where it lives, how far it has got, and the
+   way back out. The colour is the epic's own — the hue is worked out from its key, the same one
+   the label on every note below is drawn in — so the strip and the notes under it are visibly one
+   thing rather than two that happen to be on screen together. */
+.lane {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 9px 22px;
+  background: hsl(var(--h) 48% 95%);
+  border-bottom: 1px solid hsl(var(--h) 34% 84%);
+}
+.lane[hidden] { display: none; }
+.lane .key {
+  flex: none;
+  font: 700 .8rem/1 var(--mono);
+  color: hsl(var(--h) 52% 30%);
+}
+.lane .name {
+  font: 600 1.4rem/1 var(--hand);
+  color: var(--ink);
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.lane .repo { flex: none; font-size: .8rem; color: var(--muted); }
+/* Done over total and no weighting: eleven stories with one finished is a bar one eleventh along,
+   however big that one was. Anything else is an estimate with a progress bar drawn round it. */
+.lane .bar {
+  flex: none;
+  width: 160px;
+  height: 6px;
+  border-radius: 999px;
+  background: hsl(var(--h) 28% 87%);
+  overflow: hidden;
+}
+.lane .bar i {
+  display: block;
+  height: 100%;
+  background: hsl(var(--h) 52% 46%);
+  transition: width .3s ease;
+}
+.lane .count { flex: none; font-size: .8rem; color: var(--muted); font-variant-numeric: tabular-nums; }
+.lane .spacer { flex: 1; }
+/* Words and not an ✕: coming back to the whole board is not closing something, and there is
+   nothing here to close. */
+.lane button { flex: none; padding: 5px 13px; font-size: .82rem; font-weight: 600; }
 
 /* ── The board ───────────────────────────────────────────────────────── */
 /* The viewport is the fixed window, the board is the content sliding behind it: one transform on
@@ -278,6 +410,25 @@ body {
 .column > h2 .fold:hover { opacity: 1; background: rgba(0, 0, 0, .07); }
 .column > h2 .fold[disabled] { opacity: .12; cursor: default; }
 .column > h2 .fold[disabled]:hover { opacity: .12; background: none; }
+
+/* ── The columns as states ────────────────────────────────────────────
+   Six of them instead of one per repository, and everything else the same: the same heading, the
+   same notes in the same order, the same gestures on them. What is different is that standing in
+   one MEANS something a story can be moved through, so this is the one view where a note is
+   dragged — and a column you can drop into has to be a target even when it is empty, which is
+   what the floor under it is for. */
+.column.state { min-height: 200px; }
+.column.state > h2 .name { flex: 1; }
+.column.state .postit { cursor: grab; }
+.postit.dragging { opacity: .4; cursor: grabbing; }
+/* The column lights up only where the drop would change something — Review does not light up for
+   a story already in Review — because a target that answers a move that does nothing teaches you
+   to distrust the ones that do. */
+.column.state.drop {
+  outline: 2px dashed #b4ad9a;
+  outline-offset: 7px;
+  border-radius: 10px;
+}
 
 .empty {
   position: absolute;
@@ -450,6 +601,90 @@ body {
 }
 .postit .since { margin-left: auto; }
 .postit .dead { font-style: italic; }
+
+/* ── What the backlog adds to a note ──────────────────────────────────
+   Four marks and no more: what the story is called, the epic it belongs to, the star, and whether
+   it is waiting on something. Everything else a story has — its decisions, its rounds, its plan —
+   is a page and not a note, and a post-it that tried to carry it would stop being a post-it. With
+   the backlog off none of them is drawn and the note is the note it has always been. */
+
+/* `K42` is the name the story keeps for ever; `1.12` is where it is sitting in the tree today and
+   moves the moment the tree does. Two different facts, so two weights — said in one breath they
+   would read as one long name. */
+.postit .key {
+  flex: none;
+  font-family: var(--mono);
+  font-size: .72rem;
+  font-weight: 700;
+  line-height: 1;
+  color: rgba(0, 0, 0, .6);
+  cursor: default;
+}
+.postit .key em {
+  font-style: normal;
+  font-weight: 500;
+  color: rgba(0, 0, 0, .36);
+  margin-left: 4px;
+}
+
+/* The epic, in the epic's colour, and the way into it. The hue is on the element itself, worked
+   out from the key: nothing stores a colour, so there is nothing to keep in step with an epic
+   that gets renamed or moved. */
+.postit .epic {
+  flex: 0 1 auto;
+  min-width: 0;
+  padding: 2px 8px;
+  border: none;
+  border-radius: 999px;
+  background: hsl(var(--h) 58% 88%);
+  color: hsl(var(--h) 55% 26%);
+  font-size: .72rem;
+  font-weight: 700;
+  line-height: 1.4;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.postit .epic:hover { background: hsl(var(--h) 58% 81%); border: none; }
+
+/* Waiting on something that is not done. It warns and it never stops: what it is waiting for is
+   in the title, and the button that starts the story asks once and then goes ahead. */
+.postit .waits {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  color: var(--alert);
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  cursor: default;
+}
+.postit .waits svg { width: 13px; height: 13px; display: block; }
+
+/* The star, set from the note because that is where you are when you decide it matters. Unset it
+   waits for the pointer, the way the pencil in the corner does: an empty star on every note is a
+   column of empty stars, and a mark that is everywhere marks nothing. Set, it stays lit whether
+   or not anybody is looking. */
+.postit .star {
+  flex: none;
+  padding: 0;
+  width: 19px;
+  height: 19px;
+  margin: -2px 0 -2px -3px;
+  border: none;
+  background: none;
+  border-radius: 5px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: rgba(0, 0, 0, .32);
+  opacity: 0;
+  transition: opacity .12s ease;
+}
+.postit .star svg { width: 14px; height: 14px; display: block; }
+.postit .star.on { opacity: 1; color: #c98a08; }
+.postit:hover .star, .postit .star:focus-visible { opacity: 1; }
+.postit .star:hover { background: rgba(0, 0, 0, .07); border: none; }
 
 /* ── The last column: every repository ────────────────────────────────
    Headings only, one per repository, in the order you last used them. No cards and no counts:
@@ -673,6 +908,9 @@ body {
   transition: opacity .2s, transform .2s;
   max-width: 80vw;
   font-size: .92rem;
+  /* The one refusal in k0 is a paragraph and then the decisions it is about, one to a line. The
+     line breaks are in the text, and without this they collapse into a wall. */
+  white-space: pre-line;
 }
 .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
 
@@ -717,6 +955,13 @@ html[data-driving] .postit .corner svg { width: 20px; height: 20px; }
 /* The zoom at the bottom right, which stays the only way to bring the board back into view. */
 html[data-driving] .zoom button { width: 40px; height: 40px; }
 html[data-driving] .zoom button svg { width: 22px; height: 22px; }
+
+/* The star: the one thing the backlog puts on a note that is pressed rather than read. It grows
+   and it stays out, for the same reason the pencil does — a target that expects to be found
+   before it will show itself is, from across the room, not a target. The epic label and the two
+   halves of the column switch are already text, and text goes up with the base size on its own. */
+html[data-driving] .postit .star { width: 27px; height: 27px; opacity: 1; }
+html[data-driving] .postit .star svg { width: 20px; height: 20px; }
 
 /* The card is in pixels too: with the text at 22 it would choke inside 268. And since the card is
    never taller than it is wide, raising this raises the ceiling with it. */

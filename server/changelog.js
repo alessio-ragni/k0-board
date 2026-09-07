@@ -87,11 +87,11 @@ export function unreleasedSection(md) {
  * This is the rule that keeps the page honest. A repository that has been dirty since March
  * and that you have not opened since is not news, and a summary that repeats it every single
  * morning is a summary you stop reading. Something has to have happened IN the window — a
- * commit, a file saved, a card moved — and only then is it worth saying what is still
+ * commit, a file saved, a story moved — and only then is it worth saying what is still
  * outstanding there.
  */
 export function isActive(repo) {
-  return !!(repo && (repo.commits.length || repo.dirty.length || repo.cards.length))
+  return !!(repo && (repo.commits.length || repo.dirty.length || repo.stories.length))
 }
 
 /** Keeps only what falls inside a window, and drops the repositories left with nothing. */
@@ -102,7 +102,7 @@ export function narrow(repos, from, to) {
       ...r,
       commits: r.commits.filter((c) => inside(Date.parse(c.at))),
       dirty: r.dirty.filter((f) => inside(f.at)),
-      cards: r.cards.filter((c) => inside(c.touched)),
+      stories: r.stories.filter((c) => inside(c.touched)),
     }))
     .filter(isActive)
 }
@@ -149,9 +149,9 @@ function stampDirty(dir, paths) {
 
 async function gather(from, to) {
   const projects = listProjects().filter((p) => fs.existsSync(path.join(p.path, '.git')))
-  const cards = db.eventsBetween(from, to)
+  const stories = db.eventsBetween(from, to)
   const byRepo = new Map()
-  for (const c of cards) {
+  for (const c of stories) {
     if (!byRepo.has(c.project_path)) byRepo.set(c.project_path, [])
     byRepo.get(c.project_path).push(c)
   }
@@ -174,7 +174,7 @@ async function gather(from, to) {
       dirty: stampDirty(p.path, dirty),
       dirtyTotal: dirty.length,
       unreleased: unreleasedOf(p.path),
-      cards: (byRepo.get(p.path) ?? []).map((c) => ({
+      stories: (byRepo.get(p.path) ?? []).map((c) => ({
         title: c.title,
         description: c.description || '',
         status: c.status,
@@ -192,8 +192,8 @@ export function totals(repos) {
   let online = 0
   let local = 0
   let dirty = 0
-  let cardsOpen = 0
-  let cardsDone = 0
+  let storiesOpen = 0
+  let storiesDone = 0
   for (const r of repos) {
     commits += r.commits.length
     for (const c of r.commits) {
@@ -201,12 +201,12 @@ export function totals(repos) {
       else if (c.online === false) local++
     }
     dirty += r.dirty.length
-    for (const c of r.cards) {
-      if (c.done) cardsDone++
-      else cardsOpen++
+    for (const c of r.stories) {
+      if (c.done) storiesDone++
+      else storiesOpen++
     }
   }
-  return { repositories: repos.length, commits, online, local, dirty, cardsOpen, cardsDone }
+  return { repositories: repos.length, commits, online, local, dirty, storiesOpen, storiesDone }
 }
 
 /**
@@ -228,7 +228,7 @@ export async function facts(period, now = Date.now()) {
     for (const r of gathered) {
       for (const c of r.commits) stamps.push(Date.parse(c.at))
       for (const f of r.dirty) stamps.push(f.at)
-      for (const c of r.cards) stamps.push(c.touched)
+      for (const c of r.stories) stamps.push(c.touched)
     }
     const day = lastActiveDay(stamps, now)
     // Nothing at all in the last month: rather than an arbitrary day, show today and say so.

@@ -14,18 +14,18 @@ const H = 3600e3
 const FRI = 1_000_000_000_000 // Friday, late afternoon, as far as these tests are concerned
 const MON = FRI + 3 * DAY // three days later: nothing happened over the weekend
 
-const card = (path, at, status = 'COMPLETED') => ({ project_path: path, updated_at: at, status })
+const story = (path, at, status = 'COMPLETED') => ({ project_path: path, updated_at: at, status })
 const list = (a) => a.join(' ')
 
 // ── An ordinary day ──────────────────────────────────────────────────────────
 section('An ordinary day')
 {
-  const cards = [card('/repo/board', FRI), card('/repo/api', FRI - 2 * H), card('/repo/site', FRI - 30 * H)]
+  const stories = [story('/repo/board', FRI), story('/repo/api', FRI - 2 * H), story('/repo/site', FRI - 30 * H)]
   const paths = ['/repo/api', '/repo/board', '/repo/site']
-  const { open, old } = split({ paths, cards })
+  const { open, old } = split({ paths, stories })
   check('the ones you have been on today stay', list(open), '/repo/api /repo/board')
   check('the one from the day before yesterday folds', list(old), '/repo/site')
-  check('the order they came in is kept', list(split({ paths, cards }).open), '/repo/api /repo/board')
+  check('the order they came in is kept', list(split({ paths, stories }).open), '/repo/api /repo/board')
 }
 
 // ── Monday morning ───────────────────────────────────────────────────────────
@@ -34,12 +34,12 @@ section('An ordinary day')
 // off. Measured from your last piece of work, Monday shows you Friday.
 section('Monday morning')
 {
-  const cards = [card('/repo/board', FRI), card('/repo/api', FRI - H), card('/repo/site', FRI - 9 * H)]
-  const { open, old } = split({ paths: ['/repo/api', '/repo/board', '/repo/site'], cards })
+  const stories = [story('/repo/board', FRI), story('/repo/api', FRI - H), story('/repo/site', FRI - 9 * H)]
+  const { open, old } = split({ paths: ['/repo/api', '/repo/board', '/repo/site'], stories })
   check('friday is still on the board on monday', list(open), '/repo/api /repo/board /repo/site')
   check('and nothing has folded', old.length, 0)
-  check('the cutoff is a day back from the work, not from now', cutoff(lastTouched(cards)), FRI - DAY)
-  check('which is well before monday', cutoff(lastTouched(cards)) < MON, true)
+  check('the cutoff is a day back from the work, not from now', cutoff(lastTouched(stories)), FRI - DAY)
+  check('which is well before monday', cutoff(lastTouched(stories)) < MON, true)
 }
 
 // ── A session alive in there ─────────────────────────────────────────────────
@@ -49,12 +49,12 @@ section('A session alive in there')
   const PAIR = ['/repo/board', '/repo/site']
   check(
     'a question waiting in an old column keeps it open',
-    list(split({ paths: PAIR, cards: [card('/repo/board', FRI), card('/repo/site', stale, 'ASK')] }).old),
+    list(split({ paths: PAIR, stories: [story('/repo/board', FRI), story('/repo/site', stale, 'ASK')] }).old),
     ''
   )
   check(
     'so does a plan waiting for approval',
-    list(split({ paths: ['/repo/site'], cards: [card('/repo/site', stale, 'PLANNED')] }).open),
+    list(split({ paths: ['/repo/site'], stories: [story('/repo/site', stale, 'PLANNED')] }).open),
     '/repo/site'
   )
   check(
@@ -62,7 +62,7 @@ section('A session alive in there')
     list(
       split({
         paths: ['/repo/site'],
-        cards: [card('/repo/site', stale, 'WORKING')],
+        stories: [story('/repo/site', stale, 'WORKING')],
         folded: new Set(['/repo/site']),
       }).open
     ),
@@ -70,19 +70,19 @@ section('A session alive in there')
   )
   check(
     'a column with nothing but backlog in it is not alive',
-    list(split({ paths: PAIR, cards: [card('/repo/board', FRI), card('/repo/site', stale, 'BACKLOG')] }).old),
+    list(split({ paths: PAIR, stories: [story('/repo/board', FRI), story('/repo/site', stale, 'BACKLOG')] }).old),
     '/repo/site'
   )
   // The one debatable line, and the reason the feature works at all: `IDLE` is the resting state
   // of every terminal left open, so letting it hold a column would mean nothing ever folds.
   check(
     'a terminal left open weeks ago does not hold its column',
-    list(split({ paths: PAIR, cards: [card('/repo/board', FRI), card('/repo/site', stale, 'IDLE')] }).old),
+    list(split({ paths: PAIR, stories: [story('/repo/board', FRI), story('/repo/site', stale, 'IDLE')] }).old),
     '/repo/site'
   )
   check(
     'but your turn from an hour ago is on the board like anything else',
-    list(split({ paths: PAIR, cards: [card('/repo/board', FRI), card('/repo/site', FRI - H, 'IDLE')] }).old),
+    list(split({ paths: PAIR, stories: [story('/repo/board', FRI), story('/repo/site', FRI - H, 'IDLE')] }).old),
     ''
   )
 }
@@ -90,9 +90,9 @@ section('A session alive in there')
 // ── Put away by hand ─────────────────────────────────────────────────────────
 section('Put away by hand')
 {
-  const cards = [card('/repo/board', FRI), card('/repo/api', FRI - H)]
+  const stories = [story('/repo/board', FRI), story('/repo/api', FRI - H)]
   const paths = ['/repo/api', '/repo/board']
-  const { open, old } = split({ paths, cards, folded: new Set(['/repo/api']) })
+  const { open, old } = split({ paths, stories, folded: new Set(['/repo/api']) })
   check('it folds although you were on it an hour ago', list(old), '/repo/api')
   check('and the others are untouched', list(open), '/repo/board')
 }
@@ -100,12 +100,12 @@ section('Put away by hand')
 // ── Fetched back for this visit ──────────────────────────────────────────────
 section('Fetched back for this visit')
 {
-  const cards = [card('/repo/board', FRI), card('/repo/site', FRI - 30 * H)]
+  const stories = [story('/repo/board', FRI), story('/repo/site', FRI - 30 * H)]
   const paths = ['/repo/board', '/repo/site']
-  check('an old column held open stays open', list(split({ paths, cards, held: new Set(['/repo/site']) }).old), '')
+  check('an old column held open stays open', list(split({ paths, stories, held: new Set(['/repo/site']) }).old), '')
   check(
     'holding it beats having put it away',
-    list(split({ paths, cards, folded: new Set(['/repo/site']), held: new Set(['/repo/site']) }).open),
+    list(split({ paths, stories, folded: new Set(['/repo/site']), held: new Set(['/repo/site']) }).open),
     '/repo/board /repo/site'
   )
 }
@@ -113,25 +113,25 @@ section('Fetched back for this visit')
 // ── Boards with nothing much on them ─────────────────────────────────────────
 section('Boards with nothing much on them')
 {
-  const { open, old } = split({ paths: [], cards: [] })
+  const { open, old } = split({ paths: [], stories: [] })
   check('an empty board opens nothing', open.length, 0)
   check('and folds nothing', old.length, 0)
-  const only = (at) => list(split({ paths: ['/repo/board'], cards: [card('/repo/board', at)] }).open)
+  const only = (at) => list(split({ paths: ['/repo/board'], stories: [story('/repo/board', at)] }).open)
   check('a board of one repository always shows it', only(FRI), '/repo/board')
-  check('a card with no timestamp at all does not fold the board', only(null), '/repo/board')
+  check('a story with no timestamp at all does not fold the board', only(null), '/repo/board')
   check('with nothing touched there is no line to draw', cutoff(new Map()), 0)
 }
 
 // ── The pieces on their own ──────────────────────────────────────────────────
 section('The pieces on their own')
 {
-  const cards = [card('/repo/board', FRI - 5 * H), card('/repo/board', FRI), card('/repo/api', FRI - H, 'WORKING')]
-  const touched = lastTouched(cards)
-  check('a repository is as fresh as its freshest card', touched.get('/repo/board'), FRI)
-  check('one card is enough for the others', touched.get('/repo/api'), FRI - H)
-  check('work under way counts', busy(cards).has('/repo/api'), true)
-  check('finished work does not', busy(cards).has('/repo/board'), false)
-  check('nor does a terminal sitting at your turn', busy([card('/x', FRI, 'IDLE')]).size, 0)
-  const { alive } = split({ paths: ['/repo/api'], cards })
+  const stories = [story('/repo/board', FRI - 5 * H), story('/repo/board', FRI), story('/repo/api', FRI - H, 'WORKING')]
+  const touched = lastTouched(stories)
+  check('a repository is as fresh as its freshest story', touched.get('/repo/board'), FRI)
+  check('one story is enough for the others', touched.get('/repo/api'), FRI - H)
+  check('work under way counts', busy(stories).has('/repo/api'), true)
+  check('finished work does not', busy(stories).has('/repo/board'), false)
+  check('nor does a terminal sitting at your turn', busy([story('/x', FRI, 'IDLE')]).size, 0)
+  const { alive } = split({ paths: ['/repo/api'], stories })
   check('and split says who is alive as well', list([...alive]), '/repo/api')
 }

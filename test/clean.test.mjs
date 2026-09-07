@@ -42,7 +42,7 @@ const SKIP_EXT = new Set(['.woff2', '.woff', '.ttf', '.otf', '.png', '.jpg', '.j
  *
  * git is asked first, because it already knows the answer: `ls-files` returns exactly what is
  * tracked, which is exactly what will be published. Walking the directory instead would sweep up
- * the live database sitting next to the source — a file full of your real card titles, ignored by
+ * the live database sitting next to the source — a file full of your real story titles, ignored by
  * git and rightly so, but a guaranteed false alarm here.
  *
  * The walk stays as a fallback for the one case with no git: an unpacked npm tarball, where

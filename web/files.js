@@ -9,7 +9,7 @@ import { setFavicon } from '/favicon.js'
 
 // ── The viewer ────────────────────────────────────────────────────────
 // k0's second tab: the files on the left, what they say on the right. It opens from the mark on
-// a card and does not take the board away, which stays where it is.
+// a post-it and does not take the board away, which stays where it is.
 //
 // There is no index: the listing arrives from the server ready-made and the search runs here, on
 // the names. First the files the session touched, then the recently modified ones — which is also
@@ -24,7 +24,9 @@ import { setFavicon } from '/favicon.js'
 const $ = (s) => document.querySelector(s)
 const params = new URLSearchParams(location.search)
 const REPO = params.get('repo') || ''
-const CARD = params.get('card') || ''
+// `card` is the name this parameter had before stories were called stories, and somebody
+// somewhere has this address bookmarked: both are read, only the new one is ever written.
+const STORY = params.get('story') || params.get('card') || ''
 /** Nobody is watching: the page is open only to be printed into a PDF. */
 const HEADLESS = params.has('pdf')
 
@@ -36,7 +38,7 @@ const api = async (url, opts) => {
 }
 
 const qs = (extra = {}) =>
-  new URLSearchParams({ repo: REPO, ...(CARD ? { card: CARD } : {}), ...extra }).toString()
+  new URLSearchParams({ repo: REPO, ...(STORY ? { story: STORY } : {}), ...extra }).toString()
 
 /** The address of a file's real bytes: images and PDFs come through here. */
 const rawUrl = (p) => `/api/file/raw?${qs({ path: p })}`
@@ -1136,7 +1138,7 @@ function keys() {
 
 async function boot() {
   if (!REPO) {
-    document.body.innerHTML = '<p class="blank">No repository. Open this from a card on the dashboard.</p>'
+    document.body.innerHTML = '<p class="blank">No repository. Open this from a story on the dashboard.</p>'
     return
   }
   split(Number(localStorage.getItem('k0-files-split')) || 28)

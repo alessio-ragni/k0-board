@@ -10,7 +10,7 @@ export { parsePs, cpuSeconds } from '../platform/shared/ps.js'
 // The honest number for "what does this session cost" is not the `claude` process: it is its
 // whole subtree. A 200 MB claude can have an MCP server under it with Chrome behind that, and
 // a 200 MB `tsc` started from a commit hook. That is where the memory goes, and it is what no
-// other tool can attribute to the right card — Activity Monitor has never heard of cards.
+// other tool can attribute to the right story — Activity Monitor has never heard of stories.
 //
 // Summing the resident memory of a subtree counts shared memory twice between parent and
 // children, so the total is a little generous. It is the usual approximation, and it is the

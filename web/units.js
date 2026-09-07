@@ -9,7 +9,7 @@ const GB = 1073741824
 /**
  * What a session weighs, rounded in steps: tens of MB below a gigabyte, tenths of a GB above.
  *
- * The rounding is not decoration. It is the rounded number — the one you read on the card —
+ * The rounding is not decoration. It is the rounded number — the one you read on the post-it —
  * that goes into the signature of the refresh round: that way the board only redraws when the
  * figure on screen really changes, instead of on every sample, throwing away the pointer and
  * the buttons that appear under it.

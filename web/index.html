@@ -10,7 +10,13 @@
 <body>
   <header class="topbar">
     <h1>k0</h1>
-    <button class="new" id="new-card" title="New card" aria-label="New card">
+    <!-- The one mark on this bar that appears by itself, and only for one of two reasons: k0
+         moved on under you while you were not looking, or npm says there is a newer version than
+         the one installed here. It never opens the page — it sits next to the name and waits. -->
+    <a class="whatsnew" id="whatsnew" href="/whatsnew.html" hidden>
+      <span id="whatsnew-dot" aria-hidden="true"></span>
+    </a>
+    <button class="new" id="new-story" title="New story" aria-label="New story">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
     </button>
     <!-- Next to the plus, because they are the two ends of the same thing: one starts a piece
@@ -19,9 +25,32 @@
     <a class="log" href="/changelog.html" title="What you have been doing" aria-label="What you have been doing">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 7h16M4 12h11M4 17h7"/></svg>
     </a>
+    <!-- And next to that, the same board written down: every story on one line, with what was
+         decided and whether it survived the counter-check. Drawn exactly like the ChangeLog
+         because it is the same kind of door — somewhere to read rather than somewhere to work.
+         Hidden until the server says there is a backlog: switched off, the page behind this icon
+         has one sentence on it, and a bar that grew a new icon is not the board it was before. -->
+    <a class="log" id="backlog-link" href="/backlog.html" title="The backlog, line by line"
+       aria-label="The backlog, line by line" hidden>
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6h16M4 12h16M4 18h16"/><path d="M9 6v12"/></svg>
+    </a>
+
+    <!-- What a column means. Two answers and no third: a column is a repository, which is what
+         the board has always been, or it is a state and the six of them are the road a story
+         walks. It is only here at all when there is a backlog behind the board — with the
+         feature off there is one answer and a switch offering it would be a switch that does
+         nothing. -->
+    <div class="columns" id="columns" role="radiogroup" aria-label="What a column means" hidden>
+      <button type="button" role="radio" data-columns="repo" aria-checked="true">Repository</button>
+      <button type="button" role="radio" data-columns="state" aria-checked="false">State</button>
+    </div>
+    <!-- And with the columns being states, the repositories are gone from the board: this is
+         what puts one of them back. It stands next to the switch because it only exists for it. -->
+    <select class="repo-filter" id="repo-filter" aria-label="Which repository" hidden></select>
+
     <div class="filters" id="filters"></div>
 
-    <!-- How the computer is doing. Always visible; clicking it switches off the weights on the cards. -->
+    <!-- How the computer is doing. Always visible; clicking it switches off the weights on the stories. -->
     <button class="gauge" id="gauge" type="button" hidden></button>
 
     <!-- The four modes: how awake the machine has to stay. It is a scale, not four switches —
@@ -44,9 +73,22 @@
     </div>
   </header>
 
+  <!-- Inside an epic. The board is that epic and nothing else, and this strip is the only thing
+       that says so: which one, how far it has got, and the way back out. It is not on the page
+       until you have gone in — an epic you are not in has nothing to say up here. -->
+  <div class="lane" id="epic-lane" hidden>
+    <span class="key" id="epic-key"></span>
+    <span class="name" id="epic-name"></span>
+    <span class="repo" id="epic-repo"></span>
+    <span class="bar"><i id="epic-fill"></i></span>
+    <span class="count" id="epic-count"></span>
+    <span class="spacer"></span>
+    <button type="button" id="epic-out">Leave the epic</button>
+  </div>
+
   <main id="viewport" class="viewport">
     <div id="board" class="board"></div>
-    <p class="empty" id="empty">The dashboard is empty. Add your first card.</p>
+    <p class="empty" id="empty">The dashboard is empty. Add your first story.</p>
 
     <!-- Where the board continues past the edge: with no scrollbars, it is the only way to tell. -->
     <div class="edges" id="edges" aria-hidden="true"><i class="l"></i><i class="r"></i><i class="t"></i><i class="b"></i></div>
@@ -68,7 +110,7 @@
   <dialog id="editor">
     <form id="editor-form">
       <div class="head">
-        <h2 id="editor-title">New card</h2>
+        <h2 id="editor-title">New story</h2>
         <button type="button" id="f-close" class="x" title="Close" aria-label="Close">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg>
         </button>

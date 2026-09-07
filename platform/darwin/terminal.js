@@ -84,7 +84,7 @@ tell application "Terminal"
   set font size of tab 1 of win to ${font}
   set bounds of win to {x1, y1, x1 + w, y1 + h}
   do script "${asq(command)}" in tab 1 of win
-  -- The card's name in the title bar, not the command line with the session id in it.
+  -- The story's name in the title bar, not the command line with the session id in it.
   set custom title of tab 1 of win to "${asq(title)}"
   set winId to id of win
 end tell
@@ -180,12 +180,12 @@ export async function setTitle(handle, title) {
 }
 
 /**
- * Brings the card's window back to the front, un-minimising it if it was parked.
+ * Brings the story's window back to the front, un-minimising it if it was parked.
  * Keeps you from losing track of which terminal is which.
  */
 export async function focus(handle) {
   const id = Number(handle)
-  if (!id) return { ok: false, error: 'This card has no terminal window of its own' }
+  if (!id) return { ok: false, error: 'This story has no terminal window of its own' }
   const script = `
 tell application "Terminal"
   activate
@@ -202,7 +202,7 @@ end tell`
 }
 
 /**
- * Closes a card's terminal: stops the session first, then closes the window.
+ * Closes a story's terminal: stops the session first, then closes the window.
  *
  * The order is not a detail. Closing a window that still has `claude` inside it makes macOS
  * put up the "terminate running processes" dialog and sit there waiting: the window does not
