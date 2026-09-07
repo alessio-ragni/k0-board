@@ -1,14 +1,18 @@
 import { check, section, after } from './harness.mjs'
+import { DatabaseSync } from 'node:sqlite'
 import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
 
 // `db.js` opens the database the moment it is imported, and `backlog.js` imports it. `K0_DB` and
 // `HOME` first, the imports after — with a plain `import` at the top it would already be too late.
+// `K0_CONFIG` goes with them: the switch that turns the backlog off lives in the settings file,
+// and a run that forgot would read — and later write over — the settings of the machine it ran on.
 const FAKE_HOME = fs.mkdtempSync(path.join(os.tmpdir(), 'k0-home-'))
 process.env.HOME = FAKE_HOME
 process.env.USERPROFILE = FAKE_HOME
 process.env.K0_DB = path.join(os.tmpdir(), `k0-backlog-test-${process.pid}.db`)
+process.env.K0_CONFIG = path.join(FAKE_HOME, 'config.json')
 
 const db = await import('../server/db.js')
 const backlog = await import('../server/backlog.js')
@@ -19,6 +23,25 @@ const backlog = await import('../server/backlog.js')
 // this out for itself is a skill that gets it wrong once in twenty and never says so.
 
 const alias = (id) => backlog.storyAlias(db.getStory(id))
+
+// The settings file is only re-read when its mtime moves, so two writes inside the same
+// millisecond would leave the second one unread and the test reading the switch it had before.
+// The stamp is put on by hand rather than left to the clock, which is the one thing here that
+// could go green or red depending on how fast the machine is.
+let stamped = Date.now()
+const backlogSwitch = (on) => {
+  fs.writeFileSync(process.env.K0_CONFIG, JSON.stringify({ backlog: on }))
+  stamped += 1000
+  fs.utimesSync(process.env.K0_CONFIG, new Date(stamped), new Date(stamped))
+}
+
+// The board's own rules refuse most of the shapes below, and `.k0/` is still a folder people hand
+// edit — so a second handle on the same file is how a database older than a guard gets built.
+const byHand = (sql, ...args) => {
+  const handle = new DatabaseSync(process.env.K0_DB, { enableForeignKeyConstraints: false })
+  handle.prepare(sql).run(...args)
+  handle.close()
+}
 
 // ── A key is handed out once ─────────────────────────────────────────────────
 section('A key is handed out once')
@@ -79,7 +102,15 @@ section('The alias is a position and nothing else')
   check('in the order the board is in', alias(two.id), '1.2')
   check('a story with no epic counts among the ones with none', alias(loose.id), '1')
   check('and only among those', alias(alsoLoose.id), '2')
+  const smaller = db.createStory({
+    project_path: REPO,
+    title: 'A piece of the piece',
+    epic_id: invoicing.id,
+    parent_story_id: piece.id,
+  })
+
   check('a task counts from the story it came out of', alias(piece.id), '1.2.1')
+  check('and a task of that task counts from it in turn', alias(smaller.id), '1.2.1.1')
   check('and does not take a place among its epic\'s stories', alias(two.id), '1.2')
 
   // The alias is computed on every read, which is the whole reason it is not stored: this is one
@@ -225,7 +256,7 @@ section('Switched off is not empty')
   const REPO = '/tmp/k0-backlog-off'
   db.createStory({ project_path: REPO, title: 'Something' })
   db.createEpic({ project_path: REPO, title: 'A lane nobody asked for' })
-  db.setPref('backlog.enabled', '0')
+  backlogSwitch(false)
   check('the listing says the feature is off', backlog.listing(REPO).enabled, false)
   check('and hands back no stories at all', backlog.listing(REPO).stories.length, 0)
   // Not one lane either. An epic drawn on a board somebody switched the backlog off on is the
@@ -234,7 +265,7 @@ section('Switched off is not empty')
   check('what to do next says the same thing', backlog.next(REPO).enabled, false)
   check('in words, and not as an empty board', backlog.next(REPO).why.includes('switched off'), true)
   check('and it names no story to pick up', backlog.next(REPO).story, null)
-  db.setPref('backlog.enabled', '1')
+  backlogSwitch(true)
   check('and it all comes back when it is switched on', backlog.listing(REPO).stories.length, 1)
   check('lanes included', backlog.listing(REPO).epics.length, 1)
 }
@@ -250,6 +281,9 @@ section("An epic's own discussion is visible while it is happening")
   const quiet = backlog.publicEpic(db.getEpic(epic.id))
   check('an epic nobody has discussed is at no round', quiet.round, null)
   check('and has settled nothing', quiet.decisions_total, 0)
+  // Which is where the page starts polling: `/k0-epic` opens the epic and asks its first question
+  // afterwards, so the cheap answer has to hold up before there is anything at all to report.
+  check('the poll behind the page finds no round either', backlog.epicLive(epic.id).round, null)
 
   db.addEpicRound(epic.id, { n: 1, estimated_total: 8, question: 'Who is it for?', answer: 'The accountant.' })
   db.addEpicRound(epic.id, { n: 2, estimated_total: 6, question: 'Which currencies?' })
@@ -272,6 +306,313 @@ section("An epic's own discussion is visible while it is happening")
   db.createStory({ project_path: REPO, title: 'Number them', epic_id: epic.id })
   check('a story under it is counted the moment it exists', backlog.epicLive(epic.id).stories, 1)
   check('an epic that is not there answers nothing at all', backlog.epicLive(999999), null)
+}
+
+// ── A key names one thing in one repository ──────────────────────────────────
+// The one place a key turns into an id. Everything a skill says out loud arrives here first, so
+// what it refuses matters as much as what it finds: a key resolved to the wrong story is a branch
+// cut on the wrong post-it and a plan written against work nobody asked for.
+section('A key names one thing in one repository')
+{
+  const REPO = '/tmp/k0-backlog-bykey'
+  const OTHER = '/tmp/k0-backlog-bykey-other'
+  const epic = db.createEpic({ project_path: REPO, title: 'Invoicing' })
+  const story = db.createStory({ project_path: REPO, title: 'The totals' })
+  db.createStory({ project_path: OTHER, title: 'Somewhere else' })
+
+  check('the key a user says out loud finds the story', backlog.storyByKey(REPO, 'K2').id, story.id)
+  check('and the bare number finds the same one', backlog.storyByKey(REPO, '2').id, story.id)
+  check('spaces round it are somebody typing and not part of the name',
+    backlog.storyByKey(REPO, ' K2 ').id, story.id)
+  check('a title is not a key and names nothing', backlog.storyByKey(REPO, 'The totals'), null)
+  check('nor is half of one', backlog.storyByKey(REPO, 'K'), null)
+  check('and neither is nothing at all', backlog.storyByKey(REPO, null), null)
+  check('a number nobody has been given yet names nothing', backlog.storyByKey(REPO, 'K99'), null)
+
+  // Epics and stories are numbered out of one sequence, so exactly one of them answers each key
+  // and the other has to say no rather than reach for the number it does have.
+  check('an epic answers to the same kind of key', backlog.epicByKey(REPO, 'K1').id, epic.id)
+  check('and refuses a word that is not one just as flatly', backlog.epicByKey(REPO, 'Invoicing'), null)
+  check('asking for an epic by a story\'s key finds no epic', backlog.epicByKey(REPO, 'K2'), null)
+  check('and asking for a story by an epic\'s key finds no story', backlog.storyByKey(REPO, 'K1'), null)
+  check('the same key in another repository is another thing entirely',
+    backlog.storyByKey(OTHER, 'K1').title, 'Somewhere else')
+}
+
+// ── The listing one board is drawn from ──────────────────────────────────────
+section('The listing one board is drawn from')
+{
+  const REPO = '/tmp/k0-backlog-listing'
+  const invoicing = db.createEpic({ project_path: REPO, title: 'Invoicing' })
+  const search = db.createEpic({ project_path: REPO, title: 'Search' })
+  db.createStory({ project_path: REPO, title: 'Number them', epic_id: invoicing.id })
+  db.createStory({ project_path: REPO, title: 'Fuzzy match', epic_id: search.id })
+  db.createStory({ project_path: REPO, title: 'On its own' })
+
+  const whole = backlog.listing(REPO)
+  check('the whole board is every story in the repository', whole.stories.length, 3)
+  check('with both lanes beside them', whole.epics.length, 2)
+  check('and no lane singled out', whole.epic, null)
+
+  const lane = backlog.listing(REPO, invoicing.key)
+  check('asking for one epic narrows it to that epic\'s stories',
+    lane.stories.map((s) => s.title).join(','), 'Number them')
+  check('and says which epic was asked for', lane.epic.key, invoicing.key)
+  check('while the lanes beside it are still all there', lane.epics.length, 2)
+
+  // The one that has to come back empty rather than whole: a key naming no epic must not fall
+  // back to the board, or a skill filtering on a typo is handed every story there is instead.
+  const typo = backlog.listing(REPO, 'K99')
+  check('a key that names no epic narrows it to nothing', typo.stories.length, 0)
+  check('rather than quietly back to the whole board', typo.epic, null)
+
+  // The dashboard asks before it knows which repository it is looking at.
+  check('with no repository there is nothing to draw', backlog.listing(null).stories.length, 0)
+  check('and it says so rather than picking one', backlog.listing(null).repo, null)
+  check('while the feature itself is still on', backlog.listing(null).enabled, true)
+}
+
+// ── The alias when the tree underneath it is broken ──────────────────────────
+// `.k0/` is a folder people hand-edit and a database can be older than the guard that would have
+// refused the shape. None of these is a wrong alias if it goes wrong: it is a stack overflow, or a
+// crash, thrown out of the middle of a request nothing above it expects to be able to fail.
+section('The alias when the tree underneath it is broken')
+{
+  const REPO = '/tmp/k0-backlog-broken'
+  const first = db.createStory({ project_path: REPO, title: 'One half' })
+  const second = db.createStory({ project_path: REPO, title: 'The other half' })
+  const orphan = db.createStory({ project_path: REPO, title: 'A task of nothing' })
+  const stray = db.createStory({ project_path: REPO, title: 'Filed under nothing' })
+
+  check('the board refuses to make a story its own parent',
+    db.patchStory(first.id, { parent_story_id: first.id }).parent_story_id, null)
+
+  byHand('UPDATE story SET parent_story_id = ? WHERE id = ?', second.id, first.id)
+  byHand('UPDATE story SET parent_story_id = ? WHERE id = ?', first.id, second.id)
+  byHand('UPDATE story SET parent_story_id = 999999 WHERE id = ?', orphan.id)
+  byHand('UPDATE story SET epic_id = 999999 WHERE id = ?', stray.id)
+
+  // The value is nonsense, and it is meant to be: what is being proved is that there is a value
+  // at all. A throw would happen while the argument was being worked out, before `check` was ever
+  // entered, and would take the whole file down instead of failing one line of it.
+  const answered = (id) => {
+    try {
+      return alias(id)
+    } catch (e) {
+      return `threw ${e.name}`
+    }
+  }
+  check('two stories each named as the other\'s parent still answer', answered(first.id), '.1.1')
+  check('and so does the one on the other side of it', answered(second.id), '.1.1')
+  check('a task whose story is gone has nothing to count from', answered(orphan.id), '')
+  check('and neither has a story filed under an epic that is gone', answered(stray.id), '')
+}
+
+// ── When everything is waiting on something ──────────────────────────────────
+section('When everything is waiting on something')
+{
+  const REPO = '/tmp/k0-backlog-all-blocked'
+  const api = db.createStory({ project_path: REPO, title: 'The API', state: 'Planned' })
+  const page = db.createStory({ project_path: REPO, title: 'The page', state: 'Planned' })
+  db.addDependency(api.id, page.id)
+  db.addDependency(page.id, api.id)
+
+  // Two stories waiting on each other is the shape that has no unblocked answer at all. It still
+  // has to hand one back: a board that says "nothing" while two post-its are open is a board the
+  // user goes round by hand, which is the whole thing this was written to stop.
+  const answer = backlog.next(REPO)
+  check('two stories waiting on each other still get an answer', answer.story.id, api.id)
+  check('and the sentence admits everything here is blocked',
+    answer.why.includes('Everything open here is waiting on something'), true)
+  check('naming what the one it picked is waiting for', answer.why.includes(page.key), true)
+  check('which is spelled out beside the answer as well', answer.waiting_for[0].key, page.key)
+  check('with both of them listed as blocked', answer.blocked.length, 2)
+}
+
+// ── A dependency on a story that is gone ─────────────────────────────────────
+section('A dependency on a story that is gone')
+{
+  const REPO = '/tmp/k0-backlog-deleted-dep'
+  const query = db.createStory({ project_path: REPO, title: 'The query' })
+  const report = db.createStory({ project_path: REPO, title: 'The report' })
+  db.addDependency(report.id, query.id)
+  check('while it is there the story waits for it', backlog.publicStory(db.getStory(report.id)).blocked, true)
+
+  // Throwing the post-it away has to take the waiting with it. A dependency left pointing at
+  // nothing would mark the report blocked for ever, with nothing on screen to say by what.
+  db.deleteStory(query.id)
+  check('deleting it takes the wait away with it', backlog.publicStory(db.getStory(report.id)).deps.length, 0)
+  check('rather than leaving the story blocked by nothing',
+    backlog.publicStory(db.getStory(report.id)).blocked, false)
+  check('and what to do now hands it straight back', backlog.next(REPO).story.id, report.id)
+}
+
+// ── How far an epic has got ──────────────────────────────────────────────────
+section('How far an epic has got')
+{
+  const REPO = '/tmp/k0-backlog-progress'
+  const empty = db.createEpic({ project_path: REPO, title: 'Nothing under it yet' })
+  const finished = db.createEpic({ project_path: REPO, title: 'All of it done' })
+  check('an epic nobody has broken up yet is nought of nought',
+    backlog.publicEpic(db.getEpic(empty.id)).progress.total, 0)
+  check('and none of that nothing is done', backlog.publicEpic(db.getEpic(empty.id)).progress.done, 0)
+
+  const one = db.createStory({ project_path: REPO, title: 'The first half', epic_id: finished.id })
+  const two = db.createStory({ project_path: REPO, title: 'The second half', epic_id: finished.id })
+  db.setState(one.id, 'Done')
+  db.setState(two.id, 'Done')
+  const bar = backlog.publicEpic(db.getEpic(finished.id))
+  check('an epic whose stories are all finished counts every one of them', bar.progress.done, 2)
+  check('out of exactly the same number', bar.progress.total, 2)
+
+  // Everything here is finished, which is not the same board as an empty one and reads the same.
+  check('and with nothing left open there is nothing to pick up', backlog.next(REPO).story, null)
+  check('said in words rather than as an answer of none', backlog.next(REPO).why.includes('nothing open'), true)
+}
+
+// ── Why this one and not another ─────────────────────────────────────────────
+// The sentence is the server's and not the model's, so the same board gives the same answer twice.
+// Every branch of it is a rule somebody would otherwise argue about out loud.
+section('Why this one and not another')
+{
+  const REPO = '/tmp/k0-backlog-why'
+  const story = db.createStory({ project_path: REPO, title: 'The one thing here', state: 'Planned' })
+  check('a planned story is said to be ready to be started',
+    backlog.next(REPO).why.includes('planned and unblocked'), true)
+  db.setState(story.id, 'Discussed')
+  check('a discussed one is said to be waiting for a plan',
+    backlog.next(REPO).why.includes('waiting for a plan'), true)
+  db.setState(story.id, 'Working')
+  check('and one that is neither is simply next in the order',
+    backlog.next(REPO).why.includes('next in the order you put the board in'), true)
+
+  // Review is where work goes to be forgotten, and the sentence says how long it has been there.
+  // The only way to prove that is to put the day it arrived back where it would really be.
+  db.setState(story.id, 'Review')
+  const arrived = (daysAgo) =>
+    byHand("UPDATE session_event SET at = ? WHERE story_id = ? AND kind = 'state'",
+      Date.now() - daysAgo * 86400000 - 1000, story.id)
+  arrived(3)
+  check('a story left in Review says how long it has been sitting there',
+    backlog.next(REPO).why.includes('has been for 3 days'), true)
+  arrived(1)
+  check('and counts one of them as a day rather than as days',
+    backlog.next(REPO).why.includes('has been for 1 day'), true)
+}
+
+// ── What a story is holding up ───────────────────────────────────────────────
+section('What a story is holding up')
+{
+  const REPO = '/tmp/k0-backlog-view'
+  const epic = db.createEpic({ project_path: REPO, title: 'Reporting' })
+  const query = db.createStory({ project_path: REPO, title: 'The query', epic_id: epic.id })
+  const report = db.createStory({ project_path: REPO, title: 'The report' })
+  const index = db.createStory({ project_path: REPO, title: 'The index', parent_story_id: query.id })
+  db.addDependency(report.id, query.id)
+  db.setPlan(query.id, 'Read the table once and hold on to it.')
+  db.addLogEntry(query.id, { text: 'Started on the index.' })
+
+  // The other half of `deps`, and the half nothing else shows: the post-it says what a story waits
+  // FOR, and the reason to finish one before another is usually what is waiting for IT.
+  const view = backlog.storyView(query.id)
+  check('a story says what is waiting for it and not only what it waits for', view.blocks[0].key, report.key)
+  check('the plan is there for the work to follow', view.plan, 'Read the table once and hold on to it.')
+  check('and the diary of what has been done to it', view.log[0].text, 'Started on the index.')
+  check('a story in no epic borrows none of an epic\'s discussion',
+    backlog.storyView(report.id).epic_rounds.length, 0)
+  check('and has no lane to show at all', backlog.storyView(report.id).epic, null)
+
+  const waiting = backlog.publicStory(db.getStory(report.id))
+  check('the post-it carries the key of what it waits for', waiting.deps[0].key, query.key)
+  check('and the id, because taking the wait off again is done by id', waiting.deps[0].id, query.id)
+  check('a task names the story it came out of', backlog.publicStory(db.getStory(index.id)).parent_key, query.key)
+  check('a story in an epic names the lane it is in',
+    backlog.publicStory(db.getStory(query.id)).epic_title, 'Reporting')
+
+  // The one field the model does not work out: it is read off a repository by the server above
+  // and handed through untouched, so a story nobody looked up says nothing rather than guessing.
+  check('the state of the branch is handed through as it arrived',
+    backlog.publicStory(db.getStory(query.id), { git: { branch: 'wt-K3' } }).git.branch, 'wt-K3')
+  check('and is nothing when nobody went and looked', backlog.publicStory(db.getStory(query.id)).git, null)
+
+  // Armed before it has ever run: auto-send is set on the post-it while the story is still in the
+  // backlog, so there is a session to draw and nothing has started it. Every field the terminal
+  // would fill in is still empty, and the post-it has to be able to say so.
+  db.setAutoSend(report.id, true)
+  const armed = backlog.publicStory(db.getStory(report.id)).session
+  check('a story armed before it has ever run has a session on it', armed.auto_send, true)
+  check('with no session of its own yet', armed.session_id, null)
+  check('nothing alive in it', armed.alive, false)
+  check('and sitting idle, which is what an empty slot reads as', armed.status, 'IDLE')
+
+  db.attachSession(query.id, 'a-live-session')
+  const live = backlog.liveView(query.id)
+  check('the poll behind an open page names the session running', live.session.session_id, 'a-live-session')
+  check('and says it is alive', live.session.alive, true)
+
+  // A page left open on a post-it somebody has since thrown away.
+  check('a story that is gone answers nothing at all', backlog.storyView(999999), null)
+  check('nor does the poll on one', backlog.liveView(999999), null)
+  check('nor the view of an epic that is gone', backlog.epicView(999999), null)
+}
+
+// ── An epic's discussion comes down to its stories ───────────────────────────
+section('An epic\'s discussion comes down to its stories')
+{
+  const REPO = '/tmp/k0-backlog-inherited'
+  const epic = db.createEpic({ project_path: REPO, title: 'Invoicing' })
+  const story = db.createStory({ project_path: REPO, title: 'The numbering', epic_id: epic.id })
+  db.addEpicRound(epic.id, { n: 1, estimated_total: 4, question: 'Who reads an invoice?', answer: 'The accountant.' })
+  db.addEpicDecision(epic.id, { text: 'Every amount carries its currency.' })
+  db.addEpicDecision(epic.id, { text: 'An invoice is never edited once it has been sent.' })
+  const forEver = db.addEpicDecision(epic.id, { text: 'Invoices are numbered in one sequence for ever.' })
+  const yearly = db.addEpicDecision(epic.id, { text: 'The sequence starts again every year.' })
+  db.supersedeDecision(forEver.id, yearly.id)
+  const own = db.addDecision(story.id, { text: 'The year is printed in front of the number.' })
+
+  const view = backlog.epicView(epic.id)
+  check('a round is read back with the question that was asked', view.rounds[0].question, 'Who reads an invoice?')
+  check('and the answer that settled it', view.rounds[0].answer, 'The accountant.')
+  check('an epic keeps all four of its decisions, the overtaken one included', view.decisions.length, 4)
+  check('with that one pointing at the decision that beat it', view.decisions[2].superseded_by, yearly.id)
+  check('while the one that beat it stands on its own', view.decisions[3].superseded_by, null)
+
+  // What the work is actually held to: the epic's rules and the story's own, D3 among them and
+  // shown as beaten rather than quietly dropped. A plan written against half the set is a plan
+  // that fails its counter-check over a rule it was never shown.
+  const held = backlog.storyView(story.id)
+  check('a story is held to the epic\'s four rules and to its own', held.decisions.length, 5)
+  check('the epic\'s first, under the epic\'s name', held.decisions[2].label, `${epic.key}·D3`)
+  check('the beaten one still there, and still marked beaten', held.decisions[2].superseded_by, yearly.id)
+  check('and the story\'s own last, under a name of its own', held.decisions[4].label, `D${own.n}`)
+  check('the poll counts only the four that are standing', backlog.liveView(story.id).decisions, 4)
+  check('and the epic\'s argument comes down with its conclusions', held.epic_rounds[0].question,
+    'Who reads an invoice?')
+}
+
+// ── More than one decision broken at once ────────────────────────────────────
+section('More than one decision broken at once')
+{
+  const REPO = '/tmp/k0-backlog-violations'
+  const story = db.createStory({ project_path: REPO, title: 'The importer' })
+  const kept = db.addDecision(story.id, { text: 'A file that fails to import is left where it was.' })
+  const twice = db.addDecision(story.id, { text: 'Nothing is imported twice.' })
+  db.recordRunChecks(story.id, 1, [
+    { decision_id: kept.id, verdict: 'violated', evidence: 'server/import.js:31 — it deletes it either way' },
+    { decision_id: twice.id, verdict: 'violated', evidence: 'server/import.js:60 — there is no key to match on' },
+  ])
+
+  const refused = backlog.mayFinish(story.id)
+  check('the refusal counts them rather than naming one of them',
+    refused.why.includes('found 2 decisions broken'), true)
+  check('and hands both back to be put right', refused.violations.length, 2)
+  check('the dense page reads the same two off the story', backlog.storyView(story.id).violations.length, 2)
+  check('each with the sentence that was agreed', backlog.storyView(story.id).violations[0].text,
+    'A file that fails to import is left where it was.')
+  check('and the evidence the run wrote against it', backlog.storyView(story.id).violations[0].evidence,
+    'server/import.js:31 — it deletes it either way')
+  check('while the post-it counts them without being asked twice',
+    backlog.publicStory(db.getStory(story.id)).violations_open, 2)
 }
 
 after(() => {

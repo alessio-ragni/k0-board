@@ -69,13 +69,22 @@ function fail(error, detail = '') {
   return { ok: false, error, detail: String(detail).trim().slice(-MAX_DETAIL) }
 }
 
-/** What git actually said, out of a rejected child process. */
-function words(err) {
+/**
+ * What git actually said, out of a rejected child process. Exported so it can be proved on its
+ * own: the failures it exists for are the ones a test cannot afford to wait for.
+ */
+export function words(err) {
   const said = `${err?.stderr ?? ''}\n${err?.stdout ?? ''}`.trim()
   if (said) return said.split('\n').filter(Boolean).slice(-12).join('\n')
   // execFile puts the whole command line in `message`, which is noise here: the caller already
   // knows what was being run, and the paths in it are long enough to hide the reason.
-  return err?.code === 'ETIMEDOUT' ? 'git took too long and was given up on.' : String(err?.message ?? '')
+  //
+  // A git that ran out of time is the one failure worth naming, and it does not arrive carrying
+  // `ETIMEDOUT`: that is what the SYNCHRONOUS calls set. `execFile` gives up by killing the child,
+  // and all that says so afterwards is `killed`. Reading only the code meant every timeout — the
+  // failure most likely to leave nothing on stderr at all — reported git's own command line back.
+  if (err?.code === 'ETIMEDOUT' || err?.killed) return 'git took too long and was given up on.'
+  return String(err?.message ?? '')
 }
 
 // ── Names ────────────────────────────────────────────────────────────────────
@@ -314,7 +323,12 @@ export function parseNameStatus(out) {
   return files
 }
 
-const DOC = /\.(md|mdx|txt|adoc)$/i
+// `.txt` is deliberately not here. In a repository a stray `.txt` is a fixture, a data file or a
+// note far more often than it is documentation, and one of them is enough to make a whole commit
+// call itself `docs:` — so a story named "fix the invoicing API" ends up in `git log` as a
+// documentation change. `.md`, `.mdx`, `.adoc` and anything under `docs/` are what documentation
+// actually looks like here.
+const DOC = /\.(md|mdx|adoc)$/i
 const CHORE = /^(\.claude|\.github|\.vscode|\.editorconfig|\.gitignore|package(-lock)?\.json)/
 const VERB = { A: 'add', D: 'remove', R: 'rename', C: 'copy' }
 

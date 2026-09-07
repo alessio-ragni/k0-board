@@ -18,9 +18,17 @@ reading this. What follows is what you would find if you opened the file right n
 | Windows | `%LOCALAPPDATA%\k0\k0.db` |
 | Anywhere, overridden | `K0_DB` |
 
-`K0_DB` exists for the tests, and they are required to set it: `server/db.js` refuses to open the
-real board from a file whose name ends in `.test.mjs`, because it once did, and five identical
-stories appeared on a real board in a column that did not exist.
+`K0_DB` exists for anything that is not the server, and it is required rather than polite. Opening
+this file runs every migration in it, so `server/db.js` states the rule as a permission and not as
+a list of bans: **the real board may be opened by k0's own two entry points and by nothing else**,
+and a copy of k0 living in a worktree may not open it at all. Everything else — a test, a script,
+a one-line `node -e` — says where it wants to write, or it is refused with a sentence saying so.
+
+It is written that way round because the other way round was not enough. It once caught only files
+named `*.test.mjs`; then a copy under development imported the file with `K0_DB` unset, migrated a
+running board of 323 notes out from under the installed server, and took the board down. Nothing
+was lost and nothing warned: the migration did exactly what it was written to do, to the wrong
+database.
 
 The journal is in WAL mode, so the file is usually joined by `k0.db-wal` and `k0.db-shm`. All
 three belong together — copying only the first copies a board missing its most recent writes.
@@ -284,9 +292,14 @@ so a database rebuilt from the `.k0/` files cannot collide with the keys written
 ## `pref`
 
 Two columns, `key` and `value`, both text. The little the server has to share with the menu bar
-icon and remember across a restart — the mode, whether the backlog is switched on, what npm last
-said about the version. Everything the board alone cares about lives in the browser's
-`localStorage`, where only the board can see it, and is not here.
+icon and remember across a restart — the mode, the version last seen running, what npm last said
+about the version. Everything the board alone cares about lives in the browser's `localStorage`,
+where only the board can see it, and is not here.
+
+The two switches a person is expected to touch are deliberately **not** here: `backlog` and
+`updateCheck` live in `~/.k0/config.json`, next to the idle timeout. A switch that needs `sqlite3`
+to reach is not a switch, and one of these is the only thing in k0 that opens a socket — it has to
+be somewhere a sceptical reader can find it and turn it off.
 
 A `schema.` key is a migration that has run. There is one, `schema.sessions-split`, and it exists
 because that migration MOVES ROWS: it takes the session columns off each story and makes a

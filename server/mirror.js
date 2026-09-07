@@ -1,6 +1,7 @@
 import fs from 'node:fs'
 import path from 'node:path'
 import * as db from './db.js'
+import * as settings from './settings.js'
 import { matter } from '../web/md.js'
 import { storyAlias, epicAlias } from './backlog.js'
 
@@ -114,7 +115,7 @@ function inside(repoPath, ...parts) {
  * out of that untouched — no folder appearing in a working tree the user did not ask for. The
  * switch is read here rather than trusted to every caller, because it only takes one that forgot.
  */
-const enabled = () => String(db.getPref('backlog.enabled', '1')) !== '0'
+const enabled = () => settings.read().backlog
 
 /** What went wrong, without the error class in front of it: this ends up on somebody's screen. */
 const sentence = (err) => String(err?.message ?? err ?? '').replace(/^[A-Z]+:\s*/, '').trim()
@@ -401,8 +402,19 @@ const paragraphs = (linesIn) => linesIn.join('\n').trim().split(/\n\s*\n/).filte
 
 const afterHeading = (lead) => lead.slice(lead.findIndex((l) => H1.test(l)) + 1)
 
-/** Everything above the first heading except the standfirst, which is printed from the database. */
-const keptLead = (prev) => paragraphs(afterHeading(split(prev.body).lead)).slice(1).join('\n\n')
+/**
+ * Everything above the first heading except the standfirst, which is printed from the database.
+ *
+ * `printed` says whether there is a standfirst going out this time, and it is not always: an epic
+ * has none at all, and a story whose description is empty prints none either. Dropping the first
+ * paragraph regardless takes one paragraph of somebody's notes with it on every write, and the
+ * write after that takes the next — a file left alone for a week comes back with the notes gone
+ * and nothing anywhere saying they were ever there.
+ */
+const keptLead = (prev, printed) =>
+  paragraphs(afterHeading(split(prev.body).lead))
+    .slice(printed ? 1 : 0)
+    .join('\n\n')
 
 // ── Writing ──────────────────────────────────────────────────────────────────
 
@@ -575,10 +587,15 @@ export function syncRepo(repoPath) {
   const out = { epics: 0, stories: 0, error: null }
   if (!enabled() || !there(repoPath)) return out
   return attempt(out, () => {
-    ensureReadme(repoPath)
     const epics = db.listEpics(repoPath)
-    for (const epic of epics) epicFile(epic)
     const stories = db.storiesOfProject(repoPath)
+    // Nothing to write is not the same as nothing to do wrong. A sweep runs over every repository
+    // k0 knows about, and writing the README first would put a `.k0/` into all eighteen of somebody's
+    // checkouts the day they updated — folders explaining a backlog that none of those repositories
+    // has. The folder appears when the first story does, and not before.
+    if (!epics.length && !stories.length) return { epics: 0, stories: 0 }
+    ensureReadme(repoPath)
+    for (const epic of epics) epicFile(epic)
     for (const story of stories) storyFile(story)
     return { epics: epics.length, stories: stories.length }
   })
@@ -984,7 +1001,11 @@ function restore(repoPath, report) {
   for (const f of epicFiles) restoreTimes('epic', epicIds.get(f.key), f.data)
   for (const f of storyFiles) restoreTimes('story', storyIds.get(f.key), f.data)
 
-  return {}
+  // Handed back rather than left in `report` for the caller to read. `attempt` builds its answer
+  // as `{ ...fallback, ...fn() }`, and the spread of `fallback` is evaluated BEFORE `fn()` runs —
+  // so anything counted into `report` while restoring is copied at nought and thrown away. The
+  // restore itself worked; it just reported that it had done nothing, which is worse than failing.
+  return { epics: report.epics, stories: report.stories, skipped: report.skipped }
 }
 
 /** Whether `id` is somewhere above `candidate` in the tree, which would make a parent a loop. */

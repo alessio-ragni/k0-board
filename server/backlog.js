@@ -1,4 +1,5 @@
 import * as db from './db.js'
+import * as settings from './settings.js'
 import { projectName } from './projects.js'
 
 // ── The backlog ──────────────────────────────────────────────────────────────
@@ -12,8 +13,31 @@ import { projectName } from './projects.js'
 // how far an epic has got, which story to pick up next. A model asked to count is a model
 // spending tokens on arithmetic and getting it wrong once in twenty.
 
-/** The whole feature. Off, and the board is exactly the board it has always been. */
-export const enabled = () => String(db.getPref('backlog.enabled', '1')) !== '0'
+/**
+ * The whole feature. Off, and the board is exactly the board it has always been.
+ *
+ * It is read from `~/.k0/config.json`, next to the other setting k0 has, and not from the
+ * database: the database is what the server shares with the menu bar icon, and nothing a person
+ * is expected to switch off belongs somewhere they would need `sqlite3` to reach. The file is
+ * re-read whenever it changes, so this takes effect without a restart.
+ */
+export const enabled = () => settings.read().backlog
+
+/**
+ * The one answer every door gives when the backlog is switched off, so there is one wording and
+ * not one per endpoint. It carries `why` because the failure this guards against is not an error
+ * anybody sees: "there is nothing here" and "you turned this off" look the same to a skill and
+ * read the same to a person, and only one of them is worth acting on.
+ */
+export const off = () => ({
+  enabled: false,
+  epics: [],
+  stories: [],
+  story: null,
+  waiting_for: [],
+  blocked: [],
+  why: 'The k0 backlog is switched off. Delete the "backlog" line from ~/.k0/config.json to have it back.',
+})
 
 // ── The alias ────────────────────────────────────────────────────────────────
 // A position in the tree, computed on every read and never stored, so it cannot disagree with the
@@ -185,7 +209,7 @@ export function publicEpic(epic) {
  * than no answer.
  */
 export function listing(repo, epicKey = null) {
-  if (!enabled()) return { enabled: false, epics: [], stories: [] }
+  if (!enabled()) return off()
   if (!repo) return { enabled: true, repo: null, epics: [], stories: [] }
 
   const epics = db.listEpics(repo).map(publicEpic)
@@ -369,7 +393,7 @@ export function next(repo) {
   // One shape whatever the answer is. A caller that has to find out whether `waiting_for` exists
   // before it can read it will one day forget, and the empty board is the case nobody tests.
   const nothing = { story: null, waiting_for: [], blocked: [] }
-  if (!enabled()) return { enabled: false, ...nothing, why: 'The k0 backlog is switched off.' }
+  if (!enabled()) return off()
   const all = db.storiesOfProject(repo).filter((s) => s.state !== 'Done')
   if (!all.length) return { enabled: true, ...nothing, why: `There is nothing open in ${projectName(repo)}.` }
 

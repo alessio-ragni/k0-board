@@ -2,6 +2,7 @@ import fs from 'node:fs'
 import path from 'node:path'
 import { getPref, setPref } from './db.js'
 import { ROOT } from './paths.js'
+import * as settings from './settings.js'
 
 // ── The one request k0 makes ─────────────────────────────────────────────────
 // Everywhere else in k0 the answer to "shall we ask the internet" is no: no fonts fetched, no
@@ -21,7 +22,7 @@ import { ROOT } from './paths.js'
 // version string and the time it was told. Nothing is downloaded and nothing is run. k0 cannot
 // update itself; the most it can do is say that a newer version exists.
 //
-// HOW TO SWITCH IT OFF. The `update.check` preference: set it to `0` and no socket is opened,
+// HOW TO SWITCH IT OFF. `"updateCheck": false` in `~/.k0/config.json`, and no socket is opened,
 // ever — not on start, not on a restart, not when somebody presses the button on the What's New
 // page. `force` skips the day's cache, never the switch, and with the switch off the board also
 // stops mentioning whatever the last answer was.
@@ -108,10 +109,13 @@ export function seen() {
 
 // ── What npm says ────────────────────────────────────────────────────────────
 
-/** The switch. A missing row means on: a board upgraded into this version has no row yet. */
+/**
+ * The switch, in `~/.k0/config.json` next to the others. It is the one setting in k0 that a person
+ * has a real reason to look for — it is the only thing here that opens a socket — so it lives in
+ * the file they can open and not in the database, where reaching it would mean `sqlite3`.
+ */
 export function enabled() {
-  const v = getPref('update.check', '1')
-  return v !== '0' && v !== 'false' && v !== ''
+  return settings.read().updateCheck
 }
 
 /**

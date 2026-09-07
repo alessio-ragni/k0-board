@@ -44,7 +44,7 @@ newest published version of `k0-board` is, so the board can say that there is a 
 package name is in the address; there is no query string, no body, no cookie, and a fixed
 `user-agent` with no version in it, so two people asking look the same. Nothing about you, your
 repositories, your commits or your board is in the request, nothing is downloaded and nothing is
-run — k0 cannot update itself. It is off with one preference, `update.check`, and off means no
+run — k0 cannot update itself. It is off with one line in `~/.k0/config.json` — `"updateCheck": false` — and off means no
 socket is opened at all. It is written out in full at the top of `server/update.js`, which is the
 only file in k0 that reaches outside; every other outbound request in this codebase is a bug.
 

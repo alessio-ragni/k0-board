@@ -16,6 +16,23 @@ import path from 'node:path'
 // asking is rare: once a day, once between two windows, never at all when it is switched off.
 
 process.env.K0_DB = path.join(os.tmpdir(), `k0-update-test-${process.pid}.db`)
+// The switch lives in the settings file, not in the database: it is the one thing in k0 that
+// opens a socket, so it has to be reachable by somebody who has never heard of `sqlite3`. Both
+// of these are set before the first import, because `settings.js` reads the path once.
+const FAKE_HOME = fs.mkdtempSync(path.join(os.tmpdir(), 'k0-update-home-'))
+process.env.K0_HOME = FAKE_HOME
+process.env.K0_CONFIG = path.join(FAKE_HOME, 'config.json')
+
+/**
+ * Writes the switch and moves the file's mtime on, which is what `settings.read()` watches: two
+ * writes inside the same millisecond look to it like no change at all, and the test would be
+ * reading the answer from before.
+ */
+function switchTo(on) {
+  fs.writeFileSync(process.env.K0_CONFIG, JSON.stringify({ updateCheck: on }))
+  const moved = Date.now() + 2000
+  fs.utimesSync(process.env.K0_CONFIG, new Date(moved), new Date(moved))
+}
 
 const realFetch = globalThis.fetch
 globalThis.fetch = () => {
@@ -146,13 +163,13 @@ section('A failed attempt keeps the last good answer')
 // The promise is absolute: off means no socket, not even the one somebody asks for by hand.
 section('Switched off')
 {
-  store.setPref('update.check', '0')
+  switchTo(false)
   const registry = npm('99.0.0')
   await update.check({ force: true, fetch: registry })
   check('not even a forced check asks npm', registry.calls, 0)
   check('and the board stops mentioning what it knew', update.latest(), null)
 
-  store.setPref('update.check', '1')
+  switchTo(true)
   check('switching it back on remembers the answer', update.latest().version, '99.0.0')
 }
 

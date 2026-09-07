@@ -86,11 +86,16 @@ and that one line is the whole difference between a green build and a red one th
 **And a third, since `server/writer.js`: never let a test reach the real Claude Code.** It is the
 only part of k0 that starts a model, so a test that found the real one would cost whoever ran
 `npm test` money and a minute of waiting. `K0_CLAUDE` names the executable outright, and
-`test/writer.test.mjs` points it at a four-line shell script that echoes back whatever arrives on
-standard input. That is enough to prove the things worth proving — that the facts really do reach
-it, that a failed run ends and says why rather than sliding its progress bar for ever — without
-any of it being pretend. The script cannot be spawned on Windows, so that file checks the rest
-there and leaves the runs to the other two platforms, which is where coverage is measured.
+`test/writer.test.mjs` points it at a handful of three-line shell scripts: one that echoes back
+whatever arrives on standard input, one that fails with a word on standard error, one that answers
+nothing at all, one that talks for three megabytes, and one that sits there until it is killed.
+That is enough to prove the things worth proving — that the facts really do reach it, that a
+failed run ends and says why rather than sliding its progress bar for ever, that three keys can
+think at once and the fourth takes the oldest one's place, and that a run killed or given up on
+writes nothing under a key the page has moved on from — without any of it being pretend. The one
+thing no script can do is take three minutes, so the timeout is proved against the runner's own
+fake clock and a real child. The scripts cannot be spawned on Windows, so that file checks the
+rest there and leaves the runs to the other two platforms, which is where coverage is measured.
 
 **And a fourth, since `server/update.js`: never let a test reach the npm registry.** It is the one
 file in k0 that opens a socket, and a test suite that quietly asked a public registry about a

@@ -748,7 +748,11 @@ function sweepRepo(repo) {
 }
 
 async function backlogApi(req, res, url, seg) {
-  if (!backlog.enabled()) return send(res, 200, { enabled: false, epics: [], stories: [] })
+  // Switched off, every door answers the same way and none of them answers with an empty backlog:
+  // "there is nothing here" and "you turned this off" look identical to a skill and read identically
+  // to a person, and the wrong one of the two sends somebody looking for work they cannot find. The
+  // sentence comes from the model rather than from here so there is one wording and not two.
+  if (!backlog.enabled()) return send(res, 200, backlog.off())
   const rest = seg.slice(2) // ['story', '12', 'decision']
   const [kind, second, third] = rest
   const id = Number(second)

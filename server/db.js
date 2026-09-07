@@ -551,16 +551,20 @@ function allocateMissingKeys() {
  * starts above whatever is already there, so a database rebuilt from `.k0/` cannot collide with
  * the keys written in those files.
  */
-function allocateKey(projectPath) {
+// `except` is the story being moved into this repository, and it is already sitting in it by the
+// time the number is asked for: without leaving it out it counts itself, and the first story to
+// arrive in an empty repository is handed K3 instead of K1. Nothing is broken by the gap, but a
+// key is something the user reads out loud, and one that starts at three has to be explained.
+function allocateKey(projectPath, except = null) {
   const seq = db.prepare('SELECT next FROM key_seq WHERE project_path = ?').get(projectPath)
   const highest = db
     .prepare(
       `SELECT MAX(n) AS n FROM (
-         SELECT MAX(key_num) AS n FROM story WHERE project_path = ?
+         SELECT MAX(key_num) AS n FROM story WHERE project_path = ? AND id IS NOT ?
          UNION ALL SELECT MAX(key_num) FROM epic WHERE project_path = ?
        )`
     )
-    .get(projectPath)
+    .get(projectPath, except)
   const next = Math.max(seq?.next ?? 1, (highest?.n ?? 0) + 1)
   db.prepare(
     `INSERT INTO key_seq (project_path, next) VALUES (?, ?)
@@ -819,7 +823,7 @@ export function patchStory(id, fields) {
   // one it left behind is not handed out again, because `allocateKey` only ever counts forwards.
   const nowIn = db.prepare('SELECT project_path FROM story WHERE id = ?').get(id)?.project_path ?? null
   if (nowIn && nowIn !== wasIn) {
-    db.prepare('UPDATE story SET key_num = ? WHERE id = ?').run(allocateKey(nowIn), id)
+    db.prepare('UPDATE story SET key_num = ? WHERE id = ?').run(allocateKey(nowIn, id), id)
   }
 
   // Two fields that are not columns of `story` any more, and must not silently go nowhere:

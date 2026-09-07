@@ -29,6 +29,8 @@ export const PATH = process.env.K0_CONFIG || path.join(HOME, 'config.json')
  */
 export const DEFAULTS = {
   closeIdleTerminalsAfterHours: 12,
+  backlog: true,
+  updateCheck: true,
 }
 
 /**
@@ -43,7 +45,9 @@ export const MIN_HOURS = 1
 /** The line k0 leaves at the top of the file, since JSON has nowhere else to put a word. */
 const NOTE =
   'k0 wrote this file and reads it again by itself whenever it changes — nothing to restart. ' +
-  'Delete a line to go back to its default. Hours at 0 switch that closing off entirely. ' +
+  'Delete a line to go back to its default. Hours at 0 switch that closing off entirely, and ' +
+  '"backlog": false puts the board back to what it was before epics and stories existed, and ' +
+  '"updateCheck": false stops the one question k0 asks npm. ' +
   'See Settings in the README.'
 
 /**
@@ -63,7 +67,26 @@ export function idleHours(raw) {
 /** A file's worth of anything, turned into settings that can be trusted. Pure: the tests live here. */
 export function normalise(raw) {
   const o = raw && typeof raw === 'object' ? raw : {}
-  return { closeIdleTerminalsAfterHours: idleHours(o.closeIdleTerminalsAfterHours) }
+  return {
+    closeIdleTerminalsAfterHours: idleHours(o.closeIdleTerminalsAfterHours),
+    backlog: onOff(o.backlog, DEFAULTS.backlog),
+    updateCheck: onOff(o.updateCheck, DEFAULTS.updateCheck),
+  }
+}
+
+/**
+ * Whether the backlog is there at all. It lives here rather than in the database because this is
+ * the file a person can actually open: a switch nobody can reach is not a switch, and `false`
+ * has to put the board back exactly as it was before any of this existed.
+ *
+ * Anything that is not plainly a no is a yes. `false`, `0`, `"off"` and `"no"` switch it off;
+ * a missing line, a typo, or a value nobody anticipated leaves the feature on, because losing
+ * your backlog to a mistyped setting is much worse than keeping a feature you meant to drop.
+ */
+export function onOff(raw, fallback = true) {
+  if (raw === undefined || raw === null || raw === '') return fallback
+  const v = String(raw).trim().toLowerCase()
+  return !(v === 'false' || v === '0' || v === 'off' || v === 'no')
 }
 
 let cached = null

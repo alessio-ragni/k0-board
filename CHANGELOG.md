@@ -79,11 +79,14 @@ know: switch the backlog off and it is exactly the board it was.
 - **k0 now makes one network request.** Once a day it asks the public npm registry whether there
   is a newer `k0-board`, so the board can mention it. The package name is in the address and
   nothing else: nothing about you, your repositories or your commits leaves the machine, nothing
-  is downloaded, and `update.check = 0` stops it opening a socket at all.
-- **All of it can be switched off.** `backlog.enabled = 0` and the board is the board it always
-  was: nothing extra on a note, no switch in the bar, no icon leading to a page that would have
-  nothing on it, no `.k0/` folder created anywhere, and the commands say the backlog is turned off
-  rather than reporting an empty one.
+  is downloaded, and `"updateCheck": false` stops it opening a socket at all.
+- **All of it can be switched off**, from `~/.k0/config.json` — the file the idle timeout already
+  lives in, not the database, because a switch you would need `sqlite3` to reach is not a switch.
+  `"backlog": false` and the board is the board it always was: nothing extra on a note, no switch
+  in the bar, no icon leading to a page that would have nothing on it, no `.k0/` folder created
+  anywhere, and every command says the backlog is turned off rather than reporting an empty one —
+  "there is nothing here" and "you turned this off" read the same and only one is worth acting on.
+  k0 re-reads the file when it changes, so nothing has to be restarted.
 
 ### Changed
 
@@ -99,7 +102,7 @@ know: switch the backlog off and it is exactly the board it was.
   conversation on old work no longer throws away the record of what was tried before.
 - The ChangeLog page and its writer say *story* where they said *card*.
 
-### Fixed
+
 
 - **The age at the bottom of a post-it stopped lying.** Starting a session used to leave the line
   blank and the tooltip reading "Your turn for "; a story that had been started before inherited
@@ -117,6 +120,29 @@ know: switch the backlog off and it is exactly the board it was.
   carrying its old number into a repository that already has one.
 - **A story that had somehow been made its own parent can be thrown away again.** The board will
   not make that shape now, and a board that already had one no longer refuses to delete it.
+- **Notes written under the title of a `.k0/` file stay there.** The folder's own README promises
+  that whatever you add above the first heading is left alone, and it was not: every rewrite ate
+  one more paragraph of it, and the rewrite after that ate the next, until there was nothing left
+  and nothing anywhere saying there ever had been. An epic lost them fastest, because an epic has
+  no post-it line of its own for k0 to have been aiming at.
+
+### Fixed
+
+- **A note written under a story's title is no longer eaten.** The `.k0/` copy dropped the first
+  paragraph above the first heading every time it rewrote a file, taking it for the standfirst k0
+  prints itself. An epic prints no standfirst, and neither does a story with an empty description
+  — so for those, what was quietly deleted was something a person had written. One paragraph per
+  rewrite, in the folder whose own README promises that what you add under the title is left alone.
+- **A `.k0/` folder no longer appears in a repository that has no backlog.** The sweep wrote the
+  README explaining the folder before asking whether there was anything to put in it, which on a
+  machine with eighteen checkouts meant eighteen folders nobody had asked for. It appears with the
+  first story now, and not before.
+- **git taking too long says so.** A command that ran out of time came back carrying git's own
+  command line instead of a sentence, because the timeout was recognised by a code that only the
+  synchronous calls set. It is the slowest and most confusing failure there is — a commit hook can
+  run for fifteen minutes — and it had the least readable answer.
+- **A story moved to another repository is numbered from one, not from three.** It was given its
+  key in its new home after it had already arrived there, so it counted itself.
 
 ## [0.4.0]
 

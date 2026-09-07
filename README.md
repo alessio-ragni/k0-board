@@ -152,7 +152,7 @@ k0 makes **exactly one network request**, and you can switch it off. Once a day 
 npm registry what the newest version of `k0-board` is, so the board can mention that there is one.
 The package name is in the address and nothing else is in the request: not the version you are
 running, not your repositories, not your commits, not your board, not an identifier of any kind.
-Nothing is downloaded and nothing is run — k0 cannot update itself. Turn `update.check` off and no
+Nothing is downloaded and nothing is run — k0 cannot update itself. Set `"updateCheck": false` in `~/.k0/config.json` and and no
 socket is opened, ever. Everything else stays as it was: no fonts fetched, no telemetry, no
 `git fetch`.
 
@@ -619,7 +619,7 @@ The database is the source of truth and these are printed from it — whole, eve
 changes, never diffed cleverly — so a file cannot end up claiming something the board does not. But
 they are files, so they diff, they review, and they go in the commit with the work they describe.
 Write in them if you like: anything you put under a heading k0 does not print is left exactly where
-you put it.
+you put it, and so is a line you add to the header at the top and a note you leave under the title.
 
 **Commit the folder.** It is the only copy of this that outlives the database, and it is the way
 back: open a repository k0 has no stories for and it reads the folder in and rebuilds them, keys
@@ -637,21 +637,22 @@ it puts the mark back.
 
 ### Switching it off
 
-The whole feature is one preference, `backlog.enabled`. Set it to `0` and the board is exactly the
-board it has always been: nothing extra on a note, no switch in the bar, no lanes, no icon leading
-to the page below, **no `.k0/` folder created in any repository**, and the commands say plainly
-that the backlog is switched off rather than reporting an empty one. Telling somebody their
-backlog is empty when it is really turned off is the one answer worse than no answer.
+The whole feature is one line in `~/.k0/config.json`, the same file the idle timeout lives in:
 
-It lives in k0's own database rather than in `config.json`, with `update.check` — the other switch,
-[the one that stops the npm question](#what-installing-it-changes) — for company:
-
-```bash
-sqlite3 ~/.k0/k0.db "INSERT OR REPLACE INTO pref VALUES ('backlog.enabled', '0')"
+```json
+{ "backlog": false }
 ```
 
-Restart k0 afterwards. k0 holds the file open while it runs, and writing to it underneath a running
-server is the one thing not to do.
+and the board is exactly the board it has always been: nothing extra on a note, no switch in the
+bar, no lanes, no icon leading to the page below, **no `.k0/` folder created in any repository**,
+and the commands say plainly that the backlog is switched off rather than reporting an empty one.
+Telling somebody their backlog is empty when it is really turned off is the one answer worse than
+no answer.
+
+It is in that file and not in k0's database on purpose: a switch you would need `sqlite3` to reach
+is not a switch. k0 re-reads the file whenever it changes, so nothing has to be restarted, and
+deleting the line puts the default back. `"updateCheck": false` is its neighbour — [the one that
+stops the npm question](#what-installing-it-changes).
 
 ### On the board
 
@@ -1524,7 +1525,7 @@ knowing rather than glossing over.
 **One request leaves this machine, and it is about k0 rather than about you.** Once a day k0 asks
 the public npm registry what the newest version of `k0-board` is, so the board can say there is
 one. The package name is in the address and nothing else — nothing about you, your repositories,
-your commits or your board — nothing is downloaded, and `update.check` switches it off entirely.
+your commits or your board — nothing is downloaded, and `"updateCheck": false` in `~/.k0/config.json` switches it off entirely.
 
 The full picture, and how to report a problem privately, is in [SECURITY.md](SECURITY.md).
 
