@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>k0 — What's New</title>
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+  <link rel="stylesheet" href="/whatsnew.css">
+</head>
+<body>
+  <header class="topbar">
+    <a class="home" href="/" title="Back to the dashboard">k0</a>
+    <h1>What's New</h1>
+
+    <!-- Two controls, and both of them change who the page is being written for rather than
+         what is in it. Both send it back to the model, and both are remembered: coming back to
+         this page to find it in a language you do not read is the whole page wasted. -->
+    <select id="lang" aria-label="Language"></select>
+
+    <div class="levels" id="levels" role="radiogroup" aria-label="How technical">
+      <button type="button" role="radio" data-level="plain" aria-checked="false">Plain</button>
+      <button type="button" role="radio" data-level="normal" aria-checked="false">Normal</button>
+      <button type="button" role="radio" data-level="nerd" aria-checked="false">Nerd</button>
+    </div>
+  </header>
+
+  <main class="sheet" id="sheet">
+    <!-- Which two versions this page stands between, said the way you would say it out loud. -->
+    <div class="span" id="span"></div>
+
+    <div class="waiting" id="waiting" hidden>
+      <div class="bar"><i></i></div>
+      <p class="phrase" id="phrase"></p>
+    </div>
+
+    <div class="prose" id="prose"></div>
+    <p class="note" id="note" hidden></p>
+
+    <!-- The changelog itself, on screen from the first moment. While the words are being written
+         it is what there is to read; afterwards it is what you check them against. -->
+    <details class="entries" id="entries" open>
+      <summary>The entries, exactly as they were written</summary>
+      <div class="versions" id="versions"></div>
+    </details>
+  </main>
+
+  <script type="module" src="/whatsnew.js"></script>
+</body>
+</html>

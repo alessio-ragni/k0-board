@@ -13,8 +13,17 @@ import { parseChanged } from './files.js'
 // "did I push it?" that is exact and instant — pushing updates the remote reference by itself
 // — and in exchange it never touches the network, your credentials, or your patience.
 
-const GIT = () => which('git', ['/usr/bin/git', '/usr/local/bin/git', 'C:\\Program Files\\Git\\cmd\\git.exe'])
-const available = () => !!GIT()
+/**
+ * Where git is on this machine, or null when it is nowhere k0 knows to look.
+ *
+ * Exported because `worktree.js` shells out to the same git. A second copy of this list is a
+ * second thing to remember on the day a layout nobody thought of has to be added to it, and the
+ * half that was forgotten does not fail loudly — it reports that the machine has no git at all.
+ */
+export const gitPath = () =>
+  which('git', ['/usr/bin/git', '/usr/local/bin/git', 'C:\\Program Files\\Git\\cmd\\git.exe'])
+
+const available = () => !!gitPath()
 
 const OPTS = { timeout: 4000, maxBuffer: 1 << 20 }
 
@@ -56,7 +65,7 @@ export function parseStatus(out) {
  * How many of those unpushed commits arrived AFTER the session started. The list is
  * newest-first, so they are the ones before `headAtStart`. If `headAtStart` is not in the list
  * it was already pushed, and all of them are the session's. Returns null when it cannot be
- * known, and then the card says nothing about it.
+ * known, and then the post-it says nothing about it.
  */
 export function sessionShare(shas, headAtStart) {
   if (!Array.isArray(shas) || !shas.length) return 0
@@ -67,7 +76,7 @@ export function sessionShare(shas, headAtStart) {
 
 async function hasRemote(dir) {
   if (remotes.has(dir)) return remotes.get(dir)
-  const yes = await run(GIT(), ['-C', dir, 'remote'], OPTS)
+  const yes = await run(gitPath(), ['-C', dir, 'remote'], OPTS)
     .then((out) => !!out.trim())
     .catch(() => false)
   remotes.set(dir, yes)
@@ -82,9 +91,9 @@ async function read(dir) {
   // The three in parallel: two processes in a queue would double the wait for nothing. After
   // the first round `hasRemote` answers from memory and it is back to two processes.
   const [st, list, remote] = await Promise.all([
-    run(GIT(), ['--no-optional-locks', '-C', dir, 'status', '--porcelain=v2', '--branch'], OPTS).catch(() => null),
+    run(gitPath(), ['--no-optional-locks', '-C', dir, 'status', '--porcelain=v2', '--branch'], OPTS).catch(() => null),
     run(
-      GIT(),
+      gitPath(),
       ['--no-optional-locks', '-C', dir, 'rev-list', `--max-count=${MAX_UNPUSHED}`, 'HEAD', '--not', '--remotes'],
       OPTS
     )
@@ -154,7 +163,7 @@ export function stateOf(dir) {
 /** Where HEAD is at this moment. Needed once, when a session starts. */
 export async function head(dir) {
   if (!available()) return null
-  return run(GIT(), ['--no-optional-locks', '-C', dir, 'rev-parse', 'HEAD'], OPTS)
+  return run(gitPath(), ['--no-optional-locks', '-C', dir, 'rev-parse', 'HEAD'], OPTS)
     .then((out) => out.trim() || null)
     .catch(() => null)
 }
@@ -225,7 +234,7 @@ export function stripTrailers(body) {
 const authors = new Map()
 export async function authorEmail(dir) {
   if (authors.has(dir)) return authors.get(dir)
-  const email = await run(GIT(), ['-C', dir, 'config', 'user.email'], OPTS)
+  const email = await run(gitPath(), ['-C', dir, 'config', 'user.email'], OPTS)
     .then((out) => out.trim())
     .catch(() => '')
   authors.set(dir, email)
@@ -261,9 +270,9 @@ export async function history(dir, { from, to }) {
   if (email) args.push(`--author=${email}`)
 
   const [log, list, remote] = await Promise.all([
-    run(GIT(), args, LOG_OPTS).catch(() => ''), // a repository without a single commit
+    run(gitPath(), args, LOG_OPTS).catch(() => ''), // a repository without a single commit
     run(
-      GIT(),
+      gitPath(),
       ['--no-optional-locks', '-C', dir, 'rev-list', `--max-count=${MAX_UNPUSHED}`, '--branches', '--not', '--remotes'],
       OPTS
     )
@@ -286,7 +295,7 @@ export async function history(dir, { from, to }) {
 export async function dirtyFiles(dir) {
   if (!available()) return []
   if (!fs.existsSync(path.join(dir, '.git'))) return []
-  return run(GIT(), ['--no-optional-locks', '-C', dir, 'status', '--porcelain=v2', '-z'], OPTS)
+  return run(gitPath(), ['--no-optional-locks', '-C', dir, 'status', '--porcelain=v2', '-z'], OPTS)
     .then((out) => parseChanged(out).slice(0, MAX_DIRTY))
     .catch(() => [])
 }

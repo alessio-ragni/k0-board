@@ -83,10 +83,10 @@ export async function open({ command, title }) {
   const session = sessionName()
 
   // The session runs the command directly rather than a shell that then runs it: when Claude
-  // Code exits, the session ends, which is what makes a finished card's terminal disappear
+  // Code exits, the session ends, which is what makes a finished story's terminal disappear
   // instead of leaving an idle shell behind.
   await run(tmux, ['new-session', '-d', '-s', session, '-n', title || session, command])
-  // Off by default, and worth turning on: it is what puts the card's name in the window's
+  // Off by default, and worth turning on: it is what puts the story's name in the window's
   // title bar rather than "tmux".
   await runQuiet(tmux, ['set-option', '-t', session, 'set-titles', 'on'])
   await runQuiet(tmux, ['set-option', '-t', session, 'set-titles-string', title || session])
@@ -184,7 +184,7 @@ async function windowId(handle) {
 }
 
 export async function focus(handle) {
-  if (!handle) return { ok: false, error: 'This card has no terminal of its own' }
+  if (!handle) return { ok: false, error: 'This story has no terminal of its own' }
   if (!canPlaceWindows()) return { ok: false, error: 'k0 cannot raise windows on this desktop' }
   const id = await windowId(handle)
   if (!id) return { ok: false, error: 'That window is gone' }

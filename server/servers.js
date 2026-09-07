@@ -151,7 +151,7 @@ export function logPathFor(repo) {
  * repository, and the globe would then govern somebody else's server.
  *
  * Both separators count, rather than whichever one this machine happens to use. The paths on
- * either side come from different places — one from the operating system, one from a card or from
+ * either side come from different places — one from the operating system, one from a story or from
  * Claude Code's own files — and on Windows those two do not reliably agree on which slash they
  * write. Asking `path.sep` would make the answer depend on the machine reading it, which is how a
  * comparison starts being right in the tests and wrong in the field.

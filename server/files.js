@@ -423,7 +423,7 @@ function after(line, n) {
 /**
  * The files this session has touched: the ones still hanging in the working tree, plus the
  * ones inside commits made since it started. The working tree belongs to everybody and not
- * only to it — the same limit the git mark on the card already has — but it remains the right
+ * only to it — the same limit the git mark on the post-it already has — but it remains the right
  * answer to the question "what has changed here, now".
  */
 export async function changed(root, headAtStart) {

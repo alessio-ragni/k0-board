@@ -53,11 +53,11 @@ section('Before anything is asked')
 // ── When Claude Code is there ────────────────────────────────────────────────
 section('When Claude Code is there')
 if (POSIX) {
-  const can = writer.capability()
+  const can = writer.capability('k0-changelog')
   check('the write-up can happen', can.can, true)
   check('so there is nothing to explain', can.why, null)
 
-  writer.write('yesterday:1:2', 'THE-FACTS')
+  writer.run('k0-changelog', 'yesterday:1:2', 'THE-FACTS')
   check('it says it is working', writer.state('yesterday:1:2').running, true)
 
   const done = await settle('yesterday:1:2')
@@ -67,13 +67,33 @@ if (POSIX) {
   check('a window it was never asked about stays empty', writer.state('today:9:9').text, null)
 }
 
+// ── Two pages at once ────────────────────────────────────────────────────────
+// The ChangeLog and What's New can be open at the same time, and one must not cancel the other:
+// the runner is keyed, and a key is a window or a language, not "the one job".
+section('Two pages at once')
+if (POSIX) {
+  process.env.K0_CLAUDE = GOOD
+  writer.run('k0-changelog', 'today:1:2', 'FACTS-A')
+  writer.run('k0-whatsnew', 'whatsnew:it:normal', 'FACTS-B')
+
+  const a = await settle('today:1:2')
+  const b = await settle('whatsnew:it:normal')
+  check('the ChangeLog got its own answer', a.text, 'GOT:FACTS-A')
+  check('and the What is New page got its own', b.text, 'GOT:FACTS-B')
+
+  const missing = writer.capability('k0-not-a-skill')
+  check('a skill that is not installed says so', missing.can, false)
+  check('and names it', missing.why.includes('k0-not-a-skill'), true)
+  check('a name that is not a name is refused', writer.capability('../../etc/passwd').can, false)
+}
+
 // ── When it goes wrong ───────────────────────────────────────────────────────
 // A failed run must end, and say something a person can read. Left "running", the page would
 // sit there with the bar sliding for ever.
 section('When it goes wrong')
 if (POSIX) {
   process.env.K0_CLAUDE = BAD
-  writer.write('week:3:4', 'THE-FACTS')
+  writer.run('k0-changelog', 'week:3:4', 'THE-FACTS')
   const done = await settle('week:3:4')
   check('it stops', done.running, false)
   check('there is nothing to show', done.text, null)
@@ -86,11 +106,11 @@ if (POSIX) {
 section('When Claude Code is not there')
 {
   process.env.K0_CLAUDE = path.join(DIR, 'not-a-real-thing')
-  const can = writer.capability()
+  const can = writer.capability('k0-changelog')
   check('it says it cannot', can.can, false)
   check('in a sentence meant for a person', can.why.includes('Claude Code is not on this machine'), true)
 
-  const state = writer.write('month:5:6', 'THE-FACTS')
+  const state = writer.run('k0-changelog', 'month:5:6', 'THE-FACTS')
   check('asking for it anyway does not hang', state.running, false)
   check('it explains itself instead', state.error, can.why)
 }

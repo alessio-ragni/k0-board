@@ -37,7 +37,7 @@ const PS = [
 
   // The number that counts: everything a session has dragged along behind it. The `claude`
   // process on its own would say 279 MB, the subtree says 602 — and inside it there is a 312 MB
-  // Chrome the card would never have confessed to on its own.
+  // Chrome the story would never have confessed to on its own.
   const kids = childrenOf(procs)
   const pids = subtree(kids, 45913)
   check('the subtree takes children and grandchildren', pids.size, 4)

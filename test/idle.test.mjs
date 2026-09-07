@@ -19,13 +19,13 @@ const HOUR = 3600000
 const ago = (h) => NOW - h * HOUR
 
 /**
- * A card as `db.listCards()` hands it over, and the session file entry that goes with it. The
+ * A story as `db.listStories()` hands it over, and the session file entry that goes with it. The
  * default is the case that must be closed — yellow, alive, idle, untouched for a day — so every
  * check below is one word away from it and says what that word does.
  */
-const card = (over = {}) => ({
+const story = (over = {}) => ({
   id: 1,
-  title: 'A card',
+  title: 'A story',
   status: 'IDLE',
   session_id: 's1',
   session_alive: 1,
@@ -39,17 +39,17 @@ const card = (over = {}) => ({
 const session = (over = {}) => ({ pid: 100, status: 'idle', updatedAt: ago(24), statusUpdatedAt: ago(24), ...over })
 
 /** The ids k0 would close, as one string, because a failure has to print something readable. */
-const swept = ({ cards, live = null, hours = 12 }) =>
+const swept = ({ stories, live = null, hours = 12 }) =>
   dueForClose({
-    cards,
-    live: live ?? new Map(cards.filter((c) => c.session_id).map((c) => [c.session_id, session()])),
+    stories,
+    live: live ?? new Map(stories.filter((c) => c.session_id).map((c) => [c.session_id, session()])),
     hours,
     now: NOW,
   })
     .map((c) => c.id)
     .join(',')
 
-const one = (over, live) => swept({ cards: [card(over)], live })
+const one = (over, live) => swept({ stories: [story(over)], live })
 
 // ── The window that gets closed ──────────────────────────────────────────────
 section('The window that gets closed')
@@ -73,7 +73,7 @@ check('one with a question on screen', one({ status: 'ASK' }), '')
 check('one with a plan waiting for a yes', one({ status: 'PLANNED' }), '')
 check('one that never started', one({ status: 'BACKLOG', session_id: null }), '')
 check('one already ticked off', one({ completed_at: ago(20) }), '')
-// Nothing to close: this card's terminal went some time ago and the card is only waiting for a
+// Nothing to close: this story's terminal went some time ago and the story is only waiting for a
 // Resume. Closing it again would mark it as k0's doing for no reason.
 check('one whose session is already gone', one({ session_alive: 0 }), '')
 // A shell is a shell YOU dropped into, and there may well be a command of yours running in it.
@@ -87,12 +87,12 @@ section('The most recent sign of life wins')
 // Resuming leaves the status at IDLE, so no new event is written and `status_since` stays as old
 // as it ever was. Without taking the maximum, k0 would close a terminal it had just opened.
 check(
-  'a card resumed a minute ago is not old, whatever its history says',
+  'a story resumed a minute ago is not old, whatever its history says',
   one({ updated_at: ago(0.01) }, new Map([['s1', session({ updatedAt: ago(0.01), statusUpdatedAt: ago(0.01) })]])),
   ''
 )
 check(
-  'and a card whose session file alone is fresh is spared too',
+  'and a story whose session file alone is fresh is spared too',
   one({}, new Map([['s1', session({ updatedAt: ago(0.5) })]])),
   ''
 )
@@ -106,22 +106,22 @@ check('and a clock that is simply missing does not win', lastSignOfLife({ update
 // ── Switched off ─────────────────────────────────────────────────────────────
 section('Switched off')
 // Zero hours is the off switch, and it has to be an outright refusal rather than a very short
-// timeout: `now - 0` is now, and every idle card on the board would go at once.
-check('at zero hours nothing is closed', swept({ cards: [card()], hours: 0 }), '')
-check('and a negative number is not an invitation either', swept({ cards: [card()], hours: -5 }), '')
+// timeout: `now - 0` is now, and every idle story on the board would go at once.
+check('at zero hours nothing is closed', swept({ stories: [story()], hours: 0 }), '')
+check('and a negative number is not an invitation either', swept({ stories: [story()], hours: -5 }), '')
 
 // ── More than one at a time ──────────────────────────────────────────────────
 section('More than one at a time')
 {
-  const cards = [
-    card({ id: 1 }),
-    card({ id: 2, session_id: 's2', status: 'ASK' }),
-    card({ id: 3, session_id: 's3' }),
-    card({ id: 4, session_id: 's4', updated_at: ago(2), status_since: ago(2) }),
+  const stories = [
+    story({ id: 1 }),
+    story({ id: 2, session_id: 's2', status: 'ASK' }),
+    story({ id: 3, session_id: 's3' }),
+    story({ id: 4, session_id: 's4', updated_at: ago(2), status_since: ago(2) }),
   ]
-  const live = new Map(cards.map((c) => [c.session_id, session()]))
+  const live = new Map(stories.map((c) => [c.session_id, session()]))
   live.set('s4', session({ updatedAt: ago(2), statusUpdatedAt: ago(2) }))
-  check('only the forgotten ones, and all of them', swept({ cards, live }), '1,3')
+  check('only the forgotten ones, and all of them', swept({ stories, live }), '1,3')
 }
 
 // ── How long a terminal may sit there ────────────────────────────────────────

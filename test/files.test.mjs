@@ -266,30 +266,30 @@ section('The repository list')
   }
 }
 
-// ── The cards of a directory that is gone ────────────────────────────────────
-section('The cards of a directory that is gone')
-// A column is held up by its cards, and the cards by their directory. Without this rule a
+// ── The stories of a directory that is gone ──────────────────────────────────
+section('The stories of a directory that is gone')
+// A column is held up by its stories, and the stories by their directory. Without this rule a
 // deleted or renamed directory leaves a column behind forever.
 {
   const gone = path.join(os.tmpdir(), 'k0-test-gone')
   fs.rmSync(gone, { recursive: true, force: true })
-  const cards = [
+  const stories = [
     { id: 1, project_path: REPO },
     { id: 2, project_path: gone },
     { id: 3, project_path: REPO },
   ]
-  const left = onDisk(cards)
+  const left = onDisk(stories)
   check(
-    'the card of a directory that is gone is not on the board',
+    'the story of a directory that is gone is not on the board',
     left.some((c) => c.id === 2),
     false
   )
   check('the others all stay', left.map((c) => c.id).join(','), '1,3')
-  check('no cards, no columns', onDisk([]).length, 0)
-  // Hiding is not deleting: if the directory comes back, so do its cards.
+  check('no stories, no columns', onDisk([]).length, 0)
+  // Hiding is not deleting: if the directory comes back, so do its stories.
   fs.mkdirSync(gone, { recursive: true })
   try {
-    check('and if the directory comes back, so does the card', onDisk(cards).length, 3)
+    check('and if the directory comes back, so does the story', onDisk(stories).length, 3)
   } finally {
     fs.rmSync(gone, { recursive: true, force: true })
   }

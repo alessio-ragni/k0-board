@@ -6,6 +6,118 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+The board learns what the work is *about*. A post-it is now a **story** with a stable key of its
+own — `K42`, and it keeps it for life — and stories can sit under an **epic**, be split into
+tasks, wait on each other, and carry the **decisions** that were taken while they were discussed.
+Ten commands drive all of it from a terminal, a `.k0/` folder in each repository keeps a readable
+copy that survives a lost database, and a **counter-check** holds the finished work up against
+every decision, one by one, before anybody presses Done. None of it changes the board you already
+know: switch the backlog off and it is exactly the board it was.
+
+### Added
+
+- **Epics, stories and tasks.** One post-it is one story. A story can belong to an epic, and a
+  story that turned out too big to close is split into tasks that inherit its context. Every one
+  of them gets a key — `K42` — that is never reused and never reassigned, and a position in the
+  tree (`1.12.1`) that is worked out fresh every time, so it can never disagree with where the
+  thing actually sits.
+- **Decisions you can hold work against.** What was settled while a story was discussed is
+  written down one sentence at a time, numbered, and never rewritten — a decision that changes is
+  *superseded* by the one that replaced it, and both stay. An epic's decisions are inherited by
+  every story under it rather than copied into them, so reversing one reverses it everywhere at
+  once.
+- **The counter-check.** `/k0-verify` walks the finished work against every decision the story is
+  held to and records a verdict for each, with the evidence. It answers all of them or the run
+  does not count, and it never writes over the run before it. A story cannot be marked Done while
+  a decision the counter-check found broken has not been answered since — k0 names it, says which
+  run found it and what to do about it, instead of quietly letting it through.
+- **Ten commands.** `/k0-epic`, `/k0-story`, `/k0-discuss`, `/k0-split`, `/k0-plan`, `/k0-work`,
+  `/k0-verify`, `/k0-next`, `/k0-order` and `/k0-whatsnew`. The installer offers to copy the ones
+  you type into your own skills folder, in one question, the same way it already offers
+  `/k0-import` — that is where Claude Code looks for them, and a command that was never copied
+  there is a command that does not exist. They ask their questions in rounds, say how many rounds
+  are left, stop when nothing more would change the work, and write every round down before asking
+  the next one — so a terminal that dies at round three does not take the first three with it.
+  Everything you say is stored in the language you said it in.
+- **A star, and what waits on what.** A story can be starred from its own post-it, and told to
+  wait on another one. Waiting is a note and not a lock: nothing refuses to start a story that is
+  waiting, the note is simply marked and it sinks down the running order. Opened on the page
+  below, a story says both directions: what it is waiting for, and what is waiting for it — which
+  is usually the real reason to finish one thing before another.
+- **Something that says what to pick up next.** `/k0-next` answers in one sentence, and the
+  answer is k0's rather than the model's — a live session first, then whatever has been sitting
+  in Review longest, then what is not waiting on unfinished work, then the star. Ask twice and
+  you get the same answer.
+- **A switch in the top bar that changes what a column means.** A column is a repository, which
+  is what it has always been, or it is one of the six states a story moves through — and then you
+  can drag a note from one to the next. Click an epic's label and the board becomes that epic,
+  with a bar saying how far it has got and a way back out.
+- **The backlog written down, line by line.** A page of its own, next to the ChangeLog: one row
+  per story with everything already counted, sorted by any heading, searchable by title, and the
+  whole of whichever story you open underneath the table — the rounds, the decisions and their
+  verdicts, the plan, the checklist and the log. Click an epic instead and the epic opens the same
+  way — the rounds it was argued out in, the decisions every story under it is held to, and what it
+  became — which is the only place that conversation can be watched, because it happens before a
+  single story exists. It follows a discussion while the discussion is happening, an epic's as well
+  as a story's.
+- **A `.k0/` folder in each repository.** One file per epic and one per story, rewritten whenever
+  the story changes: the whole backlog in Markdown, readable in a diff and committable. A story's
+  file carries the decisions it inherited from its epic as well as its own, under the names the
+  counter-check uses — so a file that says `K7·D3` was broken also says, further up, what `K7·D3`
+  was. It is also the way back — k0 can rebuild a lost database from those files. Nothing of the
+  backlog is written anywhere else in your repository, and never in your `.gitignore`; the one
+  other thing that writes into a repository at all is the worktree below, and you have to ask
+  for it.
+- **Worktrees, from the board.** `/k0-work` opens a worktree for a session from the branch you
+  are standing on, works there, and brings its branch back as a single merge commit before
+  removing it. Never a push, never a pull request, and never a conflict resolved on your behalf.
+  It also never runs your tests in there, and says why.
+- **A What's New page.** After an update, a discreet dot appears next to `k0` in the top bar and
+  leads to a page that says what changed between the version you had and the one running now —
+  written by your own Claude, in your language, at the level of detail you ask for. It never
+  opens by itself, and the dot goes out when you have read it.
+- **k0 now makes one network request.** Once a day it asks the public npm registry whether there
+  is a newer `k0-board`, so the board can mention it. The package name is in the address and
+  nothing else: nothing about you, your repositories or your commits leaves the machine, nothing
+  is downloaded, and `update.check = 0` stops it opening a socket at all.
+- **All of it can be switched off.** `backlog.enabled = 0` and the board is the board it always
+  was: nothing extra on a note, no switch in the bar, no icon leading to a page that would have
+  nothing on it, no `.k0/` folder created anywhere, and the commands say the backlog is turned off
+  rather than reporting an empty one.
+
+### Changed
+
+- **A card is now a story, everywhere.** The word changed on the board, in the commands k0 ships
+  and in what k0 stores. Your board comes back exactly as you left it — same post-its, same
+  colours, same ages, same order — but what a post-it stands for now has room for what the work
+  is about.
+- **A story's state and its session's status are two different things.** Backlog · Discussed ·
+  Planned · Working · Review · Done is where the *work* is; Working · Planning · Planned · Ask ·
+  Idle is what the *session* is doing this second. They used to be one column fighting itself,
+  which is why ticking something off used to lose what the terminal was in the middle of.
+- **A story keeps every session it has had**, rather than only the last one. Starting a new
+  conversation on old work no longer throws away the record of what was tried before.
+- The ChangeLog page and its writer say *story* where they said *card*.
+
+### Fixed
+
+- **The age at the bottom of a post-it stopped lying.** Starting a session used to leave the line
+  blank and the tooltip reading "Your turn for "; a story that had been started before inherited
+  the previous session's age and claimed five days the moment you pressed Start; a job you
+  reopened said "4 days" instead of "now"; and a backlog post-it jumped to "now" when something
+  moved it between two states that look identical on the board. All four were one line reading
+  the wrong entry in the story's history.
+- **A board that lost power while it was being brought forward opens again.** The first time this
+  version runs, it moves your board to the shape described above. That used to be one long step
+  with a single test in front of it: a machine that went down in the middle left a board that
+  would never open again, and a second attempt would have given every story a duplicate of every
+  session it had lived through. The move is now done in pieces that each stand on their own, and
+  k0 writes down that it has been done, so it cannot happen twice.
+- **A story moved to another repository is given a key from that repository**, instead of
+  carrying its old number into a repository that already has one.
+- **A story that had somehow been made its own parent can be thrown away again.** The board will
+  not make that shape now, and a board that already had one no longer refuses to delete it.
+
 ## [0.4.0]
 
 The file viewer stops being read-only, and stops being just a pile of documents. It now shows the

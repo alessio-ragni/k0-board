@@ -59,7 +59,7 @@ process.env.K0_DB = path.join(os.tmpdir(), `k0-something-test-${process.pid}.db`
 const store = await import('../server/db.js')
 ```
 
-This is not hypothetical: it happened, and it left five identical cards on a real board in a
+This is not hypothetical: it happened, and it left five identical stories on a real board in a
 column that did not exist. `db.js` now refuses to open the real database from a file whose name
 ends in `.test.mjs`, but the error is a backstop, not the plan. The same goes for the home
 directory — `os.homedir()` honours `$HOME` on POSIX and `%USERPROFILE%` on Windows, so both are
@@ -92,6 +92,14 @@ it, that a failed run ends and says why rather than sliding its progress bar for
 any of it being pretend. The script cannot be spawned on Windows, so that file checks the rest
 there and leaves the runs to the other two platforms, which is where coverage is measured.
 
+**And a fourth, since `server/update.js`: never let a test reach the npm registry.** It is the one
+file in k0 that opens a socket, and a test suite that quietly asked a public registry about a
+package every time somebody ran `npm test` would make a liar of the promise the rest of the
+documentation makes. `check()` takes its `fetch` as an argument, and `test/update.test.mjs`
+replaces the global one with a function that throws, so a change that ignored the seam fails loudly
+instead of going out over the wire. Same shape as `K0_CLAUDE`, same reason: **what reaches outside
+has to be provable without ever going there.**
+
 ## What is not tested, and why
 
 Everything that needs a real machine: opening a terminal, keeping a laptop awake, placing a
@@ -110,11 +118,26 @@ in functions that take values and return values, in `server/servers.js`, and is 
 Closing a forgotten terminal is the same split again. Killing a process and shutting a window
 needs a machine and proves `kill`; deciding *which* terminal has sat still long enough is where a
 mistake is quiet and expensive — a window closed while somebody was about to go back to it. So
-`server/idle.js` takes a list of cards, a map of live sessions and a `now`, returns the ones to
+`server/idle.js` takes a list of stories, a map of live sessions and a `now`, returns the ones to
 close, and touches nothing; `test/idle.test.mjs` proves every rule in it, including all the ones
 about what to leave alone, without a terminal anywhere. The settings that feed it are in the same
 file, because a number arriving from a hand-edited file is the other thing that can be wrong
 quietly.
+
+**git is the one exception to all of that**, and `test/worktree.test.mjs` is where it is made.
+That file builds a real repository in a temporary directory — an init, a commit, and a bare remote
+that exists only so the test can prove nothing was ever pushed to it — then opens a worktree in it,
+merges it back and removes it, for real. It is worth the departure because everything that can go
+wrong here is only visible to a real git: a worktree opened from `main` instead of the branch you
+were standing on, a merge that fast-forwards where it should leave a commit, a directory excluded
+through somebody's `.gitignore` instead of `.git/info/exclude`, a push that should never have
+happened. None of those survive being faked, because a fake agrees with whatever you wrote.
+
+Two things keep it honest. The repository is built with `GIT_CONFIG_NOSYSTEM`, a `user.email` of
+its own, commit signing off and an empty `core.hooksPath`, so nothing on the machine running the
+tests can decide the result. And where git will not init at all, the file proves the parts that are
+pure text — the branch and directory names, the commit message written from a diff — and leaves the
+rest, rather than going red on a machine that has none.
 
 The two big browser files, `web/board.js` and `web/files.js`, are not tested either: they are
 written against the DOM, and testing them would mean either a browser or a fake one, and the fake

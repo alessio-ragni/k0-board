@@ -30,6 +30,24 @@ which is a smaller loss than the alternative.
 and inside them every path is resolved and checked against the root both as written and after
 following symbolic links.
 
+The backlog's own addresses are the one place where the first of those two bounds is wider, and
+deliberately: `/api/backlog` accepts any absolute path that is a checkout — a directory with a
+`.git` in it — because the first story in a repository is created by a command running in one k0
+has never had a story for, and refusing it would be refusing somebody at the moment they start
+using the thing. It reads and writes `<repo>/.k0/` there and nothing else. It is still a bound —
+`/etc` and your home directory are not checkouts — but it is "is a repository", not "is a
+repository k0 already knows", and the difference is worth stating here rather than leaving to be
+discovered.
+
+**One request goes out, and it is about k0.** Once a day k0 asks `registry.npmjs.org` what the
+newest published version of `k0-board` is, so the board can say that there is a newer one. The
+package name is in the address; there is no query string, no body, no cookie, and a fixed
+`user-agent` with no version in it, so two people asking look the same. Nothing about you, your
+repositories, your commits or your board is in the request, nothing is downloaded and nothing is
+run — k0 cannot update itself. It is off with one preference, `update.check`, and off means no
+socket is opened at all. It is written out in full at the top of `server/update.js`, which is the
+only file in k0 that reaches outside; every other outbound request in this codebase is a bug.
+
 ## What installing it changes
 
 The installer says everything it is about to do before it does any of it, and asks. On macOS the

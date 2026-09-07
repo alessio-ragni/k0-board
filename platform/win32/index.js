@@ -34,9 +34,9 @@ export const notes = {
     'Windows gives no way to read what is printed inside another process’s console, so k0 ' +
     'cannot tell exactly when Claude Code has finished starting: it waits a fixed moment ' +
     'instead. On a slow machine the prompt can arrive early — press Escape, then paste it ' +
-    'again from the card.',
+    'again from the story.',
   'terminal.title':
-    'Windows Terminal owns its tab titles, so renaming a card does not rename a window that ' +
+    'Windows Terminal owns its tab titles, so renaming a story does not rename a window that ' +
     'is already open. The new name shows up next time the session starts.',
   'terminal.font':
     'Font size lives in your terminal’s own profile, which k0 will not rewrite, so driving ' +

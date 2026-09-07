@@ -98,8 +98,8 @@ function pending(r) {
   if (r.unpushedTotal) lines.push(`${plural(r.unpushedTotal, 'commit')} still on this machine`)
   if (r.dirtyTotal) lines.push(`${plural(r.dirtyTotal, 'file')} changed and never committed`)
   if (r.unreleased) lines.push(`${plural(r.unreleased.filter((l) => l.startsWith('-')).length, 'changelog line')} not yet released`)
-  const open = r.cards.filter((c) => !c.done)
-  if (open.length) lines.push(`${plural(open.length, 'card')} still open`)
+  const open = r.stories.filter((c) => !c.done)
+  if (open.length) lines.push(`${plural(open.length, 'story', 'stories')} still open`)
   if (!lines.length) return null
   const p = document.createElement('p')
   p.className = 'pending'
@@ -116,7 +116,7 @@ function factsBlock(r) {
   if (r.commits.length) bits.push(plural(r.commits.length, 'commit'))
   if (local) bits.push(`${local} not out yet`)
   if (r.dirty.length) bits.push(plural(r.dirty.length, 'file touched', 'files touched'))
-  if (r.cards.length) bits.push(plural(r.cards.length, 'card'))
+  if (r.stories.length) bits.push(plural(r.stories.length, 'story', 'stories'))
   s.textContent = bits.join(' · ') || 'nothing recorded'
   d.append(s)
   if (r.commits.length) d.append(commitList(r))

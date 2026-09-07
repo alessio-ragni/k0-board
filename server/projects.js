@@ -94,13 +94,13 @@ function scan(fromClaude) {
 
 /**
  * The repositories, most used at the top. Recency is the fresher of two histories: Claude
- * Code's, which knows where you have worked even outside k0, and k0's own cards, which are the
+ * Code's, which knows where you have worked even outside k0, and k0's own stories, which are the
  * only thing that notices a session still open right now.
  */
 export function listProjects() {
   const fromClaude = lastUsed()
   const mine = new Map(projectRecency().map((r) => [r.project_path, Number(r.at) || 0]))
-  // A repository with a card is always selectable, even if it lives outside your home — but
+  // A repository with a story is always selectable, even if it lives outside your home — but
   // only while its directory exists: the old name of a renamed one does not come back.
   const paths = new Set([...scan(fromClaude.keys()), ...[...mine.keys()].filter(exists)])
   // Your home is not a project: it is the directory that contains them all. It ends up here
@@ -113,7 +113,7 @@ export function listProjects() {
     path: dir,
     last_used: Math.max(fromClaude.get(dir) || 0, mine.get(dir) || 0),
     // Your stuff, or installed stuff? One sign is enough: a `.git`, a history in Claude Code, a
-    // card, a document in there, or the opposite of all of them — that there is nothing in it
+    // story, a document in there, or the opposite of all of them — that there is nothing in it
     // yet. Under your home there are also directories that are only ever programs, and those
     // stay out precisely because they are full of things nobody reads.
     // The empty question is asked last: it touches the disk, and by then only the few
@@ -130,20 +130,20 @@ export function listProjects() {
 }
 
 /**
- * The cards still standing: the ones whose directory exists. It is the same rule as the
- * repository list above — "a card is kept alive by its directory" — carried over to the board
- * too, which used to work its columns out from the cards alone. Without it, a deleted or
+ * The stories still standing: the ones whose directory exists. It is the same rule as the
+ * repository list above — "a story is kept alive by its directory" — carried over to the board
+ * too, which used to work its columns out from the stories alone. Without it, a deleted or
  * renamed directory leaves a column behind forever.
  *
- * Hide, do not delete: the cards stay in the database, and if the directory comes back one day
+ * Hide, do not delete: the stories stay in the database, and if the directory comes back one day
  * — an external disk remounted, a directory put back — so do they.
  *
- * The disk is asked once per repository and not once per card: there are a couple of dozen
- * columns and a few hundred cards, and this round runs every second.
+ * The disk is asked once per repository and not once per story: there are a couple of dozen
+ * columns and a few hundred stories, and this round runs every second.
  */
-export function onDisk(cards) {
+export function onDisk(stories) {
   const alive = new Map()
-  return cards.filter((c) => {
+  return stories.filter((c) => {
     if (!alive.has(c.project_path)) alive.set(c.project_path, exists(c.project_path))
     return alive.get(c.project_path)
   })

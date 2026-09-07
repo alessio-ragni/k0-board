@@ -27,7 +27,7 @@ whole thing. Markdown, starting at the first word that belongs to the summary.
       "unpushed_total": 2,
       "uncommitted_files": ["web/board.js"],
       "unreleased_changelog": ["### Fixed", "- the board stays pinned to the bar"],
-      "cards": [{ "title": "…", "description": "…", "status": "IDLE", "done": false }]
+      "stories": [{ "title": "…", "description": "…", "status": "IDLE", "done": false }]
     }
   ]
 }
@@ -73,7 +73,7 @@ something to put in them. This is a summary somebody reads standing up.
 
 ## Rules
 
-- **Write in the language of the facts.** The commit subjects and the card titles tell you what
+- **Write in the language of the facts.** The commit subjects and the story titles tell you what
   language this person works in: write in that one, and do not translate anything. The headings,
   the bold lines, the bullets — all of it in their language.
 - **Leave the words of the trade alone.** *commit*, *push*, *branch*, *changelog* are what these
