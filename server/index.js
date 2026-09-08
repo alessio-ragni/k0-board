@@ -18,7 +18,7 @@ import {
 import * as mode from './mode.js'
 import * as settings from './settings.js'
 import { dueForClose } from './idle.js'
-import { listProjects, onDisk, projectName } from './projects.js'
+import { listProjects, onDisk, projectName, rootOf } from './projects.js'
 import { scanSessions } from './sessions.js'
 import * as git from './git.js'
 import * as changelog from './changelog.js'
@@ -261,7 +261,7 @@ function aliases(stories, epics) {
  * always drawn — and one fact under two names is two facts that will one day disagree. What is
  * added is only what somebody would otherwise have to count.
  */
-function backlogPart(story, alias, epics) {
+function backlogPart(story, alias, epics, decided) {
   const epic = story.epic_id ? epics.get(story.epic_id) : null
   const deps = db.dependenciesOf(story.id)
   return {
@@ -270,6 +270,12 @@ function backlogPart(story, alias, epics) {
     epic_title: epic?.title ?? null,
     deps: deps.map((d) => ({ id: d.id, key: d.key, title: d.title, state: d.state })),
     blocked: deps.some((d) => d.state !== 'Done'),
+    // The one thing to do with it next: the button on the post-it and the one at the end of every
+    // list row. Worked out where everything else on this row is worked out — it is the same
+    // function `publicStory` calls, so a post-it, a row and the story's own panel cannot suggest
+    // two different things about the same story. `decided` is counted once for the whole board and
+    // handed in, because otherwise this is four queries per story, once a second, per open tab.
+    next_step: backlog.nextStep(story, { decided: decided.has(story.id) }),
   }
 }
 
@@ -288,13 +294,17 @@ function board() {
   const allEpics = on ? db.listEpics() : []
   const alias = on ? aliases(all, allEpics) : null
   const epicById = new Map(allEpics.map((e) => [e.id, e]))
+  // Which stories anything has been decided about, for the whole board in one question. It is the
+  // one fact `nextStep` needs that is not on the row it is handed, and asking it story by story is
+  // what turns "what do I do next" into four hundred statements a second.
+  const decided = on ? db.decidedStories() : new Set()
 
   const stories = onDisk(all).map((s) => ({
     ...s,
     project_name: projectName(s.project_path),
     git: storyGit(s),
     load: machine.loadOf(live.get(s.session_id)?.pid),
-    ...(on ? backlogPart(s, alias, epicById) : null),
+    ...(on ? backlogPart(s, alias, epicById, decided) : null),
   }))
   const paths = [...new Set(stories.map((s) => s.project_path))]
   // And the same for the dev servers: looking at the board is what makes k0 ask the machine
@@ -418,25 +428,6 @@ function attention(all) {
   // If nothing is waiting but something is running, the icon still stays lit.
   const busy = live.find((s) => s.status === 'WORKING' || s.status === 'PLANNING')
   return { urgent: waiting[0]?.status ?? busy?.status ?? null, waiting }
-}
-
-/**
- * The directories the viewer is allowed to open: the repositories k0 already knows, plus the
- * ones sessions are really working in — which with a worktree are not the same thing. A path
- * arriving from the address bar is not enough on its own: either it is in this list, or
- * nothing is read.
- */
-function rootOf(repo) {
-  if (!repo) return null
-  const roots = new Set(listProjects().map((p) => p.path))
-  // Both paths, and from the flattened row: `work_path` belongs to the session now, and a
-  // worktree that fell out of this list would make the viewer refuse exactly the sessions that
-  // most need it.
-  for (const story of db.listStories()) {
-    if (story.project_path) roots.add(story.project_path)
-    if (story.work_path) roots.add(story.work_path)
-  }
-  return roots.has(repo) ? repo : null
 }
 
 /**
@@ -584,7 +575,7 @@ function whatsNew(asked = null) {
  * A second copy of forty lines that attach a session, mark HEAD and open a terminal would be a
  * second place for the undo on a failed launch to be forgotten.
  */
-async function startSession(res, id, body = {}, { resume = false } = {}) {
+async function startSession(res, id, body = {}, { resume = false, prompt = null, command = null } = {}) {
   const story = db.getStory(id)
   if (!story) return send(res, 404, { error: 'Story not found' })
   const resuming = resume && !!story.session_id
@@ -595,20 +586,34 @@ async function startSession(res, id, body = {}, { resume = false } = {}) {
   if (typeof body.prompt === 'string' && body.prompt.trim()) db.patchStory(id, { prompt: body.prompt })
   if (!resuming) {
     if (story.session_id) forgetSession(story.session_id)
-    db.attachSession(id, sessionId)
+    // The command goes on the session and not on the story: it is what THIS conversation was
+    // opened to do, and the answer to "is the work under way" is different for `/k0-work` and for
+    // `/k0-discuss`. See `applyDerivedStatus`.
+    db.attachSession(id, sessionId, command)
   }
   // From here on, this repository's commits belong to this session. Resuming does not rewrite it:
   // the starting mark stays the first one, otherwise the commits of the first run would lose their
   // owner. It goes before `launch`, which can be away for as long as forty-five seconds.
   if (!resuming || !story.head_at_start) db.setHeadAtStart(id, await git.head(story.project_path))
   try {
-    const out = await launch({ story: db.getStory(id), sessionId, mode: resuming ? 'resume' : 'start' })
+    // `prompt` is a command the interface asked for — `/k0-plan K42` — and it is handed to the
+    // launcher instead of being written to the story first. The story's prompt is what somebody
+    // typed on the post-it and it has to survive the session: saving over it would mean pressing
+    // a suggestion once and losing what the note said for ever.
+    const row = db.getStory(id)
+    // `auto_send` with it, and not the story's own: k0 composed this line itself out of a button
+    // the user pressed, so there is nothing on it for anybody to read over before sending. A story
+    // made from the board has `auto_send` off — the field is not even in the dialog — which left
+    // every suggestion opening a window with `/k0-plan K42` sitting unsent under the cursor.
+    const opening = prompt ? { ...row, prompt, auto_send: true } : row
+    const out = await launch({ story: opening, sessionId, mode: resuming ? 'resume' : 'start' })
     db.setTerminalWindow(id, out.winId)
     db.setAutoClosed(id, false) // there is a window again: whoever shut the last one is history
-    // After `tick`, not before it: the round is what notices the session has gone live and moves
-    // the story to `Working`, and the `.k0/` file has both that state and the session's id in its
-    // header. Written here rather than from the watching loop, which runs once a second on every
-    // story there is and has no business touching a disk.
+    // After `tick`, not before it: the round is what notices the session has gone live and — where
+    // it was opened to do the work rather than to talk about it — moves the story to `Working`, and
+    // the `.k0/` file has both that state and the session's id in its header. Written here rather
+    // than from the watching loop, which runs once a second on every story there is and has no
+    // business touching a disk.
     tick()
     const note = mirrorStory(id)
     return wrote(res, { ...out, story: db.getStory(id), session: db.currentSession(id) }, note)
@@ -625,27 +630,6 @@ async function startSession(res, id, body = {}, { resume = false } = {}) {
 // endpoint, and reading `/api/backlog/story/12/decision` off the same four-name destructuring the
 // flat endpoints use would be a puzzle every time somebody added one. `rest` here is everything
 // after `/api/backlog`.
-
-/**
- * Which repository a backlog request is talking about.
- *
- * `rootOf` on its own is too tight here. It answers "a repository k0 already knows", and the very
- * first story in a repository is created by a skill running in one k0 has never had a story for —
- * which would be refused with "k0 does not know that repository" at exactly the moment somebody
- * is trying to start using it. A directory that is a checkout is enough, and it is not nothing:
- * this path is what `mirror.js` writes a `.k0/` folder into, so `/etc` still gets a no.
- */
-function backlogRepo(raw) {
-  const known = rootOf(raw)
-  if (known) return known
-  const dir = typeof raw === 'string' ? raw : ''
-  if (!dir || !path.isAbsolute(dir)) return null
-  try {
-    return fs.existsSync(path.join(dir, '.git')) && fs.statSync(dir).isDirectory() ? dir : null
-  } catch {
-    return null
-  }
-}
 
 /**
  * The `.k0/` file follows the row — and when it cannot, the request still succeeds.
@@ -737,8 +721,8 @@ function family(story, seen = new Set()) {
  * folder is only ever as complete as the edits that have happened since it appeared. A board that
  * was filled before this feature existed, a database restored from a backup, a row somebody wrote
  * with `sqlite3`: all of them are stories with no readable copy at all, and a database rebuilt
- * from `.k0/` would lose exactly those. Once per repository and not on every listing — the dense
- * page asks for this address every thirty seconds, and a sweep rewrites every file in the folder.
+ * from `.k0/` would lose exactly those. Once per repository and not on every listing — the list
+ * asks for this address every thirty seconds, and a sweep rewrites every file in the folder.
  */
 const swept = new Set()
 function sweepRepo(repo) {
@@ -768,7 +752,7 @@ async function backlogApi(req, res, url, seg) {
   // refuses a repository that already has work in it, because importing twice does not merge, it
   // duplicates — and with nothing to read it costs one look at the disk.
   if (!kind && req.method === 'GET') {
-    const repo = backlogRepo(url.searchParams.get('repo'))
+    const repo = backlog.backlogRepo(url.searchParams.get('repo'))
     if (!repo) return send(res, 400, { error: 'That is not a repository k0 can put a backlog in.' })
     const back = mirror.importRepo(repo)
     sweepRepo(repo)
@@ -778,7 +762,7 @@ async function backlogApi(req, res, url, seg) {
   }
 
   if (kind === 'next' && req.method === 'GET') {
-    const repo = backlogRepo(url.searchParams.get('repo'))
+    const repo = backlog.backlogRepo(url.searchParams.get('repo'))
     if (!repo) return send(res, 400, { error: 'That is not a repository k0 can put a backlog in.' })
     return send(res, 200, backlog.next(repo))
   }
@@ -788,10 +772,31 @@ async function backlogApi(req, res, url, seg) {
     // The same guard the stories go through, and for the same reason: an epic is a folder inside
     // one repository, and `mirror.js` writes its file into that repository. A path that is not a
     // checkout would make an epic nothing could ever write down.
-    const repo = backlogRepo(body.project_path)
+    const repo = backlog.backlogRepo(body.project_path)
     if (!body.title?.trim() || !repo) return send(res, 400, { error: 'Title and a known repository are required' })
     const epic = db.createEpic({ ...only(NEW_EPIC, body), title: body.title.trim(), project_path: repo })
     return wrote(res, backlog.publicEpic(epic), mirrorEpic(epic.id))
+  }
+
+  // An epic told rather than typed: a session running `/k0-epic` in a repository, and not a row
+  // anywhere. That is the point of it — there is nothing to write down until the discussion has
+  // decided what the epic is, and the skill creates it itself when it knows. Which is also why it
+  // cannot go through `startSession`: that attaches a session to a story, and here there is none.
+  if (kind === 'epic' && second === 'start' && req.method === 'POST') {
+    const repo = backlog.backlogRepo(body.project_path)
+    if (!repo) return send(res, 400, { error: 'That is not a repository k0 can put a backlog in.' })
+    const { prompt } = backlog.commandPrompt('k0-epic')
+    // The launcher takes a story, so it is handed the shape of one and nothing more: a name for the
+    // window, the repository to open in, and the line to say. None of it is written down anywhere.
+    // `auto_send` is on where a story's is the user's to choose — there is no post-it to go back
+    // and read here, so a prompt left sitting unsent under the cursor is a window that did nothing.
+    const standIn = { title: `New epic in ${projectName(repo)}`, project_path: repo, prompt, auto_send: true }
+    try {
+      const out = await launch({ story: standIn, sessionId: crypto.randomUUID() })
+      return send(res, 200, { ...out, project_path: repo })
+    } catch (err) {
+      return send(res, 500, { error: String(err.message || err) })
+    }
   }
 
   if (kind === 'epic' && id) {
@@ -804,8 +809,8 @@ async function backlogApi(req, res, url, seg) {
     // `db.epicDecisions` is the separator written in two places, waiting for the day it changes.
     if (!third && req.method === 'GET') return send(res, 200, backlog.epicView(id))
     // The cheap half of it, on the same address a story has one on and for the same reason: the
-    // dense page follows an epic's discussion while `/k0-epic` is running it, and asking for the
-    // whole epic once a second would re-read every story under it to draw a line of text.
+    // panel beside the list follows an epic's discussion while `/k0-epic` is running it, and asking
+    // for the whole epic once a second would re-read every story under it to draw a line of text.
     if (third === 'live' && req.method === 'GET') return send(res, 200, backlog.epicLive(id))
 
     if (!third && req.method === 'PATCH') {
@@ -841,7 +846,7 @@ async function backlogApi(req, res, url, seg) {
 
   // ── Stories ──────────────────────────────────────────────────────────────
   if (kind === 'story' && !second && req.method === 'POST') {
-    const repo = backlogRepo(body.project_path)
+    const repo = backlog.backlogRepo(body.project_path)
     if (!body.title?.trim() || !repo) return send(res, 400, { error: 'Title and a known repository are required' })
     // Skills hold keys, because a key is what the user says out loud. Everything below this line
     // holds ids, and a key that names nothing is refused rather than quietly dropped: a story
@@ -931,7 +936,12 @@ async function backlogApi(req, res, url, seg) {
     // a worktree is recorded against one: without this, `/k0-work` had nowhere to go but a
     // refusal. Same path, same launcher — `story` below is the flat endpoint.
     if (third === 'start' && req.method === 'POST') {
-      return await startSession(res, id, body)
+      // With no `command` this is the button it has always been and the prompt is the story's own.
+      // With one it is the interface saying what to do next out loud — `/k0-plan K42` — and the
+      // name is held against a closed list before it goes anywhere near a command line.
+      const asked = body.command == null || body.command === '' ? null : backlog.commandPrompt(body.command, story.key)
+      if (asked?.error) return send(res, 400, { error: asked.error })
+      return await startSession(res, id, body, { prompt: asked?.prompt ?? null, command: asked?.name ?? null })
     }
 
     // ── The discussion, the decisions, the plan and the log ────────────────

@@ -273,6 +273,9 @@ addColumns('story', [
   ['imported_at', 'INTEGER'],
 ])
 addColumns('session_event', [['kind', "TEXT NOT NULL DEFAULT 'session'"]])
+// Which command the interface opened this session with, when it opened it with one. NULL is the
+// ordinary case and the one every session before this had: somebody pressed Start.
+addColumns('session', [['opened_with', 'TEXT']])
 
 // Renaming migrations. The loop above only ever adds columns, so anything renamed when k0
 // went from Italian to English needs its own step. These run once and then find nothing to
@@ -682,8 +685,29 @@ const STATUS_SINCE = `
   ), x.session_started_at, x.updated_at) END AS status_since
 `
 
+/**
+ * How long the STATE has been what it is — which is not the same question as the one above, and
+ * the difference is a whole fortnight wide.
+ *
+ * `status_since` answers about the live session for everything except a story with no session at
+ * all, so a story whose session was abandoned two months ago and whose state moved yesterday
+ * reads as two months old. That is right for the line on the post-it, which is about the terminal,
+ * and wrong for anything asking whether a piece of work has stopped moving — see `nextStep` in
+ * backlog.js, which offers to cut a story in two after fourteen days of it.
+ *
+ * Every state change writes a row here, `createStory` included, so the fallback to `updated_at`
+ * is only ever reached by a story older than the diary.
+ */
+const STATE_SINCE = `
+  COALESCE((
+    SELECT e.at FROM session_event e
+    WHERE e.story_id = x.id AND e.kind = 'state' AND e.status = x.state
+    ORDER BY e.at DESC, e.id DESC LIMIT 1
+  ), x.updated_at) AS state_since
+`
+
 const storyQuery = (where = '', order = 'ORDER BY x.sort_hint, x.id') => `
-  SELECT x.*, ${STATUS_SINCE}
+  SELECT x.*, ${STATUS_SINCE}, ${STATE_SINCE}
   FROM (SELECT ${STORY_COLUMNS} FROM story s ${CURRENT_SESSION} ${where}) x
   ${order}
 `
@@ -933,20 +957,26 @@ function sessionSlot(storyId) {
  * The story is being started. `started_at` is not bookkeeping: it is where the age at the bottom
  * of the post-it is measured from until the session first moves (see `STATUS_SINCE`), which is
  * what keeps a story you have just started from inheriting the "5 days" of the session before it.
+ *
+ * `openedWith` is the command the interface said out loud — `k0-plan`, `k0-discuss` — or nothing
+ * at all when somebody simply pressed Start. It is kept because a session has to be able to say
+ * later what it was opened to do: see `applyDerivedStatus`, where the difference decides whether
+ * the story is now being worked on or merely talked about.
  */
-export function attachSession(storyId, sessionId) {
+export function attachSession(storyId, sessionId, openedWith = null) {
   const slot = sessionSlot(storyId)
   if (slot.session_id) {
     // The story is starting a new conversation: the old one is closed off rather than written
     // over, so the story keeps the history of what has been tried on it.
     db.prepare('UPDATE session SET alive = 0, ended_at = COALESCE(ended_at, ?) WHERE id = ?').run(now(), slot.id)
     db.prepare(`
-      INSERT INTO session (story_id, session_id, alive, status, auto_send, started_at)
-      VALUES (?, ?, 1, 'IDLE', ?, ?)
-    `).run(storyId, sessionId, slot.auto_send, now())
+      INSERT INTO session (story_id, session_id, alive, status, auto_send, opened_with, started_at)
+      VALUES (?, ?, 1, 'IDLE', ?, ?, ?)
+    `).run(storyId, sessionId, slot.auto_send, openedWith, now())
   } else {
-    db.prepare('UPDATE session SET session_id = ?, alive = 1, ended_at = NULL, started_at = ? WHERE id = ?')
-      .run(sessionId, now(), slot.id)
+    db.prepare(`
+      UPDATE session SET session_id = ?, alive = 1, ended_at = NULL, opened_with = ?, started_at = ? WHERE id = ?
+    `).run(sessionId, openedWith, now(), slot.id)
   }
   db.prepare('UPDATE story SET updated_at = ? WHERE id = ?').run(now(), storyId)
   return getStory(storyId)
@@ -1057,6 +1087,19 @@ export function patchSession(sessionRowId, fields) {
 const NOT_YET_STARTED = new Set(['Backlog', 'Discussed', 'Planned'])
 
 /**
+ * The commands that mean the work has begun. Everything else the interface can start only TALKS
+ * about the story — it asks questions, it writes a plan, it cuts one story into two — and a
+ * session doing that must not move the story to `Working`.
+ *
+ * Without this, pressing "Discuss it" on a note nobody has decided anything about moved it to
+ * `Working` before the first question was asked; close the terminal half way through and the
+ * story sat there with a dead session, being offered a counter-check on work that never happened.
+ *
+ * A session with no command at all — somebody pressed Start — is work, as it has always been.
+ */
+const STARTS_THE_WORK = new Set(['k0-work'])
+
+/**
  * Writes the live status only when it changed, and records an event when it does.
  *
  * This is the one write that moves the story's `updated_at` without anybody typing anything, and
@@ -1084,7 +1127,7 @@ export function applyDerivedStatus(storyId, status, alive) {
   //
   // One column and not `getStory`: this now runs on every live session on every round of the
   // watching loop, and the flat row costs three subqueries to build. The state is all it asks for.
-  if (aliveInt) {
+  if (aliveInt && (!cur.opened_with || STARTS_THE_WORK.has(cur.opened_with))) {
     const state = db.prepare('SELECT state FROM story WHERE id = ?').get(storyId)?.state
     if (state && NOT_YET_STARTED.has(state)) setState(storyId, 'Working')
   }
@@ -1262,6 +1305,30 @@ export function effectiveDecisions(storyId) {
   const inherited = epic ? epicDecisions(epic.id) : []
   const own = listDecisions(storyId).map((d) => ({ ...d, owner: 'story', label: `D${d.n}` }))
   return [...inherited, ...own]
+}
+
+/**
+ * The stories something has already been decided about, all of them, in one statement.
+ *
+ * The same question `effectiveDecisions` answers for one story — its own decisions plus its
+ * epic's, counting only what still stands — and the board asks it of every post-it it draws, once
+ * a second. Asked one at a time it costs four queries a story, and a story with no decisions pays
+ * exactly as much as one with nine; asked like this a board of two hundred costs one.
+ *
+ * `d.epic_id = s.epic_id` is safe on a story with no epic: in SQL nothing equals NULL.
+ */
+export function decidedStories() {
+  return new Set(
+    db
+      .prepare(`
+        SELECT s.id FROM story s WHERE EXISTS (
+          SELECT 1 FROM decision d
+          WHERE d.superseded_by IS NULL AND (d.story_id = s.id OR d.epic_id = s.epic_id)
+        )
+      `)
+      .all()
+      .map((r) => r.id)
+  )
 }
 
 export function getDecision(id) {

@@ -32,6 +32,15 @@ let held = false // a button is down: the board stands still, the click has to l
 let frame = 0 // the requestAnimationFrame handle, 0 = stopped
 let last = 0
 
+/**
+ * Whether the board is currently a list, in which case none of this applies.
+ *
+ * The list is a page: it scrolls, it has bars, and the wheel belongs to the browser. The class is
+ * put on by `render` and it is the one thing this module asks about the outside world — the
+ * alternative was a second switch to keep in step with the one the stylesheet already reads.
+ */
+const scrolling = () => board?.classList.contains('list')
+
 // ── Limits and drawing ────────────────────────────────────────────────
 const maxX = () => contentW * view.z - box.w
 const maxY = () => contentH * view.z - box.h
@@ -100,12 +109,12 @@ function load() {
  * because there neither component is zero.
  */
 function velocity() {
-  // A note being dragged from one state column to another is a button held down, and the board
-  // has to stand still for it exactly as it does for one — but a native drag is not a pointer
-  // gesture: the browser cancels the pointer when it starts and reports no move until it ends, so
-  // `held` goes false and the last position before the drag stands. Without this the board slides
-  // under a note in the air, on the reading of where the pointer was a second ago.
-  if (held || !inside || document.querySelector('dialog[open], .dragging')) return [0, 0]
+  // A row being dragged into another place in the order is a button held down, and the view has to
+  // stand still for it exactly as it does for one — but a native drag is not a pointer gesture: the
+  // browser cancels the pointer when it starts and reports no move until it ends, so `held` goes
+  // false and the last position before the drag stands. Without this the board slides under
+  // whatever is in the air, on the reading of where the pointer was a second ago.
+  if (scrolling() || held || !inside || document.querySelector('dialog[open], .dragging')) return [0, 0]
   const ramp = (d) => {
     const t = 1 - d / EDGE
     return t > 0 ? t * t : 0
@@ -180,7 +189,9 @@ function fit() {
 // ── Wiring ────────────────────────────────────────────────────────────
 /** The content changed: remeasure, come back inside the limits, and redraw. */
 export function refit() {
-  if (!vp) return
+  // Nothing to fit on a page that scrolls, and measuring one would write a view — where the board
+  // is and how far it is zoomed — taken off a shape the board is not currently in.
+  if (!vp || scrolling()) return
   measure()
   clamp()
   apply()
@@ -230,6 +241,9 @@ export function initView() {
   vp.addEventListener(
     'wheel',
     (e) => {
+      // On the list the wheel is the browser's: the page scrolls, and taking the event would leave
+      // it unable to.
+      if (scrolling()) return
       e.preventDefault()
       const k = e.deltaMode === 1 ? 16 : 1 // some mice count lines, not pixels
       if (e.ctrlKey) {

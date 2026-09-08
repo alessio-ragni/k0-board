@@ -6,16 +6,34 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
-The board learns what the work is *about*. A post-it is now a **story** with a stable key of its
-own — `K42`, and it keeps it for life — and stories can sit under an **epic**, be split into
-tasks, wait on each other, and carry the **decisions** that were taken while they were discussed.
-Ten commands drive all of it from a terminal, a `.k0/` folder in each repository keeps a readable
-copy that survives a lost database, and a **counter-check** holds the finished work up against
-every decision, one by one, before anybody presses Done. None of it changes the board you already
-know: switch the backlog off and it is exactly the board it was.
+**The board tells you what to do next, and starts it.** Every story carries one button saying the
+one thing to do with it — *Discuss it*, *Plan it*, *Work on it*, *Check it*, *Put it right* — and
+pressing it opens a terminal with the command already sent. You work there and come back when
+it is done. That is the whole shape of it: the board is the menu, the commands are the engine, and
+you no longer have to know nine commands by heart to find the way in.
+
+Underneath that, the board learns what the work is *about*. A post-it is now a **story** with a
+stable key of its own — `K42`, and it keeps it for life — and stories can sit under an **epic**, be
+split into tasks, wait on each other, and carry the **decisions** that were taken while they were
+discussed. A `.k0/` folder in each repository keeps a readable copy that survives a lost database,
+and a **counter-check** holds the finished work up against every decision, one by one, before
+anybody presses Done. None of it changes the board you already know: switch the backlog off and it
+is exactly the board it was.
 
 ### Added
 
+- **A button on every story saying what to do with it next, which opens the terminal on it.**
+  *Discuss it* on something nothing has been decided about, *Plan it* once it has been discussed,
+  *Work on it* once there is a plan, *Check it* on work left with no session running, *Put it
+  right* when the counter-check found a decision broken, *Go to the terminal* when a session is
+  already open — and *Split it* on a story that has not moved in a fortnight, because by then it is
+  usually two stories. Hover it and it says why this and not something else. Pressing it opens a
+  terminal with `/k0-plan K42` already in it; `Start`, which opens a session on what the note
+  itself says, is still there beside it. There is one button and not seven, k0 works out which,
+  and it is the same reasoning `/k0-next` does — so the note, the row in the list and the command
+  can never give you three different answers. Pressing a suggestion sends the line with the
+  session rather than leaving it under the cursor, and only `/k0-work` counts as the work having
+  begun: pressing *Discuss it* leaves the story where it was until the discussion moves it.
 - **Epics, stories and tasks.** One post-it is one story. A story can belong to an epic, and a
   story that turned out too big to close is split into tasks that inherit its context. Every one
   of them gets a key — `K42` — that is never reused and never reassigned, and a position in the
@@ -31,35 +49,50 @@ know: switch the backlog off and it is exactly the board it was.
   does not count, and it never writes over the run before it. A story cannot be marked Done while
   a decision the counter-check found broken has not been answered since — k0 names it, says which
   run found it and what to do about it, instead of quietly letting it through.
-- **Ten commands.** `/k0-epic`, `/k0-story`, `/k0-discuss`, `/k0-split`, `/k0-plan`, `/k0-work`,
-  `/k0-verify`, `/k0-next`, `/k0-order` and `/k0-whatsnew`. The installer offers to copy the ones
-  you type into your own skills folder, in one question, the same way it already offers
-  `/k0-import` — that is where Claude Code looks for them, and a command that was never copied
-  there is a command that does not exist. They ask their questions in rounds, say how many rounds
-  are left, stop when nothing more would change the work, and write every round down before asking
-  the next one — so a terminal that dies at round three does not take the first three with it.
-  Everything you say is stored in the language you said it in.
-- **A star, and what waits on what.** A story can be starred from its own post-it, and told to
-  wait on another one. Waiting is a note and not a lock: nothing refuses to start a story that is
-  waiting, the note is simply marked and it sinks down the running order. Opened on the page
-  below, a story says both directions: what it is waiting for, and what is waiting for it — which
-  is usually the real reason to finish one thing before another.
+- **Nine commands you type.** `/k0-epic`, `/k0-story`, `/k0-discuss`, `/k0-split`, `/k0-plan`,
+  `/k0-work`, `/k0-verify`, `/k0-next`, `/k0-order`. **The installer offers to copy them into your
+  own `~/.claude/skills/` in one question**, together with `/k0-import` — and that question is the
+  whole setup, because Claude Code looks for a command in the repository you have open and in your
+  own skills folder and nowhere else. A command that was never copied out is a command that does
+  not exist, and the buttons on the board that offer to run one lead nowhere. If you are not sure
+  you said yes, run `npx k0-board@latest` again: it asks only about the ones that are missing.
+  They ask their questions in rounds, say how many rounds are left, stop when nothing more would
+  change the work, and write every round down before asking the next one — so a terminal that dies
+  at round three does not take the first three with it. Everything you say is stored in the
+  language you said it in.
+- **A flag, and what waits on what.** A story can be flagged — from the pencil, with the rest of
+  what you decide about a story — and it is drawn in the corner of the note with a border round
+  the note in the same colour, so a flagged story can be picked out from across the room. A story
+  can also be told to wait on another one. Waiting is a note and not a lock: nothing refuses to
+  start a story that is waiting, the note is simply marked and it sinks down the running order.
+  Opened in the list, a story says both directions: what it is waiting for, and what is waiting for
+  it — which is usually the real reason to finish one thing before another.
 - **Something that says what to pick up next.** `/k0-next` answers in one sentence, and the
   answer is k0's rather than the model's — a live session first, then whatever has been sitting
-  in Review longest, then what is not waiting on unfinished work, then the star. Ask twice and
+  in Review longest, then what is not waiting on unfinished work, then the flag. Ask twice and
   you get the same answer.
-- **A switch in the top bar that changes what a column means.** A column is a repository, which
-  is what it has always been, or it is one of the six states a story moves through — and then you
-  can drag a note from one to the next. Click an epic's label and the board becomes that epic,
-  with a bar saying how far it has got and a way back out.
-- **The backlog written down, line by line.** A page of its own, next to the ChangeLog: one row
-  per story with everything already counted, sorted by any heading, searchable by title, and the
-  whole of whichever story you open underneath the table — the rounds, the decisions and their
-  verdicts, the plan, the checklist and the log. Click an epic instead and the epic opens the same
-  way — the rounds it was argued out in, the decisions every story under it is held to, and what it
-  became — which is the only place that conversation can be watched, because it happens before a
-  single story exists. It follows a discussion while the discussion is happening, an epic's as well
-  as a story's.
+- **Two views of the same stories: Kanban and List.** The switch is in among the filters, because
+  it is the same kind of question — the state pills, the repository and the epic apply to both, so
+  changing shape never changes what is in scope. **Kanban** is the board you know, for working: one
+  column per repository, and a note now carrying its key, its epic as a coloured label, its flag
+  and what it waits on. **List** is for planning: the same stories as rows, three levels deep and
+  every repository at once, with a thin heading per repository and epics that open and close with
+  their progress bar and, while a discussion is running, which round it is on. Drag a row to
+  reorder it, or onto another epic to move it there — those are the two things the interface could
+  never do. Dragging never changes state.
+- **The whole of a story, beside the row rather than under it.** Click a row and it opens to the
+  side: the counter-check first, then why it exists, the rounds with their questions and answers,
+  the decisions with the verdict each one got, the plan, the checklist and the log, and a line
+  saying both what it waits for and what is waiting for it. Beside, so the rows you were comparing
+  it against do not scroll away. Click an epic and the epic opens the same way — the rounds it was
+  argued out in and the decisions every story under it is held to, which is the only place that
+  conversation can be watched, because it happens before a single story exists. It follows a
+  discussion while the discussion is happening, an epic's as well as a story's.
+- **The `+` makes an epic as well as a story.** It is a small menu now: **Story** is the dialog you
+  know, with one field added for the epic it belongs to — pick one this repository already has, or
+  type a name and it is made on the spot. **Epic** asks which repository and then opens a terminal
+  running `/k0-epic`, because an epic is what a discussion leaves behind and naming one before that
+  discussion has happened names something nobody has decided the shape of yet.
 - **A `.k0/` folder in each repository.** One file per epic and one per story, rewritten whenever
   the story changes: the whole backlog in Markdown, readable in a diff and committable. A story's
   file carries the decisions it inherited from its epic as well as its own, under the names the
@@ -82,10 +115,11 @@ know: switch the backlog off and it is exactly the board it was.
   is downloaded, and `"updateCheck": false` stops it opening a socket at all.
 - **All of it can be switched off**, from `~/.k0/config.json` — the file the idle timeout already
   lives in, not the database, because a switch you would need `sqlite3` to reach is not a switch.
-  `"backlog": false` and the board is the board it always was: nothing extra on a note, no switch
-  in the bar, no icon leading to a page that would have nothing on it, no `.k0/` folder created
-  anywhere, and every command says the backlog is turned off rather than reporting an empty one —
-  "there is nothing here" and "you turned this off" read the same and only one is worth acting on.
+  `"backlog": false` and the board is the board it always was: nothing extra on a note, no
+  next-step button, no Kanban/List switch in the bar, a `+` with no menu behind it, no `.k0/`
+  folder created anywhere, and every command says the backlog is turned off rather than reporting
+  an empty one — "there is nothing here" and "you turned this off" read the same, and only one of
+  them is worth acting on.
   k0 re-reads the file when it changes, so nothing has to be restarted.
 
 ### Changed
@@ -101,13 +135,14 @@ know: switch the backlog off and it is exactly the board it was.
 - **A story keeps every session it has had**, rather than only the last one. Starting a new
   conversation on old work no longer throws away the record of what was tried before.
 - The ChangeLog page and its writer say *story* where they said *card*.
+- **The top bar is one row again.** Two views, a repository filter and seven state pills had pushed
+  it onto a second line: the four mode buttons at the end now stand two by two, and the memory chip
+  puts RAM, CPU and the closing time one under the other instead of writing them across.
 - **Driving mode resizes the terminals, not just their text.** A terminal you glance at from across
   the room now takes the whole free screen while Driving is lit, and goes back to its usual size and
   its usual text the moment you leave it — one gesture instead of large text left sitting in a small
   window. The price, which used to be the other way round: a window you had dragged onto a second
   screen comes back to the middle of the main one.
-
-
 
 - **The age at the bottom of a post-it stopped lying.** Starting a session used to leave the line
   blank and the tooltip reading "Your turn for "; a story that had been started before inherited

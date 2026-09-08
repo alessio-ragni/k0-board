@@ -250,6 +250,228 @@ section('A story that was split is not the work any more')
   check('and comes back when they are all done', backlog.next(REPO).story.id, parent.id)
 }
 
+// ── The one thing to do with it next ─────────────────────────────────────────
+// The button drawn on every post-it and every row, and the sentence under it. Every arm of it is
+// proved here because the alternative was the page deciding: two sets of rules for one question,
+// and a board suggesting one thing while `/k0-next` said another.
+section('The one thing to do with it next')
+{
+  const REPO = '/tmp/k0-backlog-step'
+  const step = (id) => backlog.nextStep(db.getStory(id))
+  const storyIn = (title, state = 'Backlog') => db.createStory({ project_path: REPO, title, state }).id
+
+  const fresh = storyIn('The importer')
+  check('a story nobody has decided anything about is one to talk through', step(fresh).command, 'k0-discuss')
+  check('with the words that go on the button', step(fresh).label, 'Discuss it')
+  check('and a sentence saying why it is this and not something else', step(fresh).why,
+    'Nothing has been decided about it yet.')
+
+  // One decision is the whole difference between the two doors into the backlog: something has
+  // been settled about this one, so the round of questions has already happened somewhere.
+  db.addDecision(fresh, { text: 'A file that fails to import is left where it was.' })
+  check('once something has been decided about it, it is one to plan', step(fresh).command, 'k0-plan')
+  check('and the button changes with the answer', step(fresh).label, 'Plan it')
+
+  // Its epic's decisions count as its own, because they are what it will be held to: a story under
+  // an epic that has been argued out is not a story nobody has decided anything about.
+  const epic = db.createEpic({ project_path: REPO, title: 'Importing' })
+  const under = db.createStory({ project_path: REPO, title: 'Read the header', epic_id: epic.id }).id
+  check('a story in an epic nobody has argued out is still one to talk through', step(under).command, 'k0-discuss')
+  db.addEpicDecision(epic.id, { text: 'Nothing is imported twice.' })
+  check('and is one to plan the moment its epic settles something', step(under).command, 'k0-plan')
+
+  const discussed = storyIn('Talked through', 'Discussed')
+  check('a discussed story is one to plan', step(discussed).command, 'k0-plan')
+  check('and is told the plan is the thing it has not got', step(discussed).why,
+    'It has been discussed and has no plan yet.')
+
+  const planned = storyIn('Planned out', 'Planned')
+  check('a planned story is one to work on', step(planned).command, 'k0-work')
+  check('which is the button pressed most', step(planned).label, 'Work on it')
+
+  const working = storyIn('Left half done', 'Working')
+  check('work left with no terminal running is one to check', step(working).command, 'k0-verify')
+  check('and the sentence says what became of it', step(working).why, 'The work was left with no session running.')
+
+  const finished = storyIn('Shipped')
+  db.setState(finished, 'Done')
+  check('a finished story has nothing left to suggest', step(finished), null)
+
+  // The two arms of Review, which are the two halves of the promise the counter-check makes.
+  const review = storyIn('Under the counter-check')
+  const rule = db.addDecision(review, { text: 'The importer never deletes what it could not read.' })
+  db.setState(review, 'Review')
+  check('a story that came through its check clean is waiting for a person, not a command', step(review), null)
+  db.recordRunChecks(review, 1, [{ decision_id: rule.id, verdict: 'violated', evidence: 'server/import.js:31' }])
+  check('one with a decision broken is one to put right', step(review).command, 'k0-work')
+  check('and says so rather than saying Work on it', step(review).label, 'Put it right')
+  check('with the reason anybody would want first', step(review).why,
+    'The last counter-check found a decision broken.')
+  db.recordRunChecks(review, 2, [{ decision_id: rule.id, verdict: 'kept', evidence: 'server/import.js:31' }])
+  check('and is waiting for a person again once a run finds the decision kept', step(review), null)
+
+  // A terminal that is open is the strongest thing k0 knows about where the work is, so it is
+  // asked before anything else: sending somebody off to start a second session on the same story
+  // is how two half-done things happen.
+  const running = storyIn('Being worked on now')
+  db.attachSession(running, 'a-live-session')
+  check('a story with a session open sends you to the terminal', step(running).label, 'Go to the terminal')
+  check('and offers no command to start a second one', step(running).command, null)
+  check('what it asks for is the window that is already there', step(running).action, 'focus')
+  check('and it says as much in words', step(running).why, 'A session is already open on it.')
+  db.setState(running, 'Done')
+  check('and it is still the answer on a story somebody has ticked off', step(running).label, 'Go to the terminal')
+
+  // Fourteen days is a guess and the code says so. What is worth holding to is the edge: the day
+  // it turns over, and the states it is allowed to turn over in.
+  const aged = (id, days) =>
+    byHand("UPDATE session_event SET at = ? WHERE story_id = ? AND kind = 'state'",
+      Date.now() - days * 86400000 - 1000, id)
+
+  const stuck = storyIn('Two stories in one', 'Working')
+  aged(stuck, 14)
+  check('a fortnight is not yet long enough to give up on the shape of it', step(stuck).command, 'k0-verify')
+  aged(stuck, 15)
+  check('a day past it and it is one to cut in two', step(stuck).command, 'k0-split')
+  check('with the button saying so', step(stuck).label, 'Split it')
+  check('and the count in the sentence', step(stuck).why, 'It has not moved in 15 days.')
+
+  const sitting = storyIn('Planned and forgotten', 'Planned')
+  aged(sitting, 40)
+  check('a plan nobody has started in forty days is the same answer', step(sitting).command, 'k0-split')
+
+  // The fortnight is about the STATE and not about the terminal. `status_since` — the figure the
+  // line at the bottom of a post-it counts from — is the live session's own clock for anything
+  // that has ever had one, so a story whose session was abandoned in the spring reads as months
+  // old however recently somebody moved it.
+  const revived = storyIn('Abandoned, then planned', 'Backlog')
+  const spring = Date.now() - 60 * 86400000
+  db.attachSession(revived, 'a-session-from-the-spring')
+  byHand('UPDATE session SET alive = 0, started_at = ? WHERE story_id = ?', spring, revived)
+  byHand('UPDATE session_event SET at = ? WHERE story_id = ?', spring, revived)
+  db.setState(revived, 'Planned')
+  check('a story whose session is two months old still counts as old',
+    Math.floor((Date.now() - db.getStory(revived).status_since) / 86400000), 60)
+  check('but the state moved today, and that is what the fortnight asks about',
+    step(revived).command, 'k0-work')
+
+  // Only where there is work to cut up. A note that has sat in the backlog for a month is not two
+  // stories, it is a story nobody has talked through — and splitting it would only make two.
+  const old = storyIn('Sitting in the backlog')
+  aged(old, 40)
+  check('an undiscussed story is never split, however long it has sat', step(old).command, 'k0-discuss')
+
+  const openStill = storyIn('Stuck, but somebody is in there', 'Working')
+  aged(openStill, 40)
+  db.attachSession(openStill, 'another-live-session')
+  check('and a terminal that is open beats the fortnight too', step(openStill).label, 'Go to the terminal')
+
+  // The two facts that are not on the row are handed in by whoever already counted them — the
+  // board counts them for the whole screen at once, `publicStory` has them in local variables —
+  // and what is handed in is what is used. Getting this wrong is not a wrong button, it is four
+  // queries per post-it per second on a board that has already answered the question.
+  const told = storyIn('Nobody has said anything about it')
+  check('a Backlog story told something has been decided is one to plan',
+    backlog.nextStep(db.getStory(told), { decided: true }).command, 'k0-plan')
+  check('and told nothing has, one to talk through',
+    backlog.nextStep(db.getStory(told), { decided: false }).command, 'k0-discuss')
+  const checked = storyIn('Come back from the counter-check', 'Review')
+  check('a Review story told a decision is broken is one to put right',
+    backlog.nextStep(db.getStory(checked), { broken: true }).label, 'Put it right')
+  check('and told none is, is waiting for a person',
+    backlog.nextStep(db.getStory(checked), { broken: false }), null)
+
+  // A row edited by hand, or a database older than this list. Guessing here would put a command on
+  // a command line on the strength of a word nothing in k0 ever wrote.
+  const odd = storyIn('From somewhere else')
+  byHand('UPDATE story SET state = ? WHERE id = ?', 'Sideways', odd)
+  check('a state k0 does not know suggests nothing at all', step(odd), null)
+
+  // One answer reached two ways. The post-it draws the button off the story and `/k0-next` reads
+  // the sentence off the pick: it is the same function, or they are two answers to one question.
+  check('the post-it is handed the answer rather than working it out',
+    backlog.publicStory(db.getStory(planned)).next_step.command, 'k0-work')
+  check('and so is the story the skill picks up', backlog.next(REPO).story.next_step.label, 'Go to the terminal')
+}
+
+// ── The commands the interface may start ─────────────────────────────────────
+// This is a command line. Everything else on the board can be wrong and be put right afterwards;
+// a name that reaches a shell is a thing a machine does on somebody's behalf. So the list is
+// closed, and what is not on it is refused with a sentence rather than tidied up and run.
+section('The commands the interface may start')
+{
+  const REPO = '/tmp/k0-backlog-commands'
+  const asked = (command, key) => backlog.commandPrompt(command, key)
+
+  check('a suggestion becomes the line the user would have typed', asked('k0-plan', 'K42').prompt, '/k0-plan K42')
+  check('and nothing is refused about it', asked('k0-plan', 'K42').error, null)
+  check('the slash people write it with is dropped rather than doubled',
+    asked('/k0-plan', 'K42').prompt, '/k0-plan K42')
+  check('and the spaces round it are somebody typing, not part of the name',
+    asked('  k0-work  ', 'K7').prompt, '/k0-work K7')
+  check('a command with nothing to name goes on its own', asked('k0-epic').prompt, '/k0-epic')
+
+  check('a command nobody has heard of starts nothing', asked('k0-deploy', 'K42').prompt, null)
+  check('and the refusal names what it was asked for', asked('k0-deploy', 'K42').error.includes('k0-deploy'), true)
+  check('and says which ones would have worked', asked('k0-deploy', 'K42').error.includes('/k0-plan'), true)
+
+  // The shapes that are not somebody misremembering a name. None of them is a command, and the
+  // point of a closed list is that none of them has to be recognised to be refused.
+  check('a second command behind a semicolon is not a command', asked('k0-plan; rm -rf /', 'K42').prompt, null)
+  check('nor is one with a flag stuck to it', asked('k0-plan --dangerously-skip-permissions', 'K42').prompt, null)
+  check('nor one wrapped in a substitution', asked('$(rm -rf /)', 'K42').prompt, null)
+  check('nor a path to something that would run', asked('../../bin/sh', 'K42').prompt, null)
+  check('nothing at all is nothing to start', asked(null, 'K42').prompt, null)
+  check('and neither is an empty line', asked('', 'K42').prompt, null)
+
+  check('there are nine of them, written out one by one', backlog.COMMANDS.length, 9)
+
+  // The two ends have to meet: the page sends back exactly the command it was given, so a step
+  // suggesting something off the list would be a refusal on the button the board itself drew.
+  const suggested = db.STATES.map((state) => {
+    const story = db.createStory({ project_path: REPO, title: `A story in ${state}`, state })
+    return backlog.nextStep(db.getStory(story.id))?.command
+  }).filter(Boolean)
+  check('every command a next step can suggest is one of them',
+    suggested.join(' '), 'k0-discuss k0-plan k0-work k0-verify')
+  check('and all of them are on the list', suggested.every((c) => backlog.COMMANDS.includes(c)), true)
+  check('the one the fortnight suggests is there too', backlog.COMMANDS.includes('k0-split'), true)
+  check('and the one an epic is told with', backlog.COMMANDS.includes('k0-epic'), true)
+}
+
+// ── A repository an epic can be told in ──────────────────────────────────────
+// `POST /api/backlog/epic/start` opens a terminal in whatever path arrives with it and says
+// `/k0-epic` into it — and unlike everything else here there is no story, no key and no row to
+// hold it against. This guard is the whole of the check, which is why it is proved on its own.
+section('A repository an epic can be told in')
+{
+  const checkout = path.join(FAKE_HOME, 'a-checkout')
+  fs.mkdirSync(path.join(checkout, '.git'), { recursive: true })
+  const plain = path.join(FAKE_HOME, 'just-a-folder')
+  fs.mkdirSync(plain, { recursive: true })
+  const worktree = path.join(FAKE_HOME, 'a-worktree')
+  fs.mkdirSync(worktree, { recursive: true })
+  fs.writeFileSync(path.join(worktree, '.git'), 'gitdir: ../a-checkout/.git/worktrees/wt-K1\n')
+
+  check('a checkout is somewhere an epic can be told', backlog.backlogRepo(checkout), checkout)
+  // Where `/k0-work` leaves the user, and there `.git` is a file rather than a folder.
+  check('and so is a worktree of one', backlog.backlogRepo(worktree), worktree)
+  check('a directory that is no repository is not', backlog.backlogRepo(plain), null)
+  check('nor is a path with nothing at the end of it', backlog.backlogRepo(path.join(plain, 'nowhere')), null)
+  check('a relative path is refused, not resolved against wherever the server is standing',
+    backlog.backlogRepo('some/repo'), null)
+  check('a word that is not a path names nothing', backlog.backlogRepo('k0'), null)
+  check('and neither does nothing at all', backlog.backlogRepo(null), null)
+  check('nor something that is not even text', backlog.backlogRepo({ path: checkout }), null)
+
+  // A repository k0 already has work in is known whatever the disk says: the very first story in
+  // a repository is made by a skill running in one k0 has never seen, and refusing that would
+  // refuse somebody at the exact moment they started using this.
+  const KNOWN = '/tmp/k0-backlog-known-repo'
+  db.createStory({ project_path: KNOWN, title: 'The first story here' })
+  check('a repository k0 already holds a story for is known', backlog.backlogRepo(KNOWN), KNOWN)
+}
+
 // ── Switched off is not empty ────────────────────────────────────────────────
 section('Switched off is not empty')
 {
@@ -265,6 +487,13 @@ section('Switched off is not empty')
   check('what to do next says the same thing', backlog.next(REPO).enabled, false)
   check('in words, and not as an empty board', backlog.next(REPO).why.includes('switched off'), true)
   check('and it names no story to pick up', backlog.next(REPO).story, null)
+  // The two doors that open a terminal — a command on a story, `/k0-epic` in a repository — give
+  // this same sentence back and start nothing. A window opened on a feature somebody switched off
+  // is the one refusal that has to be readable: it is the only place k0 does something on its own.
+  check('the doors that would start a session answer with one wording and not one each',
+    backlog.off().why, backlog.next(REPO).why)
+  check('which says how to have it back', backlog.off().why.includes('config.json'), true)
+  check('and hands back nothing to start a session on', backlog.off().story, null)
   backlogSwitch(true)
   check('and it all comes back when it is switched on', backlog.listing(REPO).stories.length, 1)
   check('lanes included', backlog.listing(REPO).epics.length, 1)
@@ -606,7 +835,8 @@ section('More than one decision broken at once')
   check('the refusal counts them rather than naming one of them',
     refused.why.includes('found 2 decisions broken'), true)
   check('and hands both back to be put right', refused.violations.length, 2)
-  check('the dense page reads the same two off the story', backlog.storyView(story.id).violations.length, 2)
+  check('the panel beside the row reads the same two off the story',
+    backlog.storyView(story.id).violations.length, 2)
   check('each with the sentence that was agreed', backlog.storyView(story.id).violations[0].text,
     'A file that fails to import is left where it was.')
   check('and the evidence the run wrote against it', backlog.storyView(story.id).violations[0].evidence,

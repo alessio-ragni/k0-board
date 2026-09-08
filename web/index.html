@@ -16,39 +16,41 @@
     <a class="whatsnew" id="whatsnew" href="/whatsnew.html" hidden>
       <span id="whatsnew-dot" aria-hidden="true"></span>
     </a>
-    <button class="new" id="new-story" title="New story" aria-label="New story">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
-    </button>
+    <!-- The "+" is a menu now, because there are two things it can make and they are made in
+         two different ways: a story is typed here, an epic is told to Claude in a terminal. With
+         the backlog off there is only one of them and the menu never opens — the plus is the
+         plus it has always been. -->
+    <div class="new-wrap">
+      <button class="new" id="new-story" title="New story" aria-label="New story"
+              aria-haspopup="true" aria-expanded="false">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
+      </button>
+      <div class="menu" id="new-menu" role="menu" hidden>
+        <button type="button" role="menuitem" data-new="story">Story<em>a post-it, written here</em></button>
+        <button type="button" role="menuitem" data-new="epic">Epic<em>talked through in a terminal</em></button>
+      </div>
+    </div>
     <!-- Next to the plus, because they are the two ends of the same thing: one starts a piece
          of work, the other tells you how the ones before it went. A plain link, and a quiet
          one — no dot, no badge. It is there when you want it. -->
     <a class="log" href="/changelog.html" title="What you have been doing" aria-label="What you have been doing">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 7h16M4 12h11M4 17h7"/></svg>
     </a>
-    <!-- And next to that, the same board written down: every story on one line, with what was
-         decided and whether it survived the counter-check. Drawn exactly like the ChangeLog
-         because it is the same kind of door — somewhere to read rather than somewhere to work.
-         Hidden until the server says there is a backlog: switched off, the page behind this icon
-         has one sentence on it, and a bar that grew a new icon is not the board it was before. -->
-    <a class="log" id="backlog-link" href="/backlog.html" title="The backlog, line by line"
-       aria-label="The backlog, line by line" hidden>
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6h16M4 12h16M4 18h16"/><path d="M9 6v12"/></svg>
-    </a>
-
-    <!-- What a column means. Two answers and no third: a column is a repository, which is what
-         the board has always been, or it is a state and the six of them are the road a story
-         walks. It is only here at all when there is a backlog behind the board — with the
-         feature off there is one answer and a switch offering it would be a switch that does
-         nothing. -->
-    <div class="columns" id="columns" role="radiogroup" aria-label="What a column means" hidden>
-      <button type="button" role="radio" data-columns="repo" aria-checked="true">Repository</button>
-      <button type="button" role="radio" data-columns="state" aria-checked="false">State</button>
+    <!-- The state pills, the repository and the shape of the view: one group, because they are
+         one question. The pills and the repository say WHAT you are looking at; Kanban or List
+         says what shape it comes in. Switching shape never changes what is in scope. -->
+    <div class="filterbar">
+      <div class="filters" id="filters"></div>
+      <!-- Two answers and no third: the board as it has always been, or the same stories as rows.
+           It is only here when there is a backlog behind the board — with the feature off there is
+           one answer, and a switch offering it would be a switch that does nothing. -->
+      <div class="columns" id="columns" role="radiogroup" aria-label="How to look at it" hidden>
+        <button type="button" role="radio" data-columns="kanban" aria-checked="true">Kanban</button>
+        <button type="button" role="radio" data-columns="list" aria-checked="false">List</button>
+      </div>
+      <!-- Which repository, for both views. Empty means all of them. -->
+      <select class="repo-filter" id="repo-filter" aria-label="Which repository" hidden></select>
     </div>
-    <!-- And with the columns being states, the repositories are gone from the board: this is
-         what puts one of them back. It stands next to the switch because it only exists for it. -->
-    <select class="repo-filter" id="repo-filter" aria-label="Which repository" hidden></select>
-
-    <div class="filters" id="filters"></div>
 
     <!-- How the computer is doing. Always visible; clicking it switches off the weights on the stories. -->
     <button class="gauge" id="gauge" type="button" hidden></button>
@@ -132,11 +134,54 @@
         <textarea id="f-prompt" rows="6" placeholder="you can leave this empty and type straight into Claude Code"></textarea>
       </label>
 
+      <!-- The epic this story belongs to. A list of the ones this repository already has, or a
+           name typed in that is made on the spot: an epic somebody wanted while writing a story
+           should not cost a trip to another screen. Only here when there is a backlog. -->
+      <label id="f-epic-row" hidden>Epic
+        <input id="f-epic" list="f-epics" autocomplete="off" placeholder="none — or type a new one">
+        <datalist id="f-epics"></datalist>
+      </label>
+
+      <!-- The flag. It used to sit on every note waiting to be clicked, which made it a mark that
+           was everywhere and therefore marked nothing. It is a decision, so it is taken here,
+           where the rest of the decisions about a story are taken. -->
+      <label class="check" id="f-flag-row" hidden>
+        <input type="checkbox" id="f-flag"> Flag it
+        <small>it stands out on the board, and comes first when k0 is asked what to do next</small>
+      </label>
+
       <footer>
         <button type="button" id="f-delete" class="danger">Delete</button>
         <span class="spacer"></span>
         <button type="submit" id="f-save">Save</button>
         <button type="button" id="f-start" class="primary">Start</button>
+      </footer>
+    </form>
+  </dialog>
+
+  <!-- A new epic. It asks for the repository and nothing else, then opens a terminal: an epic is
+       born by being told, not by being typed into a form. -->
+  <dialog id="epic-new">
+    <form id="epic-form">
+      <div class="head">
+        <h2>New epic</h2>
+        <button type="button" id="e-close" class="x" title="Close" aria-label="Close">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg>
+        </button>
+      </div>
+
+      <label>Repository
+        <select id="e-project" required></select>
+      </label>
+
+      <p class="note">k0 opens a terminal and <code>/k0-epic</code> asks what this is, a round of
+        questions at a time, until nothing is left that would change the work. It writes the epic
+        down itself, and the stories under it, once it knows.</p>
+
+      <footer>
+        <span class="spacer"></span>
+        <button type="button" id="e-cancel">Cancel</button>
+        <button type="submit" class="primary">Start the discussion</button>
       </footer>
     </form>
   </dialog>
