@@ -26,6 +26,9 @@ import { ps, psJson, psq } from './powershell.js'
 const WT = () => which('wt')
 const POWERSHELL_BIN = () => which('pwsh') || which('powershell')
 
+/** How much of the work area a window takes unless the mode asks for more. */
+const COVERAGE = 0.86
+
 /** The user32 declarations every window operation here needs, added once per PowerShell run. */
 const USER32 = `
 Add-Type -Namespace K0 -Name Win -MemberDefinition @'
@@ -86,14 +89,14 @@ export async function focus(handle) {
   return found?.ok ? { ok: true } : { ok: false, error: 'That window is gone' }
 }
 
-export async function relayout(handles) {
+export async function relayout(handles, { coverage = COVERAGE } = {}) {
   let touched = 0
   for (const handle of handles || []) {
     const ok = await psJson(
       `${USER32}
        Add-Type -AssemblyName System.Windows.Forms -ErrorAction SilentlyContinue
        $area = [System.Windows.Forms.Screen]::PrimaryScreen.WorkingArea
-       $w = [int]($area.Width * 0.86); $h = [int]($area.Height * 0.86)
+       $w = [int]($area.Width * ${coverage}); $h = [int]($area.Height * ${coverage})
        $x = $area.X + [int](($area.Width - $w) / 2); $y = $area.Y + [int](($area.Height - $h) / 2)
        $p = ${findWindow(handle)}
        if ($p) { [K0.Win]::MoveWindow($p.MainWindowHandle, $x, $y, $w, $h, $true) | Out-Null; @{ ok = $true } }
@@ -105,10 +108,13 @@ export async function relayout(handles) {
   return { touched }
 }
 
-/** Font size lives in the terminal's own profile, which k0 will not rewrite. */
-export async function setFont() {
-  return { touched: 0 }
-}
+/**
+ * What the mode asks for, as far as this platform can give it: the window takes its share of
+ * the screen. The font size lives in the terminal's own profile, which k0 will not rewrite —
+ * so here driving mode makes the windows bigger and leaves the text alone, which is what the
+ * `terminal.font` capability has always said.
+ */
+export const applyMode = (handles, { coverage } = {}) => relayout(handles, { coverage })
 
 export async function defaultFontSize() {
   return 12

@@ -1095,12 +1095,12 @@ How awake the machine has to stay while sessions are working. It is a **scale of
 four switches: each includes the one before it, and exactly **one** is always lit. Clicking the lit
 one again does nothing — you leave a mode, you do not switch it off.
 
-| Icon | Mode | The machine | The screen | The text |
+| Icon | Mode | The machine | The screen | The text and the windows |
 |---|---|---|---|---|
 | two **z** | **Sleep** | sleeps as it normally would | goes off | normal |
 | a **palm tree** | **Away** | does not sleep, not even with the lid closed | may sleep and lock | normal |
 | a **nerd face** with glasses | **Nerd** | does not sleep | **stays on** | normal |
-| a **car** | **Driving** | does not sleep | **stays on** | **large**, here and in the terminals |
+| a **car** | **Driving** | does not sleep | **stays on** | **large**: the text here and in the terminals, and the terminals fill the screen |
 
 The four icons do not describe the machine: they describe **where you are**. Asleep, away, at the
 desk, watching from across the room. That is where the order comes from, and it is why the second
@@ -1110,9 +1110,9 @@ one is a palm tree and not a technical symbol: the mode does not say "the machin
 The four buttons are at the end of the board's bar, or four ticked entries in the tray menu. They
 are the same control: changed on one side, the other catches up within a couple of seconds.
 
-**Nerd** and **Driving** do exactly the same things to the machine: the only difference is the size
-of the text. Nerd is "I am sitting here programming", Driving is "I glance at it from across the
-room".
+**Nerd** and **Driving** do exactly the same things to the machine: the only difference is how big
+everything is — the text, and the terminal windows it sits in. Nerd is "I am sitting here
+programming", Driving is "I glance at it from across the room".
 
 ### Why an idle inhibitor is not enough
 
@@ -1136,7 +1136,7 @@ it does not do.
 no business rewriting behind your back. The switch reports itself unavailable, and `k0-board
 doctor` says where to change it yourself.
 
-### Large text, and windows that do not move
+### Large text, and windows to match
 
 In Driving the **text inside the terminals** goes from the profile's size to 22, the board's from
 17 to 22 pixels, and the **things you click** grow too — the `+`, the git lens, the corner pencil
@@ -1148,14 +1148,25 @@ they reorder by urgency, reddest to the left. On a screen you glance at, two or 
 visible at a time and the most urgent one has to come to you. Full screen you have them all in
 front of you already, and a board that reshuffles itself while you work only loses your place.
 
-**The windows do not move.** New ones are born centred at 86% as always; ones already open do not
-shift by a pixel — if you had dragged one to the other monitor, there it stays. Terminals already
-open change size **immediately**, not only the ones you open next.
+**The windows grow with the text.** In Driving a terminal takes the whole free screen; leave
+Driving and it goes back to the usual 86% centred, with the text back at the profile's size. It is
+one gesture and not two, and it lands on the terminals **already open**, not only on the ones you
+open next.
 
-That the window does not move **is not free**, and it is the least obvious part of this whole
-chapter: Terminal.app keeps rows and columns when the font changes and resizes the window to
-match — going from 12 to 22 turns a 700×500 window into 1378×856, measured. So the bounds are read
-first, the font is changed, and **its own** bounds are put back.
+It used to be the opposite, and the reason is worth keeping in mind: Terminal.app holds rows and
+columns when the font changes and resizes the window to match — going from 12 to 22 turns a 700×500
+window into 1378×856, measured — so k0 read each window's own bounds first and put them back, and
+nothing moved. What that left behind was a window holding 22 point text in a box measured for 12.
+Half a gesture is worse than none, so the size of the text and the size of the window now travel
+together, and the price is said plainly: **a window you had dragged onto another screen comes back
+to the middle of the main one.**
+
+**All of them, every time.** k0 asks Terminal once for the windows it has open and changes those
+that are its own, rather than asking after every window id it has ever written down. On a board
+with two hundred stories almost every one of those ids names a window closed weeks ago, and asking
+after them one at a time took seven seconds — long enough to be cut short halfway, which left half
+the terminals large, half of them small, and nothing said about it anywhere. Walking the windows
+that exist takes about a second and does not grow with the board.
 
 k0 touches **only its own windows**, the ones born from a story.
 
@@ -1334,7 +1345,8 @@ server/
   launcher.js    starts and resumes sessions, through the platform's terminal
   servers.js     the dev server of a repository: what starts it, whether it is up, and on what
                  port. The only thing k0 starts that is meant to outlive k0
-  mode.js        the four modes: how awake to keep the machine, and whether the text goes large
+  mode.js        the four modes: how awake to keep the machine, and whether text and windows go
+                 large. How large is `launcher.js`, which is what talks to the terminal
   projects.js    the repositories, in the order you last used them
   sessions.js    digs already-lived sessions out of the transcripts, to import as stories
   files.js       the only one that reads the projects' disk — and the only one that writes back

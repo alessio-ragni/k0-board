@@ -12,7 +12,7 @@ import {
   sessionName,
   closeTerminal,
   setWindowTitle,
-  setTerminalFont,
+  applyModeToWindows,
   relayoutWindows,
 } from './launcher.js'
 import * as mode from './mode.js'
@@ -1154,16 +1154,20 @@ async function api(req, res, url) {
 
   // ── The four modes ─────────────────────────────────────────────────────────
   // One control, with two handles: the row of buttons on the board and the four entries in the
-  // menu bar. The text in terminals that are already open changes STRAIGHT AWAY, not only in
-  // the ones you open next — otherwise, to be able to read anything, you would have to close
-  // everything and start again.
+  // menu bar. Terminals that are already open change STRAIGHT AWAY — text and window size both,
+  // not only the ones you open next — otherwise, to be able to read anything, you would have to
+  // close everything and start again.
   //
   // The answer does not only say which mode we are in: it says whether it is holding. Whoever
   // clicked has to know now whether the lid is covered, not in a second's time.
+  //
+  // A pass over the windows that fails says so in the log. It used to fail in silence, which is
+  // how driving mode could stop working for days without anybody being able to say when.
   if (resource === 'mode' && req.method === 'POST') {
     const b = await readBody(req)
     await mode.setMode(b.mode)
-    await setTerminalFont(db.listStories().map((s) => s.terminal_window_id))
+    const windows = await applyModeToWindows(db.listStories().map((s) => s.terminal_window_id))
+    if (windows.error) console.log(`k0 — the terminals did not follow the mode: ${windows.error}`)
     return send(res, 200, { mode: mode.current(), lid: mode.lid(), reason: mode.reason() })
   }
 
@@ -1538,10 +1542,13 @@ http
     settings.ensure()
     tick()
     // The mode is remembered, and at startup it puts the machine back as it was: the sleep
-    // levers and, where needed, the font size of terminals left open. The server restarts often
-    // — just working on k0's own code is enough — and the windows from before do not notice:
-    // applying the mode REPAIRS that mismatch instead of adopting it.
-    mode.start().then(() => setTerminalFont(db.listStories().map((s) => s.terminal_window_id)))
+    // levers and, where needed, the size of the text and of the terminals left open. The server
+    // restarts often — just working on k0's own code is enough — and the windows from before do
+    // not notice: applying the mode REPAIRS that mismatch instead of adopting it.
+    mode.start().then(async () => {
+      const windows = await applyModeToWindows(db.listStories().map((s) => s.terminal_window_id))
+      if (windows.error) console.log(`k0 — the terminals were left as they were: ${windows.error}`)
+    })
     console.log(`k0 — dashboard on http://localhost:${PORT}`)
   })
 

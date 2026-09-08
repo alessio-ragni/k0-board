@@ -36,6 +36,9 @@ const EMULATORS = [
   { bin: 'xterm', args: (cmd) => ['-e', ...cmd] },
 ]
 
+/** How much of the work area a window takes unless the mode asks for more. */
+const COVERAGE = 0.86
+
 /**
  * Which emulator to open. `K0_TERMINAL` wins, because no list of ours will ever cover every
  * terminal anybody uses, and being wrong about it should not mean being stuck with it.
@@ -195,16 +198,17 @@ export async function focus(handle) {
 /**
  * Geometry, best effort. There is no NSScreen here to ask for the usable area net of panels
  * and docks, so the work area comes from the window manager's own `_NET_WORKAREA` by way of
- * xdotool, and the same 86% margin as everywhere else is applied to it.
+ * xdotool, and the same share of it as everywhere else is applied — all of it when the mode asks
+ * for windows readable from across the room.
  */
-export async function relayout(handles) {
+export async function relayout(handles, { coverage = COVERAGE } = {}) {
   if (!canPlaceWindows()) return { touched: 0 }
   const xdotool = XDOTOOL()
   const geom = await runQuiet(xdotool, ['getdisplaygeometry'])
   const [sw, sh] = String(geom).trim().split(/\s+/).map(Number)
   if (!sw || !sh) return { touched: 0 }
-  const w = Math.round(sw * 0.86)
-  const h = Math.round(sh * 0.86)
+  const w = Math.round(sw * coverage)
+  const h = Math.round(sh * coverage)
   const x = Math.round((sw - w) / 2)
   const y = Math.round((sh - h) / 2)
   let touched = 0
@@ -219,13 +223,12 @@ export async function relayout(handles) {
 }
 
 /**
- * Font size belongs to the emulator, and every emulator spells it differently — some only in
- * a config file that is read at startup. There is no honest generic answer, so k0 says it
- * cannot and driving mode changes only the board's own text.
+ * What the mode asks for, as far as this platform can give it: the window takes its share of the
+ * screen. Font size belongs to the emulator, and every emulator spells it differently — some only
+ * in a config file read at startup. There is no honest generic answer, so k0 says it cannot: here
+ * driving mode makes the windows bigger and leaves the text to the emulator.
  */
-export async function setFont() {
-  return { touched: 0 }
-}
+export const applyMode = (handles, { coverage } = {}) => relayout(handles, { coverage })
 
 export async function defaultFontSize() {
   return 12

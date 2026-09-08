@@ -33,7 +33,7 @@ const unsupported = {
       throw new Error(`k0 cannot open terminals on ${process.platform} yet.`)
     },
     setTitle: async () => false,
-    setFont: async () => ({ touched: 0 }),
+    applyMode: async () => ({ touched: 0 }),
     relayout: async () => ({ touched: 0 }),
     focus: async () => ({ ok: false, error: `Not supported on ${process.platform}` }),
     close: async () => ({ closed: false }),
