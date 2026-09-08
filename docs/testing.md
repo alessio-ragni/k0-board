@@ -113,6 +113,12 @@ window, registering a service, printing a PDF through a headless browser. An ada
 `/proc/meminfo`, of `lsof`, of `ss` — because that is the part that can be wrong quietly. The rest
 is left alone rather than mocked into a shape that proves nothing.
 
+Text an adapter *writes* counts for the same reason, and `test/windows.test.mjs` is the one place
+it comes up: the AppleScript a mode change sends Terminal is read for its shape, never run. The
+version that asked after each window id in turn was slow enough to be killed halfway through and
+leave the terminals half changed, and nothing about that is visible from the outside — but it is
+plain in the script, so that is where it is caught.
+
 Starting and stopping a real dev server is in that same category, and deliberately so: the test
 would have to spawn a process, wait for it to bind a port and then kill it, on three platforms,
 and what it would prove is that `spawn` works. What *can* be wrong quietly is the deciding — which

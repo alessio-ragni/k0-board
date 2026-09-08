@@ -17,8 +17,16 @@ const PBPASTE = () => which('pbpaste', ['/usr/bin/pbpaste'])
 /** Escape for an AppleScript string literal. */
 const asq = (s) => String(s).replace(/\\/g, '\\\\').replace(/"/g, '\\"')
 
-/** How much of the free screen area a window takes: the rest is margin. */
+/** How much of the free screen area a window takes unless somebody asks for more. */
 const COVERAGE = 0.86
+
+/**
+ * How long a pass over the open windows may take. The five seconds `run` gives every other
+ * command is not enough for this one: Terminal answers in its own time, and a pass killed
+ * halfway through leaves half the windows changed and the other half as they were — which is
+ * precisely the failure this file used to have.
+ */
+const PASS_TIMEOUT = 20000
 
 /** In driving mode the terminal has to be readable from across the room. */
 export const DRIVING_FONT_SIZE = 22
@@ -38,13 +46,17 @@ export async function defaultFontSize() {
 
 /**
  * The piece of AppleScript that decides where a window goes and how big it is. It is written
- * once because two callers need it — the one that opens a new window and the one that puts
- * them back after the screen changes — and the rule has to be the same for both: otherwise
- * the first time a monitor is unplugged every window would change size for no reason.
+ * once because three callers need it — the one that opens a new window, the one that puts them
+ * back after the screen changes, and the one that follows the mode — and the rule has to be the
+ * same for all of them: otherwise the first time a monitor is unplugged every window would
+ * change size for no reason.
+ *
+ * `coverage` is how much of the free area the window takes: the usual share, or all of it when
+ * the mode wants windows readable from across the room.
  *
  * Leaves `x1`, `y1`, `w` and `h` behind, which is what `bounds` needs.
  */
-const GEOMETRY = `
+const geometry = (coverage = COVERAGE) => `
 use framework "AppKit"
 use scripting additions
 
@@ -53,8 +65,8 @@ use scripting additions
 set scr to current application's NSScreen's mainScreen()
 set frameH to item 2 of item 2 of (scr's frame() as list)
 set {{vx, vy}, {vw, vh}} to (scr's visibleFrame() as list)
-set w to round (vw * ${COVERAGE})
-set h to round (vh * ${COVERAGE})
+set w to round (vw * ${coverage})
+set h to round (vh * ${coverage})
 set x1 to round (vx + (vw - w) / 2)
 -- NSScreen counts from the bottom, Terminal from the top: this converts between them.
 set y1 to round (frameH - (vy + vh) + (vh - h) / 2)
@@ -74,9 +86,9 @@ set y1 to round (frameH - (vy + vh) + (vh - h) / 2)
  * - the window is sized BEFORE the command runs, so Claude Code's interface is born at the
  *   right size instead of having to redraw itself halfway through starting up.
  */
-export async function open({ command, title, fontSize }) {
+export async function open({ command, title, fontSize, coverage }) {
   const font = fontSize ?? (await defaultFontSize())
-  const script = `${GEOMETRY}
+  const script = `${geometry(coverage)}
 tell application "Terminal"
   activate
   do script ""
@@ -96,65 +108,96 @@ return winId as string`
 const ids = (handles) => [...new Set((handles || []).map(Number).filter(Boolean))]
 
 /**
- * One `osascript` for every window, each in its own `try`.
+ * One `osascript` for the lot: it walks Terminal's OWN windows once and touches those whose id
+ * k0 asked about.
  *
- * The per-window `try` is there so that one window closed by hand in the meantime does not
- * take all the others down with it. And there is deliberately **no `activate`**: opening a
- * window needs Terminal in front, touching one that is already open does not — otherwise
- * every time you switch driving mode on or plug in a monitor, Terminal would jump in front
- * of whatever you were doing.
+ * The obvious shape is a `try` block per id, and it is the one that broke. k0 hands over the
+ * window id of every story it has ever opened — 218 of them on the board where this was found —
+ * and nearly all of them name a window closed weeks ago. Each dead id costs AppleScript an error
+ * to raise and swallow, about 33 milliseconds of it: the script took 7.4 seconds against the 5
+ * second limit on `run`, was killed halfway through, and the `catch` below read that as
+ * "Terminal is not running". Half the windows had changed, half had not, and nothing anywhere
+ * said so. It worked in the morning and stopped in the afternoon because the list only grows.
+ *
+ * Walking the windows that are actually open costs about a second and stops growing with the
+ * board's history: an id naming nothing simply never matches. The count comes back from
+ * AppleScript itself instead of being assumed, so the caller learns how many windows really
+ * moved, and a failure comes back as a sentence instead of as a zero.
+ *
+ * There is deliberately no `activate`: opening a window needs Terminal in front, touching one
+ * that is already open does not — otherwise every mode you clicked would bring Terminal forward
+ * over whatever you were doing.
+ *
+ * @returns {Promise<{touched: number, error?: string}>}
  */
-async function forEachWindow(preamble, body, list) {
-  const blocks = list.map((id) => `\n  try${body(id)}\n  end try`).join('')
+async function eachWindow(preamble, body, list) {
   try {
-    await run(OSASCRIPT(), ['-e', `${preamble}\ntell application "Terminal"${blocks}\nend tell`])
-    return { touched: list.length }
-  } catch {
-    return { touched: 0 } // Terminal is not running at all: there is nothing to touch
+    const out = await run(OSASCRIPT(), ['-e', windowPass(preamble, body, list)], { timeout: PASS_TIMEOUT })
+    return { touched: Number(String(out).trim()) || 0 }
+  } catch (err) {
+    return { touched: 0, error: String(err?.message || err).split('\n')[0].trim() }
   }
 }
 
 /**
- * Changes the font size of windows that are already open — which is what happens when
- * driving mode goes on or off.
- *
- * **Every window stays exactly where and as it is.** That is worth saying because it is not
- * free: Terminal.app keeps rows and columns when the font changes and resizes the window
- * accordingly — going from 12 to 22 more than doubles it. So the bounds are read first, the
- * font is changed, and the bounds are put back: **its own** bounds, not the centred ones.
- * k0's windows have rarely stayed where they were born — you move them, widen them, drag one
- * to the other monitor — and turning on driving mode is not the moment to sweep them all
- * back to the middle of the screen without being asked.
- *
- * What genuinely changes is how much text fits: at 22 points, fewer rows.
+ * The script itself, kept apart from the running of it so that a test can read the shape
+ * without a Terminal to drive: whether the pass is one walk over the windows or the old walk
+ * over the ids is the whole point of this file, and it is worth being able to check.
  */
-export async function setFont(handles, size) {
+export const windowPass = (preamble, body, list) => `${preamble}
+set wanted to {${list.join(', ')}}
+set touched to 0
+tell application "Terminal"
+  repeat with win in windows
+    if (id of win) is in wanted then${body('win')}
+      set touched to touched + 1
+    end if
+  end repeat
+end tell
+return touched as string`
+
+/**
+ * Puts the windows k0 owns the way the mode wants them: the text at `fontSize`, the window at
+ * `coverage` of the free screen. Both in the same pass, deliberately.
+ *
+ * They used to be two separate ideas. The font changed and the window was carefully put back
+ * exactly where it was, on the grounds that turning driving mode on is not the moment to sweep
+ * every window back to the middle of the screen. What that left behind was a window holding 22
+ * point text in a box measured for 12: the size of the text and the size of the window are one
+ * gesture, and doing half of it is worse than doing neither.
+ *
+ * The font goes first: Terminal keeps rows and columns when the font changes and resizes the
+ * window to match, so the bounds have to be set after it or they would be eaten.
+ *
+ * The price, said plainly because the old behaviour promised the opposite: a window you had
+ * dragged onto another screen comes back to the middle of the main one.
+ */
+export async function applyMode(handles, { fontSize, coverage } = {}) {
   const list = ids(handles)
   if (!list.length) return { touched: 0 }
-  const font = size ?? (await defaultFontSize())
-  return forEachWindow(
-    '',
-    (id) => `
-    set b to bounds of window id ${id}
-    set font size of tab 1 of window id ${id} to ${font}
-    set bounds of window id ${id} to b`,
+  const font = fontSize ?? (await defaultFontSize())
+  return eachWindow(
+    geometry(coverage),
+    (win) => `
+      set font size of tab 1 of ${win} to ${font}
+      set bounds of ${win} to {x1, y1, x1 + w, y1 + h}`,
     list
   )
 }
 
 /**
- * Puts the windows back in the middle of the screen at their usual size: what is needed when
- * the screen changes underneath them — a monitor plugged in or unplugged, a different
- * resolution — and the windows stay where they were, out of place or off screen.
+ * Puts the windows back in the middle of the screen at the size the mode asks for: what is
+ * needed when the screen changes underneath them — a monitor plugged in or unplugged, a
+ * different resolution — and the windows stay where they were, out of place or off screen.
  *
  * Here gathering them back to the centre is the point: they all end up where they were born,
  * as they were on the first day. The geometry is computed once for all of them, so none ends
  * up on a different screen from its siblings.
  */
-export async function relayout(handles) {
+export async function relayout(handles, { coverage } = {}) {
   const list = ids(handles)
   if (!list.length) return { touched: 0 }
-  return forEachWindow(GEOMETRY, (id) => `\n    set bounds of window id ${id} to {x1, y1, x1 + w, y1 + h}`, list)
+  return eachWindow(geometry(coverage), (win) => `\n      set bounds of ${win} to {x1, y1, x1 + w, y1 + h}`, list)
 }
 
 /**

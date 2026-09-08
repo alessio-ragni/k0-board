@@ -101,6 +101,11 @@ know: switch the backlog off and it is exactly the board it was.
 - **A story keeps every session it has had**, rather than only the last one. Starting a new
   conversation on old work no longer throws away the record of what was tried before.
 - The ChangeLog page and its writer say *story* where they said *card*.
+- **Driving mode resizes the terminals, not just their text.** A terminal you glance at from across
+  the room now takes the whole free screen while Driving is lit, and goes back to its usual size and
+  its usual text the moment you leave it — one gesture instead of large text left sitting in a small
+  window. The price, which used to be the other way round: a window you had dragged onto a second
+  screen comes back to the middle of the main one.
 
 
 
@@ -143,6 +148,13 @@ know: switch the backlog off and it is exactly the board it was.
   run for fifteen minutes — and it had the least readable answer.
 - **A story moved to another repository is numbered from one, not from three.** It was given its
   key in its new home after it had already arrived there, so it counted itself.
+- **Changing mode no longer gives up halfway through, in silence.** k0 asked Terminal after every
+  window id it had ever recorded, one at a time; on a board of two hundred stories nearly all of
+  them named a window closed weeks ago, and the wait for those answers pushed the whole thing past
+  its own time limit. It was cut off mid-way: some terminals changed, the rest kept the size they
+  had, and the failure was read as "Terminal is not running" and never mentioned. k0 now asks once
+  for the windows that are open, which takes about a second whatever the board has been through —
+  and a pass that does fail says so in the log.
 
 ## [0.4.0]
 

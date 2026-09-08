@@ -71,9 +71,14 @@ export const NO_CAPABILITIES = {
  *   Opens a terminal running `command` and returns an opaque handle, or null if the
  *   platform has no notion of a handle it can address later.
  * @property {(handle: string, title: string) => Promise<boolean>} setTitle
- * @property {(handles: string[]) => Promise<{touched: number}>} setFont
- *   Applies the font size the current mode asks for, leaving each window where it is.
- * @property {(handles: string[]) => Promise<{touched: number}>} relayout
+ * @property {(handles: string[], opts?: {fontSize?: number, coverage?: number}) =>
+ *   Promise<{touched: number, error?: string}>} applyMode
+ *   Puts the windows the way the current mode wants them: the text at `fontSize`, the window at
+ *   `coverage` of the free screen. One gesture and not two — a window left holding large text at
+ *   a size measured for small text is worse than one that changed neither. What a platform cannot
+ *   do it leaves alone: where the font belongs to the emulator's own profile, only the size of
+ *   the window moves, and `terminal.font` says so.
+ * @property {(handles: string[], opts?: {coverage?: number}) => Promise<{touched: number}>} relayout
  * @property {(handle: string) => Promise<{ok: boolean, error?: string}>} focus
  * @property {(opts: {handle: string, pid?: number}) => Promise<{closed: boolean}>} close
  * @property {(handle: string) => Promise<string|null>} readScreen
