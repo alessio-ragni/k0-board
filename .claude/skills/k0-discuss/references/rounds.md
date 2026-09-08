@@ -261,7 +261,7 @@ His time is the scarce thing here. Two kinds of question waste it.
 
 | you want | where it comes from |
 |---|---|
-| the key, the alias, the position | `GET /api/backlog?repo=<path>` |
+| the key, the title, the state | `GET /api/backlog?repo=<path>` |
 | which epic, how far along it is | the same call — `progress: {done, total}` |
 | what was decided while the epic was discussed | `GET /api/backlog/story/:id` — already merged into `decisions`, marked `owner: "epic"` |
 | what is open, what is blocked, the dependencies | the same call — `state`, `blocked`, `deps` |

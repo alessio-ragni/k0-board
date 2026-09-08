@@ -7,10 +7,12 @@ All notable changes to this project are documented here. The format follows
 ## [Unreleased]
 
 **The board tells you what to do next, and starts it.** Every story carries one button saying the
-one thing to do with it — *Discuss it*, *Plan it*, *Work on it*, *Check it*, *Put it right* — and
-pressing it opens a terminal with the command already sent. You work there and come back when
-it is done. That is the whole shape of it: the board is the menu, the commands are the engine, and
-you no longer have to know nine commands by heart to find the way in.
+one thing to do with it — *Discuss*, *Plan*, *Work*, or *Resume* on a terminal that was closed —
+and pressing it opens a terminal with the command already sent. Beside it, **Quick Start** opens an
+empty one and leaves the typing to you: the long way round and the short way in, and nothing else.
+You work there and come back when it is done. That is the whole shape of it: the board is the menu,
+the commands are the engine, and you no longer have to know nine commands by heart to find the way
+in.
 
 Underneath that, the board learns what the work is *about*. A post-it is now a **story** with a
 stable key of its own — `K42`, and it keeps it for life — and stories can sit under an **epic**, be
@@ -23,22 +25,32 @@ is exactly the board it was.
 ### Added
 
 - **A button on every story saying what to do with it next, which opens the terminal on it.**
-  *Discuss it* on something nothing has been decided about, *Plan it* once it has been discussed,
-  *Work on it* once there is a plan, *Check it* on work left with no session running, *Put it
-  right* when the counter-check found a decision broken, *Go to the terminal* when a session is
-  already open — and *Split it* on a story that has not moved in a fortnight, because by then it is
-  usually two stories. Hover it and it says why this and not something else. Pressing it opens a
-  terminal with `/k0-plan K42` already in it; `Start`, which opens a session on what the note
-  itself says, is still there beside it. There is one button and not seven, k0 works out which,
-  and it is the same reasoning `/k0-next` does — so the note, the row in the list and the command
-  can never give you three different answers. Pressing a suggestion sends the line with the
-  session rather than leaving it under the cursor, and only `/k0-work` counts as the work having
-  begun: pressing *Discuss it* leaves the story where it was until the discussion moves it.
+  *Discuss* on something nothing has been decided about, *Plan* once it has been discussed, *Work*
+  once there is a plan, and *Resume* on a story whose terminal was closed — three words in the
+  order the work goes in, and a fourth that is not a command at all. Hover it and it says why this
+  and not something else. Pressing it opens a terminal with `/k0-plan K42` already in it and
+  already sent, rather than left sitting under the cursor. A story with a session running carries
+  no button, because the terminal is where the work is and a double click on the note goes there;
+  so does one waiting to be looked over, and one that is done. k0 works out which, and it is the
+  same reasoning `/k0-next` does — so the note, the row in the list and the command can never give
+  you three different answers. Only `/k0-work` counts as the work having begun: pressing *Discuss*
+  leaves the story where it was until the discussion moves it.
+- **Quick Start, the short way in.** It opens a terminal on the story with nothing in it and lets
+  you type there. It is the plain button on a story with no suggestion and a quiet link beside the
+  suggestion on one that has, and it is what the `+` offers next to *Discuss* when you write a new
+  story down.
+- **Notes on a story, which are yours and go nowhere.** Editing a story gives you a list to jot
+  things into; they sit on the post-it where you can read them and are never sent to Claude Code.
+  A story being written for the first time is not asked for them, nor for the flag: at that moment
+  there is nothing to note down yet.
+- **The repository menu is k0's own, with a search in it.** It was the system's dropdown, which on
+  macOS opens a panel from another application in the middle of a board made of paper and cannot
+  hold a search at all. It is now the same picker the new-story dialog has: type three letters,
+  press Enter.
 - **Epics, stories and tasks.** One post-it is one story. A story can belong to an epic, and a
   story that turned out too big to close is split into tasks that inherit its context. Every one
-  of them gets a key — `K42` — that is never reused and never reassigned, and a position in the
-  tree (`1.12.1`) that is worked out fresh every time, so it can never disagree with where the
-  thing actually sits.
+  of them gets a key — `K42` — that is never reused and never reassigned. That key is the only
+  name a story has: where it sits is the tree itself, which can be read.
 - **Decisions you can hold work against.** What was settled while a story was discussed is
   written down one sentence at a time, numbered, and never rewritten — a decision that changes is
   *superseded* by the one that replaced it, and both stay. An epic's decisions are inherited by
@@ -168,6 +180,20 @@ is exactly the board it was.
 
 ### Fixed
 
+- **Double-clicking a post-it does something on every note, not on half of them.** It brought the
+  terminal to the front on a story that had one running and did nothing at all on any other, so it
+  was a gesture you could not rely on. It now goes where the work is: the terminal if one is
+  running, the conversation the closed terminal left behind, and a fresh session on a story that
+  never had one.
+- **"That window is gone" stopped being said about a session that is still running.** Closing a
+  Terminal window by hand leaves `claude` thinking inside it, and k0 went on holding a window id
+  that no longer answered — so a double click reported the session lost while it was working. k0
+  now looks the window up by the name it put on it, brings that one up and writes the id down; when
+  there is really nothing left to find, it says the window was closed and the session is still
+  running, and offers to open it again.
+- **The buttons on a post-it no longer break a word over two lines.** A label that did not fit the
+  268 pixels of a note was wrapped mid-phrase, which read as two buttons and made that note stand a
+  row taller than the ones beside it.
 - **A note written under a story's title is no longer eaten.** The `.k0/` copy dropped the first
   paragraph above the first heading every time it rewrote a file, taking it for the standfirst k0
   prints itself. An epic prints no standfirst, and neither does a story with an empty description

@@ -11,7 +11,7 @@ import { projectName } from './projects.js'
 // them can be wrong on their own without this being wrong too.
 //
 // The one thing worth saying about the shape of what comes out: everything a skill or a page
-// could work out for itself is worked out HERE instead — the alias, whether a story is blocked,
+// could work out for itself is worked out HERE instead — whether a story is blocked,
 // how far an epic has got, which story to pick up next. A model asked to count is a model
 // spending tokens on arithmetic and getting it wrong once in twenty.
 
@@ -40,44 +40,6 @@ export const off = () => ({
   blocked: [],
   why: 'The k0 backlog is switched off. Delete the "backlog" line from ~/.k0/config.json to have it back.',
 })
-
-// ── The alias ────────────────────────────────────────────────────────────────
-// A position in the tree, computed on every read and never stored, so it cannot disagree with the
-// tree it describes. The key is the name that lasts; the alias is where the thing is sitting
-// today, and moving a story under another epic changes it — which is the point.
-
-const topLevel = (stories) => stories.filter((s) => !s.parent_story_id)
-
-const positionOf = (rows, id) => rows.findIndex((r) => r.id === id) + 1
-
-export function epicAlias(epic) {
-  const at = positionOf(db.listEpics(epic.project_path), epic.id)
-  return at ? String(at) : ''
-}
-
-/**
- * `seen` is not tidiness. A story cannot be made its own parent from the board, and `patchStory`
- * refuses to build the shape, but `.k0/` is a folder people hand-edit and a database can be older
- * than that guard — so two stories each naming the other as parent is a shape that arrives.
- * Without this that is not a wrong alias, it is a stack overflow thrown out of the middle of a
- * request that nothing above it expects to be able to fail.
- */
-export function storyAlias(story, seen = new Set()) {
-  if (!story || seen.has(story.id)) return ''
-  seen.add(story.id)
-  if (story.parent_story_id) {
-    const parent = db.getStory(story.parent_story_id)
-    if (!parent) return ''
-    return `${storyAlias(parent, seen)}.${positionOf(db.childStories(parent.id), story.id)}`
-  }
-  if (story.epic_id) {
-    const epic = db.getEpic(story.epic_id)
-    if (!epic) return ''
-    return `${epicAlias(epic)}.${positionOf(topLevel(db.storiesOfEpic(epic.id)), story.id)}`
-  }
-  const loose = topLevel(db.storiesOfProject(story.project_path)).filter((s) => !s.epic_id)
-  return String(positionOf(loose, story.id))
-}
 
 // ── Keys in, ids out ─────────────────────────────────────────────────────────
 // A skill holds keys, because a key is what the user says out loud. Everything below the surface
@@ -173,7 +135,6 @@ export function publicStory(story, { git = null } = {}) {
   return {
     id: story.id,
     key: story.key,
-    alias: storyAlias(story),
     title: story.title,
     description: story.description ?? '',
     body: story.body ?? '',
@@ -205,11 +166,14 @@ export function publicStory(story, { git = null } = {}) {
     status_since: story.status_since ?? null,
     state_since: story.state_since ?? null,
     // The one thing to do with it next, decided here so that the post-it, the list row and the
-    // skill all draw the same button and give the same reason for it — and handed the two counts
-    // this function has just made, rather than letting it go and make them a second time.
-    next_step: nextStep(story, { decided: standing > 0, broken: violations.length > 0 }),
+    // skill all draw the same button and give the same reason for it — and handed the count this
+    // function has just made, rather than letting it go and make it a second time.
+    next_step: nextStep(story, { decided: standing > 0 }),
   }
 }
+
+/** An epic's own stories, without the tasks they were split into: those hang off their story. */
+const topLevel = (stories) => stories.filter((s) => !s.parent_story_id)
 
 export function publicEpic(epic) {
   const stories = topLevel(db.storiesOfEpic(epic.id))
@@ -219,7 +183,6 @@ export function publicEpic(epic) {
   return {
     id: epic.id,
     key: epic.key,
-    alias: epicAlias(epic),
     title: epic.title,
     body: epic.body ?? '',
     state: epic.state,
@@ -415,15 +378,6 @@ export function liveView(id) {
 // come out of the same place and cannot drift apart.
 
 /**
- * How long a story may sit before the suggestion stops being "carry on" and becomes "cut it up".
- *
- * Fourteen days is a guess and nothing measured it. It is two weeks of a story not moving, which
- * is long enough that the reason is usually not effort but shape: what is written on the post-it
- * turned out to be two pieces of work, and no amount of doing it as one will close it.
- */
-const STUCK_DAYS = 14
-
-/**
  * The one thing to do with this story next, and the sentence saying why it is this and not
  * something else.
  *
@@ -431,60 +385,58 @@ const STUCK_DAYS = 14
  * over, and a second copy of them written in the page would be a second answer to one question
  * from the day somebody edited one of the two.
  *
- * `null` is an answer and not a hole: a finished story has nothing left to suggest, and one that
- * came through its counter-check clean is waiting for a person to press Done. Filling either of
+ * There are three commands on this list and no more — `Discuss`, `Plan`, `Work`, in that order,
+ * because that is the order the work goes in: you cannot plan what has not been decided or build
+ * what has not been planned. `Resume` is the fourth answer and it is not a command at all; it
+ * picks a conversation back up where the terminal was closed on it.
+ *
+ * `null` is an answer and not a hole. A story with a session already open needs no suggestion:
+ * the terminal is where the work is, and a double click on the post-it goes there. One in
+ * `Review` is waiting for a person to look at it, and one that is `Done` is done. Filling any of
  * those in with a command would be inventing work.
  *
- * The story is the flat row `db.listStories()` and `publicStory` both already hold. Two of the
- * rules below need a fact that is not on it — whether anything has been decided about the story,
- * and whether the counter-check left a decision broken — and both are HANDED IN by whoever already
- * counted them rather than asked for here. This is drawn on every row of a board that is asked for
- * once a second by every open tab, and one query written here is two hundred queries a second.
- *
- * Left out, each falls back to asking, because a caller holding one story is not a caller worth
- * making count first. That is why the fallback for `broken` sits inside the `Review` arm, where
- * few stories ever are, and why the board hands `decided` in: `Backlog` is where most of them sit.
+ * The story is the flat row `db.listStories()` and `publicStory` both already hold. One rule
+ * below needs a fact that is not on it — whether anything has been decided about the story — and
+ * it is HANDED IN by whoever already counted rather than asked for here. This is drawn on every
+ * row of a board that is asked for once a second by every open tab, and one query written here is
+ * two hundred queries a second. Left out, it falls back to asking, because a caller holding one
+ * story is not a caller worth making count first.
  */
 export function nextStep(story, known = {}) {
-  // Whatever else is true, an open session is where the work is. Sending somebody off to start a
-  // second one on the same story is how two half-done things happen.
-  if (story.session_alive) {
-    return { command: null, label: 'Go to the terminal', action: 'focus', why: 'A session is already open on it.' }
-  }
-  if (story.state === 'Done') return null
+  // Whatever else is true, an open session is where the work is, and the post-it already answers
+  // a double click by bringing its window up. A button that says the same thing a second time is
+  // one button too many.
+  if (story.session_alive) return null
+  if (story.state === 'Done' || story.state === 'Review') return null
 
-  // Ahead of the rest, because the rest can only see WHICH state a story is in and this is about
-  // how long it has been true. `state_since` and not `status_since`: the second one is the live
-  // session's clock, so a story whose terminal was abandoned in the spring and whose state moved
-  // yesterday would be offered for splitting on the strength of a session nobody has touched.
-  const still = daysSince(story.state_since ?? story.updated_at)
-  if (still > STUCK_DAYS && (story.state === 'Working' || story.state === 'Planned')) {
-    return { command: 'k0-split', label: 'Split it', why: `It has not moved in ${still} days.` }
+  // A session that was opened and is no longer running is a conversation, not a fresh start.
+  // Resume comes before the commands because starting a second session on the same story is how
+  // two half-done things happen.
+  if (story.session_id) {
+    return {
+      command: null,
+      label: 'Resume',
+      action: 'resume',
+      why: 'Its terminal was closed. This picks the conversation up where it was.',
+    }
   }
 
-  if (story.state === 'Review') {
-    // Asked only here, and so only of the few stories in Review: it is four queries per story and
-    // the board wants an answer on every row it has, once a second.
-    const broken = known.broken ?? db.openViolations(story.id).length > 0
-    if (!broken) return null
-    return { command: 'k0-work', label: 'Put it right', why: 'The last counter-check found a decision broken.' }
-  }
-  if (story.state === 'Working') {
-    return { command: 'k0-verify', label: 'Check it', why: 'The work was left with no session running.' }
-  }
+  // Working with nothing to resume: the work was begun somewhere this board cannot see. It is his
+  // story and his call, and a command guessed here would be a guess on a command line.
+  if (story.state === 'Working') return null
   if (story.state === 'Planned') {
-    return { command: 'k0-work', label: 'Work on it', why: 'It has a plan and nothing has started it.' }
+    return { command: 'k0-work', label: 'Work', why: 'It has a plan and nothing has started it.' }
   }
   if (story.state === 'Discussed') {
-    return { command: 'k0-plan', label: 'Plan it', why: 'It has been discussed and has no plan yet.' }
+    return { command: 'k0-plan', label: 'Plan', why: 'It has been discussed and has no plan yet.' }
   }
   if (story.state === 'Backlog') {
     // Its epic's decisions count as much as its own, because they are what it will be held to: a
     // story under an epic that has been argued out is not a story nobody has decided anything about.
     const decided = known.decided ?? db.effectiveDecisions(story.id).some((d) => !d.superseded_by)
     return decided
-      ? { command: 'k0-plan', label: 'Plan it', why: 'Something has already been decided about it.' }
-      : { command: 'k0-discuss', label: 'Discuss it', why: 'Nothing has been decided about it yet.' }
+      ? { command: 'k0-plan', label: 'Plan', why: 'Something has already been decided about it.' }
+      : { command: 'k0-discuss', label: 'Discuss', why: 'Nothing has been decided about it yet.' }
   }
   // A state nothing here knows — a row edited by hand, a database older than this list. Saying
   // nothing is the only honest answer left; guessing would put a command on a command line.

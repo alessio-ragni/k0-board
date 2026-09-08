@@ -57,7 +57,7 @@ Three lines at most, in the user's language:
 >
 > K37 has been in Review for four days.
 
-The key and the alias, the title, the one sentence of why, and — only when the answer carries
+The key, the title, the one sentence of why, and — only when the answer carries
 one — the thing that has been waiting. **Then stop.** No question, no box, no "shall I start it".
 He asked what to do next and he has been told; what he does with that is his next message.
 
@@ -79,4 +79,4 @@ That opens a Claude Code session on the story, the same way the board's button d
 - **Never invent an order.** If the server says nothing is ready — everything blocked, or the
   backlog empty — say that plainly and say what is blocking it. Do not pick something anyway.
 - **Never start the session unasked**, and never move a state.
-- Talk to the user in his language. The keys, the aliases and the state names stay as they are.
+- Talk to the user in his language. The keys and the state names stay as they are.

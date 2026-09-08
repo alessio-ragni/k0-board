@@ -37,7 +37,7 @@ export async function applyModeToWindows(handles) {
 
 export const relayoutWindows = (handles) => terminal.relayout(handles, { coverage: coverage() })
 export const setWindowTitle = (handle, title) => terminal.setTitle(handle, title)
-export const focusWindow = (handle) => terminal.focus(handle)
+export const focusWindow = (handle, title) => terminal.focus(handle, title)
 export const closeTerminal = ({ winId, pid }) => terminal.close({ handle: winId, pid })
 
 /** Waits for Claude to really be up: the session shows up in ~/.claude/sessions. */

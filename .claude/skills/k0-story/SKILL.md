@@ -45,7 +45,7 @@ reading all of that to write one post-it costs more than the post-it does. If th
 epic, even the list of epics is surplus — check `enabled` and move on.
 
 If he did name one in passing — *"this one goes under invoicing"* — match it in that list and use
-its `key`. Do not ask which epic: a story with no epic is perfectly normal and gets an alias all
+its `key`. Do not ask which epic: a story with no epic is perfectly normal and stands on its own all
 the same.
 
 ## Write it
@@ -72,7 +72,7 @@ with `{ "project_path": "…", "title": "…", "body": "…", "lang": "it", "epi
 send it with `-d @file`: a body dictated by voice will have quotes and newlines in it and will
 not survive being pasted inline.
 
-The answer carries the `key`, the `alias` and the `id`. **Read them from there** — never work
+The answer carries the `key` and the `id`. **Read them from there** — never work
 them out yourself, and never ask.
 
 ## Start it, if that is what he said
@@ -98,7 +98,7 @@ understood, no list of what he might want next, no offer to discuss it.
 
 - **Speed is the feature.** Two calls, one line back. If you find yourself asking a second
   question, you are in the wrong skill.
-- **Never ask for what the API just told you** — the key, the alias, the epic, the position.
+- **Never ask for what the API just told you** — the key, the epic, the state.
 - **Store what he said in the language he said it in.** The interface is English; his words are
   his.
 - **This skill only creates.** No `PATCH`, no `DELETE`, no touching stories that already exist.

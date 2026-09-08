@@ -371,7 +371,7 @@ to be true before it can be called finished, and a check that holds the finished
 all of that before you are allowed to tick it off.
 
 **The board is the menu; the commands are the engine.** Every story says what the one next thing
-to do with it is — *Discuss it*, *Plan it*, *Work on it* — and pressing that opens a terminal with
+to do with it is — *Discuss*, *Plan*, *Work* — and pressing that opens a terminal with
 the command already in it. The work happens there, in Claude Code, and you do not come back to the
 board until it is finished. Almost nothing here is typed into a form.
 
@@ -399,7 +399,7 @@ Copying them out is **one question, asked by the installer**, right after it sta
 Say yes and they are there in every repository you ever open. It is worth saying plainly what
 happens if you do not, because it is what happened to this feature the first time round: the
 commands were written and they worked — inside a clone of k0, and nowhere else on the machine.
-From any other repository the board offered *Discuss it*, the terminal opened, and Claude Code had
+From any other repository the board offered *Discuss*, the terminal opened, and Claude Code had
 never heard of `/k0-discuss`. The whole backlog was invisible for want of one copy step.
 
 **If you are not sure you said yes, run `npx k0-board@latest` again.** It asks only about the ones
@@ -413,27 +413,32 @@ Copy them out anyway if you use them anywhere else.
 ### A day with it
 
 **You open the board.** Every story that has something to do carries **one button, first in the
-row, saying what that is**: *Discuss it*, *Plan it*, *Work on it*, *Check it*, *Put it right*,
-*Split it*, or *Go to the terminal* when a session on it is already open. Hover it and it says why
-this and not something else — *It has been discussed and has no plan yet*. There is one button and
-not seven: a story offering you a menu of seven things to do is a story offering you none.
+row, saying what that is**: **Discuss**, **Plan**, **Work** — in that order, because that is the
+order the work goes in — or **Resume**, when a terminal was opened on it and then closed. Hover it
+and it says why this and not something else: *It has been discussed and has no plan yet*. There is
+one button and never a menu, and there are three words on the list and no more.
+
+There is also a story that carries **no** button, and that is an answer too. A session that is
+running needs nothing suggested about it — the terminal is where the work is, and a double click on
+the note goes there. A story waiting for you to look it over is waiting for a person. A story that
+is finished is finished. Filling any of those in with a command would be k0 inventing work.
 
 k0 works that out and the page never does. It is the same reasoning `/k0-next` does, in the same
-place, so the button on the note and the answer the command gives can never drift apart. A story
-that has sat in `Working` or `Planned` **for more than a fortnight** is the one exception: there
-the suggestion becomes *Split it*, because a story that will not move for two weeks is usually two
-stories.
+place, so the button on the note and the answer the command gives can never drift apart.
 
 **You press it.** A terminal opens in that repository and `/k0-plan K42` — the line you would have
 typed yourself — goes in with it, already sent: k0 wrote that line out of a button you pressed, so
 there is nothing on it for you to read over first, and a prompt left sitting unsent under the
-cursor is a window that did nothing. What it does **not** send is the story's own prompt: that is
-what `Start` is for, and `Start` is still there, at the end of the row as a quiet link, for the
-days you want the note taken literally rather than the backlog's advice taken.
+cursor is a window that did nothing.
 
-Only `/k0-work` counts as the work having begun. Press *Discuss it* or *Plan it* and the story
-stays where it was until the discussion or the plan moves it itself — otherwise walking away from
-a discussion half way through would leave a story sitting in `Working` with nothing worked on.
+**Or you take the short way in.** **Quick Start** is the other road out of a story and it is not
+the same road: it opens a terminal on that repository with *nothing* in it and leaves the typing to
+you. That is the whole of it — no discussion, no plan, no command. It sits at the end of the row as
+a quiet link on a story that has a suggestion, and it is the plain button on one that has not.
+
+Only `/k0-work` counts as the work having begun. Press *Discuss* or *Plan* and the story stays
+where it was until the discussion or the plan moves it itself — otherwise walking away from a
+discussion half way through would leave a story sitting in `Working` with nothing worked on.
 
 **You work in the terminal, and only in the terminal.** The discussion asks its rounds and writes
 each one down as it is answered; the plan comes back for your approval with the standing decisions
@@ -442,15 +447,22 @@ merges it back; `/k0-verify` walks the result past every decision one at a time.
 needs the board. You can leave the tab open and watch the rounds land — it follows a live
 discussion once a second — but nothing asks you to.
 
-**You come back, and the button has moved on.** A story you discussed now says *Plan it*. One you
-planned says *Work on it*. One left in `Working` with no session running says *Check it* — that is
-the honest question about work you walked away from. One whose counter-check found a decision
-broken says *Put it right*, and it is the only thing on the board that k0 will not let you close.
+**You come back, and the button has moved on.** A story you discussed now says *Plan*. One you
+planned says *Work*. One whose terminal you closed says *Resume*, and picks the conversation up
+where it was rather than starting a second one beside it.
+
+**Double click the note to go where the work is.** Its terminal if one is running; the conversation
+it left behind if the terminal was closed; a fresh session if there was never one. It is the same
+gesture on every note, which is what makes it worth having — and if the window has been closed by
+hand while the session is still thinking, k0 goes and looks for it by name before it tells you
+anything, and offers to open it again when there is really nothing left to find.
 
 **Done is yours and nothing else's.** No command sets it and no gesture sets it: when the work is
 really finished you press **Done** on the note, and it closes the terminal with it. A story that
 came through its counter-check clean is offered no command at all — there is nothing left for one
-to do, and the only thing in front of it is you pressing Done.
+to do, and the only thing in front of it is you pressing Done. `/k0-verify` and `/k0-split` are
+still there and still do what they always did: they are commands you type, on the days you want
+them, rather than advice the board pushes at you.
 
 **Things arrive during the day, and they do not interrupt this.** Something you already know you
 want is `/k0-story` in whatever terminal you have open — you say it, it lands on the board with a
@@ -696,8 +708,9 @@ Three rules make it worth something rather than a ceremony:
 
 There are exactly two ways to answer it, and both are honest: **put the work right and run the
 counter-check again**, or **supersede the decision** if it turns out the decision was the thing that
-was wrong. What you cannot do is talk past it. On the board that first answer is the *Put it right*
-button, and a story with a broken decision is drawn so that it cannot be scrolled past.
+was wrong. What you cannot do is talk past it: a story with a broken decision is drawn on the board
+so that it cannot be scrolled past, and pressing Done on it comes back with the sentence rather than
+the story closed.
 
 There is also a **checklist** on the story — what has to be true for it to be finished. `/k0-verify`
 does itself everything a machine can do, runs the project's tests, drives the browser when the thing
@@ -1388,8 +1401,8 @@ server/
   db.js          SQLite (node:sqlite): the only file that talks to it. epic, story, session,
                  decision, round, check_item, dependency, session_event and the rest —
                  docs/database.md
-  backlog.js     the model: epics, stories, tasks, decisions, dependencies, the order, the
-                 alias, and what to pick up next. Pure logic over db.js — no http, no disk
+  backlog.js     the model: epics, stories, tasks, decisions, dependencies, the order, and
+                 what to pick up next. Pure logic over db.js — no http, no disk
   mirror.js      writes and re-reads <repo>/.k0/, the readable copy of the backlog. It writes
                  nowhere else, ever, and a test proves it. No domain logic
   worktree.js    a session working copy of its own: open it from the branch you are on, merge
@@ -1439,7 +1452,9 @@ web/             the four pages (html, css, js served exactly as they are)
   base.css       colours, fonts and scale: the house variables, shared by all of them
   md.js          markdown laid out, written by hand because nothing here is compiled
   recency.js     which repositories are still warm, and which fold away into `Old`
-  fuzzy.js       searching the names: the letters you type, in the order you type them
+  fuzzy.js       searching the names: the letters you type, in the order you type them — the
+                 file viewer, the repository the new story goes in, and the repository menu on
+                 the bar, which is drawn here rather than left to the system
   mentions.js    which of a repository's files a piece of text names
   refs.js        what a name written inside a document points at, and which of the nine READMEs
   json.js        a JSON file as a tree that folds, and the search that opens the right branches

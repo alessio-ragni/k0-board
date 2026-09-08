@@ -79,7 +79,9 @@ export const NO_CAPABILITIES = {
  *   do it leaves alone: where the font belongs to the emulator's own profile, only the size of
  *   the window moves, and `terminal.font` says so.
  * @property {(handles: string[], opts?: {coverage?: number}) => Promise<{touched: number}>} relayout
- * @property {(handle: string) => Promise<{ok: boolean, error?: string}>} focus
+ * @property {(handle: string, title?: string) => Promise<{ok: boolean, error?: string, handle?: string}>} focus
+ *   Brings a story's window up. `title` is the second way of finding it when the handle has gone
+ *   stale; a `handle` in the answer is the one that worked and is worth writing down.
  * @property {(opts: {handle: string, pid?: number}) => Promise<{closed: boolean}>} close
  * @property {(handle: string) => Promise<string|null>} readScreen
  *   What is on screen right now, or null when this platform cannot look.

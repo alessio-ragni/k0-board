@@ -222,23 +222,69 @@ export async function setTitle(handle, title) {
   }
 }
 
-/**
- * Brings the story's window back to the front, un-minimising it if it was parked.
- * Keeps you from losing track of which terminal is which.
- */
-export async function focus(handle) {
-  const id = Number(handle)
-  if (!id) return { ok: false, error: 'This story has no terminal window of its own' }
-  const script = `
+const raise = (id) => `
 tell application "Terminal"
   activate
   set w to window id ${id}
   set miniaturized of w to false
   set index of w to 1
 end tell`
+
+/**
+ * The window whose tab is called `title`, as an id — or nothing.
+ *
+ * Terminal's window ids do not survive Terminal being quit and reopened, and a session detached
+ * into a window somebody rearranged can end up behind an id k0 wrote down and that now belongs to
+ * nothing. The custom title `open()` sets is the other name the window has, and it is the one
+ * that survives: this is how a window k0 lost is found again rather than declared gone.
+ */
+async function byTitle(title) {
+  if (!title) return null
+  const script = `
+tell application "Terminal"
+  repeat with w in windows
+    try
+      if custom title of tab 1 of w is "${asq(title)}" then return id of w as string
+    end try
+  end repeat
+end tell
+return ""`
   try {
-    await run(OSASCRIPT(), ['-e', script])
-    return { ok: true }
+    return String(await run(OSASCRIPT(), ['-e', script])).trim() || null
+  } catch {
+    return null
+  }
+}
+
+/**
+ * Brings the story's window back to the front, un-minimising it if it was parked.
+ * Keeps you from losing track of which terminal is which.
+ *
+ * `title` is the story's name, and it is the second way of finding the window. When the id no
+ * longer answers, the window is looked for by name before anybody is told it is gone — and the id
+ * that was found comes back with the answer, so the caller can write down the one that works
+ * instead of asking twice for the same thing.
+ */
+export async function focus(handle, title) {
+  const id = Number(handle)
+  if (id) {
+    try {
+      await run(OSASCRIPT(), ['-e', raise(id)])
+      return { ok: true }
+    } catch {
+      // Fall through: the id is stale, which is not the same as the window being gone.
+    }
+  }
+  const found = await byTitle(title)
+  if (!found) {
+    return {
+      ok: false,
+      error: id ? 'That window is gone' : 'This story has no terminal window of its own',
+    }
+  }
+  try {
+    await run(OSASCRIPT(), ['-e', raise(Number(found))])
+    return { ok: true, handle: found }
   } catch {
     return { ok: false, error: 'That window is gone' }
   }

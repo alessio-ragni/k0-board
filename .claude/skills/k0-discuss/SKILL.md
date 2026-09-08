@@ -50,7 +50,7 @@ refuse the address outright, and one with a `#` in it quietly sends half.
    - `REPO` empty → this is not a git repository. Ask once which repository this belongs to and
      take the path he gives.
 
-   The listing carries every key, alias, title and state. Match the key the user gave, or the
+   The listing carries every key, title and state. Match the key the user gave, or the
    title he described. If two stories match, ask which one; never pick one and hope. If the
    listing has no stories at all, say so — an empty board is not the same as a story you failed
    to find, and it usually means the work has never been written down here.
@@ -99,7 +99,7 @@ refuse the address outright, and one with a `#` in it quietly sends half.
   that a new decision contradicting what is built is recognised as the rework it is.
 - **Talk in the language the user speaks, and store what he says in that language.** The story
   carries a `lang`: if it is empty, set it from the language of the discussion.
-- **Never ask what the API can tell you** — the key, the alias, the epic, the dependencies, what
+- **Never ask what the API can tell you** — the key, the epic, the dependencies, what
   is open, how far the epic has got. It is in the two calls above. See §7 of `references/rounds.md`.
 - **No files outside the scratch directory**, and never write into `.k0/` by hand: the server
   mirrors the story there on its own.

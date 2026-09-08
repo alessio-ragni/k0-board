@@ -186,7 +186,11 @@ async function windowId(handle) {
   return String(out).trim().split('\n').filter(Boolean).pop() || null
 }
 
-export async function focus(handle) {
+/**
+ * `title` is accepted and unused: here the handle IS the name tmux put on the window, so the
+ * lookup below is already the search by name that macOS has to fall back to.
+ */
+export async function focus(handle, title) {
   if (!handle) return { ok: false, error: 'This story has no terminal of its own' }
   if (!canPlaceWindows()) return { ok: false, error: 'k0 cannot raise windows on this desktop' }
   const id = await windowId(handle)

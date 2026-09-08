@@ -194,78 +194,18 @@ function storyGit(story) {
 }
 
 /**
- * Every story's alias, counted once for the whole board.
- *
- * `backlog.storyAlias` answers for one story and asks the database three questions to do it. That
- * is the right shape for a request about one story and the wrong one here: the board asks about
- * every story it has, once a second, and each of those questions reads a whole repository back.
- * So the positions are counted in a single pass over the list the board is already holding.
- *
- * The lists arrive in the order the database hands them over — `sort_hint`, then `id` — which is
- * the order `storyAlias` and `epicAlias` count in, so the two agree by construction and not by
- * luck. They are also the unfiltered lists. `onDisk` throws away a whole repository at a time, so
- * today it could not move anybody's position — but an alias that depended on whether a directory
- * happened to be mounted would be a number changing under the user for a reason nothing on the
- * screen could explain.
- */
-function aliases(stories, epics) {
-  const at = new Map()
-  const epicAt = new Map()
-  const nth = new Map()
-  const next = (group) => {
-    const n = (nth.get(group) ?? 0) + 1
-    nth.set(group, n)
-    return n
-  }
-  for (const e of epics) epicAt.set(e.id, String(next(`p:${e.project_path}`)))
-
-  // Tasks wait for the second pass: a task's alias begins with its parent's, and a parent may be
-  // anywhere in the list — or be a task itself.
-  const kids = new Map()
-  for (const s of stories) {
-    if (s.parent_story_id) {
-      if (!kids.has(s.parent_story_id)) kids.set(s.parent_story_id, [])
-      kids.get(s.parent_story_id).push(s.id)
-    } else if (!s.epic_id) {
-      at.set(s.id, String(next(`s:${s.project_path}`)))
-    } else {
-      // An epic that is not there any more is no position at all, and the story is not counted
-      // among the ones with no epic either. That is what `storyAlias` answers, and two readings
-      // of the same story is the one thing an alias may never be.
-      at.set(s.id, epicAt.has(s.epic_id) ? `${epicAt.get(s.epic_id)}.${next(`e:${s.epic_id}`)}` : '')
-    }
-  }
-
-  const byId = new Map(stories.map((s) => [s.id, s]))
-  /** `seen` is the guard `storyAlias` keeps, against the same shape: two stories each other's parent. */
-  const of = (id, seen) => {
-    if (at.has(id)) return at.get(id)
-    if (seen.has(id)) return ''
-    seen.add(id)
-    const parent = byId.get(id)?.parent_story_id
-    const n = (kids.get(parent) ?? []).indexOf(id) + 1
-    const alias = n ? `${of(parent, seen)}.${n}` : ''
-    at.set(id, alias)
-    return alias
-  }
-  for (const list of kids.values()) for (const id of list) of(id, new Set())
-  return at
-}
-
-/**
- * What the backlog adds to a post-it: where it sits, which epic it belongs to, and whether
- * anything it is waiting for is still open.
+ * What the backlog adds to a post-it: which epic it belongs to, whether anything it is waiting
+ * for is still open, and the one thing to do with it next.
  *
  * The key, the star and the live session are not here because they are already on the row —
  * `db.listStories` flattens the session onto the story so the board draws the same dot it has
  * always drawn — and one fact under two names is two facts that will one day disagree. What is
  * added is only what somebody would otherwise have to count.
  */
-function backlogPart(story, alias, epics, decided) {
+function backlogPart(story, epics, decided) {
   const epic = story.epic_id ? epics.get(story.epic_id) : null
   const deps = db.dependenciesOf(story.id)
   return {
-    alias: alias.get(story.id) ?? '',
     epic_key: epic?.key ?? null,
     epic_title: epic?.title ?? null,
     deps: deps.map((d) => ({ id: d.id, key: d.key, title: d.title, state: d.state })),
@@ -292,7 +232,6 @@ function board() {
   const on = backlog.enabled()
   const all = db.listStories()
   const allEpics = on ? db.listEpics() : []
-  const alias = on ? aliases(all, allEpics) : null
   const epicById = new Map(allEpics.map((e) => [e.id, e]))
   // Which stories anything has been decided about, for the whole board in one question. It is the
   // one fact `nextStep` needs that is not on the row it is handed, and asking it story by story is
@@ -304,7 +243,7 @@ function board() {
     project_name: projectName(s.project_path),
     git: storyGit(s),
     load: machine.loadOf(live.get(s.session_id)?.pid),
-    ...(on ? backlogPart(s, alias, epicById, decided) : null),
+    ...(on ? backlogPart(s, epicById, decided) : null),
   }))
   const paths = [...new Set(stories.map((s) => s.project_path))]
   // And the same for the dev servers: looking at the board is what makes k0 ask the machine
@@ -819,7 +758,7 @@ async function backlogApi(req, res, url, seg) {
     }
     if (!third && req.method === 'DELETE') {
       // The stories stay and lose their epic, so every one of their files has a line to change:
-      // the epic they name is gone and so is the alias that counted from it.
+      // the epic they name is gone.
       const orphans = db.storiesOfEpic(id).map((s) => s.id)
       db.deleteEpic(id)
       // The first complaint and not the last: one of these failing means the folder is read-only
@@ -862,8 +801,8 @@ async function backlogApi(req, res, url, seg) {
       // A task takes its parent's epic unless it was given one of its own. Not tidiness: a
       // story's effective decisions are its own plus its EPIC's, so a task left outside the epic
       // its parent sits in would be planned and counter-checked blind to every rule that shaped
-      // the whole thing. It stays a task — the alias still counts from the parent — and the
-      // epic's progress still counts stories and not their pieces.
+      // the whole thing. It stays a task — it still hangs off its parent — and the epic's
+      // progress still counts stories and not their pieces.
       epic_id: epic?.id ?? parent?.epic_id ?? null,
       parent_story_id: parent?.id ?? null,
     })
@@ -1480,8 +1419,26 @@ async function api(req, res, url) {
     }
 
     // Bringing this session's window back to the front: the double click on the post-it.
+    //
+    // Two answers were one before: a window that has gone and a session that has gone are not the
+    // same thing at all, and saying "that window is gone" about a session still thinking in a
+    // terminal somebody closed was the board telling him something untrue. So the window is looked
+    // for by name before anything is declared, the id that worked is written down — otherwise the
+    // next double click would go through the same search — and when there really is no window
+    // left, whether the session is still alive is part of the answer, because it decides what he
+    // can do about it.
     if (req.method === 'POST' && action === 'focus') {
-      return send(res, 200, await focusWindow(story.terminal_window_id))
+      const out = await focusWindow(story.terminal_window_id, story.title)
+      if (out.handle && String(out.handle) !== String(story.terminal_window_id)) {
+        db.setTerminalWindow(id, out.handle)
+      }
+      if (out.ok) return send(res, 200, { ok: true })
+      const alive = !!story.session_id && readLiveSessions().has(story.session_id)
+      return send(res, 200, {
+        ...out,
+        error: alive ? 'Its window was closed, but the session is still running.' : out.error,
+        resumable: !!story.session_id,
+      })
     }
 
     // Closing the terminal without closing the work: the same two moves as Done — stop the

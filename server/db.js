@@ -1091,7 +1091,7 @@ const NOT_YET_STARTED = new Set(['Backlog', 'Discussed', 'Planned'])
  * about the story — it asks questions, it writes a plan, it cuts one story into two — and a
  * session doing that must not move the story to `Working`.
  *
- * Without this, pressing "Discuss it" on a note nobody has decided anything about moved it to
+ * Without this, pressing "Discuss" on a note nobody has decided anything about moved it to
  * `Working` before the first question was asked; close the terminal half way through and the
  * story sat there with a dead session, being offered a counter-check on work that never happened.
  *

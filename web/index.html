@@ -49,7 +49,15 @@
         <button type="button" role="radio" data-columns="list" aria-checked="false">List</button>
       </div>
       <!-- Which repository, for both views. Empty means all of them. -->
-      <select class="repo-filter" id="repo-filter" aria-label="Which repository" hidden></select>
+      <div class="picker repo-filter" id="repo-filter" hidden>
+        <button type="button" id="repo-filter-btn" aria-haspopup="listbox" aria-expanded="false"
+          aria-label="Which repository">All repositories</button>
+        <div class="picker-list" id="repo-filter-list" hidden>
+          <input id="repo-filter-q" autocomplete="off" spellcheck="false" placeholder="search a repository…"
+            aria-label="Search a repository">
+          <div id="repo-filter-rows" role="listbox"></div>
+        </div>
+      </div>
     </div>
 
     <!-- How the computer is doing. Always visible; clicking it switches off the weights on the stories. -->
@@ -130,8 +138,13 @@
         <small>this is also the session name</small>
       </label>
 
-      <label>What Claude should do when it starts
-        <textarea id="f-prompt" rows="6" placeholder="you can leave this empty and type straight into Claude Code"></textarea>
+      <!-- Notes, and only notes: they stay on the note and on the post-it, and nothing ever sends
+           them to a terminal. A new story does not have them at all — at that moment there is
+           nothing to note down yet, and a box asking to be filled in is a box that delays the
+           only two things worth doing with a new story, which are the two buttons at the bottom. -->
+      <label id="f-notes-row" hidden>Notes
+        <textarea id="f-notes" rows="6" placeholder="- what you want to remember about it&#10;- one per line"></textarea>
+        <small>they sit on the post-it for you to read — they are never sent to Claude Code</small>
       </label>
 
       <!-- The epic this story belongs to. A list of the ones this repository already has, or a
@@ -154,7 +167,8 @@
         <button type="button" id="f-delete" class="danger">Delete</button>
         <span class="spacer"></span>
         <button type="submit" id="f-save">Save</button>
-        <button type="button" id="f-start" class="primary">Start</button>
+        <button type="button" id="f-discuss">Discuss</button>
+        <button type="button" id="f-start" class="primary">Quick Start</button>
       </footer>
     </form>
   </dialog>
