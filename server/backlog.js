@@ -2,7 +2,7 @@ import fs from 'node:fs'
 import path from 'node:path'
 import * as db from './db.js'
 import * as settings from './settings.js'
-import { projectName, rootOf } from './projects.js'
+import { projectName } from './projects.js'
 
 // ── The backlog ──────────────────────────────────────────────────────────────
 // Epics, stories, tasks, decisions, dependencies, order. It is the model: pure logic over
@@ -103,22 +103,29 @@ export function storyByKey(repo, key) {
  * Which repository a request is talking about — the one guard every door into the backlog goes
  * through, and the only thing standing between a path somebody sent and a `.k0/` folder.
  *
- * `rootOf` on its own is too tight here. It answers "a repository k0 already knows", and the very
- * first story in a repository is created by a skill running in one k0 has never had a story for —
- * which would be refused with "k0 does not know that repository" at exactly the moment somebody
- * is trying to start using it. A directory that is a checkout is enough, and it is not nothing:
- * this path is what `mirror.js` writes a `.k0/` folder into, so `/etc` still gets a no.
+ * "A repository k0 already knows" is too tight on its own: the very first story in a repository
+ * is created by a skill running in one k0 has never had a story for, and refusing that would turn
+ * somebody away at the exact moment they started using this. A directory that is a checkout is
+ * enough, and it is not nothing: this path is what `mirror.js` writes a `.k0/` folder into, so
+ * `/etc` still gets a no.
  *
  * `.git` is a folder in a clone and a FILE in a worktree — which is where `/k0-work` leaves the
  * user — so what is asked is whether the name is there at all, not what shape it has.
+ *
+ * "Already known" means k0 HAS WORK there, not that the project scan saw the folder. `rootOf`
+ * would do the second, and it says yes to any directory under your home that looks like a
+ * project — including one with no `.git` in it, which is a backlog `mirror.js` could never write
+ * down, because `where()` refuses exactly that. A place an epic can be told in for the first time
+ * has to be a place its story files can live.
  */
 export function backlogRepo(raw) {
-  const known = rootOf(raw)
-  if (known) return known
   const dir = typeof raw === 'string' ? raw : ''
   if (!dir || !path.isAbsolute(dir)) return null
+  // Work already here outranks the disk. A repository on an unplugged drive, or one moved while
+  // k0 was not looking, still owns the stories it owns; refusing it would hide them.
+  if (db.storiesOfProject(dir).length || db.listEpics(dir).length) return dir
   try {
-    return fs.existsSync(path.join(dir, '.git')) && fs.statSync(dir).isDirectory() ? dir : null
+    return fs.statSync(dir).isDirectory() && fs.existsSync(path.join(dir, '.git')) ? dir : null
   } catch {
     return null
   }

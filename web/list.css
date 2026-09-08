@@ -121,7 +121,10 @@
    read once. */
 .rows .story {
   display: grid;
-  grid-template-columns: 3.4rem 3rem minmax(0, 1fr) 5.6rem 1.2rem 3.4rem 3.4rem auto;
+  /* The last track is a fixed width and not `auto`: the suggestion is a different length on every
+     row — "Plan it" against "Go to the terminal" — and an auto track made each row set its own
+     right edge, so the state pills walked about instead of standing in a column. */
+  grid-template-columns: 3.4rem 3rem minmax(0, 1fr) 5.6rem 1.2rem 3.4rem 3.4rem 8.6rem;
   align-items: center;
   gap: 0 10px;
   padding: 4px 8px 4px 30px;
@@ -153,18 +156,22 @@
 .rows .story .num { font: 400 .76rem var(--mono); color: var(--muted); font-variant-numeric: tabular-nums; }
 /* The decisions still standing, and how many the last run kept. Red the moment one is broken. */
 .rows .story .num.bad { color: var(--alert); font-weight: 700; }
+/* Always there, never on hover. This one column is the reason the list exists: you come here to
+   see what to do next across everything at once, and a suggestion you have to go looking for with
+   the pointer, one row at a time, is a suggestion that may as well not be written down. */
 .rows .story .go {
   padding: 3px 11px;
   font-size: .78rem;
   font-weight: 600;
   white-space: nowrap;
-  opacity: 0;
-  transition: opacity .12s ease;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  justify-self: end;
+  max-width: 100%;
 }
 /* One suggested button per story, and it waits until you are on the row. A column of them down a
    hundred rows would be a hundred things asking to be pressed, which is the same as none. It stays
    out on the row that is open, because that is the one being looked at. */
-.rows .story:hover .go, .rows .story.on .go, .rows .story .go:focus-visible { opacity: 1; }
 
 /* Dragging: a story is picked up to be put in a different place in the order, or into a different
    epic. It never changes state — states are the pills at the top and the road a story walks, not
@@ -513,4 +520,4 @@
    The list is text, and text goes up with the base size on its own. The one thing that does not is
    the button at the end of a row — it is a target, and a target that only appears when the pointer
    finds it is, from across the room, not a target at all. */
-html[data-driving] .rows .story .go { opacity: 1; padding: 5px 14px; }
+html[data-driving] .rows .story .go { padding: 5px 14px; }
