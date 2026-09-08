@@ -109,6 +109,10 @@ dialog .x {
 dialog .x svg { width: 17px; height: 17px; display: block; }
 dialog .x:hover { background: #f0ede3; color: var(--ink); border: none; }
 dialog label { display: block; margin-bottom: 18px; font-size: .82rem; font-weight: 600; color: var(--muted); }
+/* `display: block` beats the browser's `[hidden]`, the same trap the marks on the top bar fall
+   into. A dialog can have a field that only exists sometimes — the epic, which is nothing at all
+   with the backlog switched off — and without this it would stand there whatever the answer was. */
+dialog label[hidden] { display: none; }
 dialog label small { display: block; margin-top: 5px; font-weight: 400; }
 dialog input, dialog textarea {
   display: block;

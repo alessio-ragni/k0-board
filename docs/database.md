@@ -118,6 +118,7 @@ at a time — and the newest is "the session" everywhere else in k0.
 | `head_at_start` | TEXT | Where the repository stood when it started: everything after it is this session's doing |
 | `auto_send` | INTEGER | `1` if the prompt is sent without waiting for you to press Enter |
 | `auto_closed` | INTEGER | `1` when it was k0 that shut the terminal after a long silence, rather than you. Only there to choose one word over another at the bottom of the note; cleared the moment there is a window again |
+| `opened_with` | TEXT | The command the interface opened it with — `k0-plan`, `k0-discuss` — or nothing when somebody pressed Start |
 | `started_at` | INTEGER | Milliseconds |
 | `ended_at` | INTEGER | When the process went, or nothing while it is running |
 
@@ -127,6 +128,11 @@ Indexed by `(story_id, started_at DESC)`, which is how the current session is fo
 about the session that has not started yet — whether it sends its prompt by itself — which is
 before Claude Code has given it an id. The board reads a row with no session id as no session at
 all, which is exactly what it is.
+
+`opened_with` is what keeps a story from being called worked-on because somebody pressed "Discuss
+it". A live session moves a story out of `Backlog`, `Discussed` or `Planned` into `Working` by
+itself — but only `/k0-work`, and a session opened with nothing at all, are the work: everything
+else the interface can start only talks about the story.
 
 ## `session_event`
 
@@ -147,6 +153,11 @@ second, and a row per second per story would be a file full of nothing.
 story's state against rows written by a session and answer with whichever it found first. With it,
 `BACKLOG` and `COMPLETED` — which are not things a session does — are measured from the last
 change of state, and everything else from the last time the session went into that status.
+
+The `state` rows answer a second question too, and it is not the same one: how long the STATE has
+been what it is, whatever the session has been doing. That is what decides whether a story has sat
+still long enough to be worth cutting in two — a story whose terminal was abandoned in the spring
+and whose state moved yesterday has not sat still at all.
 
 Indexed by `(story_id, at DESC)`, which is how the board reads it: the age at the bottom of one
 note, one story at a time. The ChangeLog reads it the other way round — everything that moved

@@ -1,0 +1,516 @@
+/* ── The list ─────────────────────────────────────────────────────────────────
+   The dashboard's other shape. The kanban is for working — one note at a time, in front of you;
+   this is for planning — everything at once, in the order you put it in, with what has been
+   decided and what has been checked counted on the row.
+
+   It is drawn in the same paper and the same ink as the board, deliberately: the same type scale,
+   the same line, the same restraint. What it must not become is a table out of another
+   application, and the two things that would have made it one are a grid of borders and a column
+   for every fact there is. There are eight columns and no rules between them.
+
+   The variables come from base.css, through board.css, which imports this file. */
+
+/* ── Out of the pan and zoom ─────────────────────────────────────────────────
+   The board does not scroll, it moves: `view.js` writes a transform on `#board` and `#viewport` is
+   a fixed window with no bars. None of that is right for a list. The transform stays on the
+   element — it is written inline, which is why this needs `!important` — and the viewport becomes
+   an ordinary scroller. The zoom and the shadows along the edges go with it: on a page that
+   scrolls they are controls that answer nothing. */
+.viewport.list { overflow: auto; }
+.viewport.list .zoom, .viewport.list .edges { display: none; }
+.board.list {
+  transform: none !important;
+  width: 100%;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 26px;
+  align-items: start;
+  padding: 22px 26px 60px;
+}
+/* With a story open the rows give up a third of the width. Beside them and not underneath: what
+   scrolled away at the bottom of the old page is the one thing that was complained about. */
+.board.list.open { grid-template-columns: minmax(0, 1fr) minmax(22rem, 34rem); }
+/* Too narrow for two columns, and the promise still holds: the panel comes over the right-hand
+   side of the rows instead of dropping under them. Underneath is the old page again — opening a
+   story would push the list off the screen — and a narrow window is where that hurts most. */
+@media (max-width: 1100px) {
+  .board.list.open { grid-template-columns: minmax(0, 1fr); }
+  #panel {
+    position: fixed;
+    z-index: 5;
+    top: var(--head, 96px);
+    right: 0;
+    bottom: 0;
+    width: min(34rem, 92vw);
+    max-height: none;
+    border-radius: 14px 0 0 14px;
+    border-right: none;
+    box-shadow: -14px 0 34px rgba(0, 0, 0, .16);
+  }
+}
+
+/* ── The rows ────────────────────────────────────────────────────────────────- */
+.rows { min-width: 0; }
+
+/* The repository is a heading and never a column. It has to take as little room as it does on the
+   board, where it is one hand-written word above a stack of notes — a column of repository names
+   repeated down a hundred rows would be the same word written a hundred times. */
+.rows .repo {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  margin: 22px 0 6px;
+  padding-bottom: 5px;
+  border-bottom: 1px solid var(--line);
+}
+.rows section:first-child .repo { margin-top: 0; }
+.rows .repo h2 { margin: 0; font: 600 1.4rem/1 var(--hand); color: #5f5a4e; }
+.rows .repo small { margin-left: auto; font-size: .76rem; color: var(--muted); font-variant-numeric: tabular-nums; }
+
+/* ── An epic ─────────────────────────────────────────────────────────────────
+   A row that opens and closes, with how far it has got and — while somebody is being asked
+   questions in a terminal — which round the discussion is on. That last line is the only thing
+   moving on an epic that has not turned into stories yet, which is most of an epic's life. */
+.rows .epic {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  margin-top: 8px;
+  padding: 5px 8px;
+  border: none;
+  background: none;
+  border-radius: 7px;
+  text-align: left;
+  font: inherit;
+  color: var(--ink);
+  cursor: pointer;
+}
+.rows .epic:hover { background: #fbf8ee; border: none; }
+.rows .epic .caret { flex: none; width: 12px; color: var(--muted); font-size: .8rem; line-height: 1; }
+.rows .epic .key { flex: none; font: 700 .78rem var(--mono); color: hsl(var(--h) 52% 32%); }
+.rows .epic .name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: .95rem;
+  font-weight: 600;
+}
+/* Done over total, no weighting: eleven stories with one finished is a bar one eleventh along,
+   however big that one was. Anything else is an estimate with a bar drawn round it. */
+.rows .epic .prog {
+  flex: none;
+  margin-left: auto;
+  width: 88px;
+  height: 5px;
+  border-radius: 999px;
+  background: hsl(var(--h) 28% 88%);
+  overflow: hidden;
+}
+.rows .epic .prog i { display: block; height: 100%; background: hsl(var(--h) 52% 46%); }
+.rows .epic .count { flex: none; font-size: .76rem; color: var(--muted); font-variant-numeric: tabular-nums; }
+.rows .epic .round { flex: none; font-size: .76rem; color: var(--muted); }
+/* The group with no epic. It is a heading and not a card: there is no epic to say anything about. */
+.rows .epic.loose .key, .rows .epic.loose .name { color: var(--muted); }
+
+/* ── A story ─────────────────────────────────────────────────────────────────
+   Eight things and nothing else: what it is called, where it sits, what it is, how far it has got,
+   whether it is flagged, what has been decided, what has been checked, and the one thing to do
+   with it next. Every column that was proposed after those eight was a column somebody would have
+   read once. */
+.rows .story {
+  display: grid;
+  grid-template-columns: 3.4rem 3rem minmax(0, 1fr) 5.6rem 1.2rem 3.4rem 3.4rem auto;
+  align-items: center;
+  gap: 0 10px;
+  padding: 4px 8px 4px 30px;
+  border-radius: 7px;
+  cursor: pointer;
+}
+.rows .story:hover { background: #fbf8ee; }
+.rows .story.on { background: var(--bg); }
+/* A story whose last counter-check found a decision broken. The mark is on the row itself and not
+   inside a column: it is the one thing here that has to be impossible to scroll past. */
+.rows .story.broken { box-shadow: inset 3px 0 0 var(--alert); }
+.rows .story .k { font: 600 .8rem var(--mono); }
+.rows .story .pos { font: 400 .76rem var(--mono); color: var(--muted); }
+/* The same face the title has on a post-it, which is the one piece of type that carries a note.
+   Everything else on this row is already mono or a board colour, and a proportional title in the
+   middle of it was the list reading as a table out of another application — and switching from the
+   kanban re-setting every title somebody had just been looking at. */
+.rows .story .title {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font: 600 .84rem var(--mono);
+}
+/* A task sits under its story, and the indent is how far down the tree it is. */
+.rows .story .title .in { display: inline-block; padding-left: calc(var(--deep, 0) * 15px); }
+.rows .story .flag { color: var(--warn); display: flex; }
+.rows .story .flag svg { width: 13px; height: 13px; display: block; }
+.rows .story .num { font: 400 .76rem var(--mono); color: var(--muted); font-variant-numeric: tabular-nums; }
+/* The decisions still standing, and how many the last run kept. Red the moment one is broken. */
+.rows .story .num.bad { color: var(--alert); font-weight: 700; }
+.rows .story .go {
+  padding: 3px 11px;
+  font-size: .78rem;
+  font-weight: 600;
+  white-space: nowrap;
+  opacity: 0;
+  transition: opacity .12s ease;
+}
+/* One suggested button per story, and it waits until you are on the row. A column of them down a
+   hundred rows would be a hundred things asking to be pressed, which is the same as none. It stays
+   out on the row that is open, because that is the one being looked at. */
+.rows .story:hover .go, .rows .story.on .go, .rows .story .go:focus-visible { opacity: 1; }
+
+/* Dragging: a story is picked up to be put in a different place in the order, or into a different
+   epic. It never changes state — states are the pills at the top and the road a story walks, not
+   somewhere it is dropped. */
+.rows .story.dragging { opacity: .4; }
+.rows .story.over { box-shadow: inset 0 2px 0 var(--ink); }
+.rows .epic.over { background: hsl(var(--h) 48% 93%); box-shadow: inset 0 0 0 1px hsl(var(--h) 40% 70%); }
+/* The group at the end has no epic and so no hue: without this the whole declaration above is
+   invalid on it, and the one target on the page that means "take it out of its epic" lights up
+   for nobody. */
+.rows .epic.loose.over { background: var(--bg); box-shadow: inset 0 0 0 1px var(--line); }
+
+.rows .none { color: var(--muted); font-size: .86rem; margin: 4px 0 4px 30px; }
+
+/* ── The panel ───────────────────────────────────────────────────────────────
+   Whatever row you clicked, whole, beside the list rather than under it. It scrolls on its own and
+   sticks to the top of the view: the reason the old page was thrown away is that opening a story
+   pushed the table off the screen, and then you were reading a page instead of working a backlog.
+
+   From here down the drawing is the old page's, lifted rather than written again. It took a long
+   time to get a broken decision to be impossible to miss, and rewriting that from memory would
+   have lost exactly the details that do it. */
+#panel {
+  position: sticky;
+  top: 0;
+  /* The height of the scroller it is sticking inside, measured by `list.js` rather than written
+     down here: what is above it is the top bar plus, inside an epic, the lane — two things that
+     change height on their own, one of them with the width of the window. A number kept in step
+     with an unrelated stylesheet is wrong the first time either of them moves, and wrong the way
+     that hides the bottom of a panel below the edge of the screen. */
+  max-height: calc(var(--port, 100vh) - 22px);
+  overflow-y: auto;
+  background: var(--paper);
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  padding: 20px 22px 24px;
+  min-width: 0;
+}
+#panel[hidden] { display: none; }
+#panel .none { color: var(--muted); font-size: .9rem; margin: 6px 0; }
+
+#panel .head { position: relative; padding-right: 40px; border-bottom: 1px solid var(--line); padding-bottom: 14px; }
+#panel .who { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }
+#panel .who .key { font: 700 1rem var(--mono); }
+#panel .who .pos { font: 400 .85rem var(--mono); color: var(--muted); font-style: normal; }
+#panel .who h2 { margin: 0; font: 600 1.3rem/1.25 var(--sans); }
+#panel .who .flag { color: var(--warn); display: flex; align-items: center; }
+#panel .who .flag svg { width: 15px; height: 15px; display: block; }
+#panel .where { margin: 6px 0 0; font-size: .82rem; color: var(--muted); }
+#panel .live { display: flex; align-items: center; gap: 9px; margin: 10px 0 0; font-size: .84rem; flex-wrap: wrap; }
+#panel .live b { font-weight: 700; }
+#panel .x {
+  position: absolute;
+  top: -4px;
+  right: -6px;
+  width: 30px;
+  height: 30px;
+  padding: 0;
+  border: 0;
+  background: none;
+  border-radius: 999px;
+  color: var(--muted);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+#panel .x svg { width: 17px; height: 17px; display: block; }
+#panel .x:hover { background: var(--bg); color: var(--ink); border: 0; }
+
+#panel .block { margin-top: 22px; }
+#panel .block h3, #panel .counter h3 {
+  margin: 0 0 10px;
+  font-size: .72rem;
+  font-weight: 700;
+  letter-spacing: .09em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+#panel .block h3 small { margin-left: 8px; font-variant-numeric: tabular-nums; letter-spacing: 0; }
+
+/* ── The six states, as a pill ───────────────────────────────────────────────
+   The colours are the board's own, out of base.css: nothing new was invented for this. */
+.pill {
+  display: inline-block;
+  padding: 1px 9px;
+  border-radius: 999px;
+  background: var(--BACKLOG);
+  font-size: .74rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+.pill[data-state='Discussed'] { background: var(--IDLE); }
+.pill[data-state='Planned'] { background: var(--PLANNED); }
+.pill[data-state='Working'] { background: var(--WORKING); }
+.pill[data-state='Review'] { background: var(--ASK); }
+.pill[data-state='Done'] { background: var(--COMPLETED); }
+
+/* What the live session is doing, which is the other axis entirely. */
+.sess {
+  display: inline-block;
+  padding: 1px 9px;
+  border-radius: 999px;
+  background: var(--BACKLOG);
+  font: 600 .7rem var(--mono);
+  letter-spacing: .04em;
+}
+.sess[data-status='WORKING'] { background: var(--WORKING); }
+.sess[data-status='PLANNING'] { background: var(--PLANNING); }
+.sess[data-status='PLANNED'] { background: var(--PLANNED); }
+.sess[data-status='ASK'] { background: var(--ASK); }
+
+/* What a story waits for. The unfinished ones are red because they are the only ones that mean
+   anything: a dependency already done is a note about the past. */
+#panel .dep {
+  border: 1px solid var(--line);
+  background: var(--bg);
+  border-radius: 999px;
+  padding: 1px 7px;
+  font: 600 .72rem var(--mono);
+  color: var(--muted);
+  cursor: pointer;
+}
+#panel .dep.out { color: var(--alert); border-color: #e7c3c3; background: #fff4f3; }
+/* The two directions on one line under the title: what this story waits for, and what waits for
+   it. The second half is the one nothing else in k0 shows, and it is usually the reason to finish
+   this story before another. The words are the quiet part; the keys are what you click. */
+#panel .waits { display: flex; align-items: center; flex-wrap: wrap; gap: 6px; margin: 8px 0 0; }
+#panel .waits span { font-size: .78rem; color: var(--muted); }
+
+/* ── The counter-check ───────────────────────────────────────────────────────
+   Directly under the title on every story, whether or not anything is wrong. It is why any of this
+   exists: a decision the last run found broken must not be something you have to scroll to find. */
+#panel .counter {
+  margin-top: 18px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 14px 16px;
+  background: var(--bg);
+}
+#panel .counter p { margin: 0; font-size: .9rem; }
+#panel .counter.broken {
+  background: #fff5f4;
+  border-color: #e7bcbc;
+  box-shadow: inset 4px 0 0 var(--alert);
+}
+#panel .counter.broken h3 { color: var(--alert); }
+#panel .counter .rule { margin-top: 12px; font-size: .84rem; color: #7a3b3b; }
+/* The same sentence-under-a-block shape where nothing is wrong: what an epic's decisions mean for
+   the stories under it. Quiet, because it is an explanation and not a warning. */
+#panel .block .rule { margin: 10px 0 0; font-size: .84rem; color: var(--muted); }
+
+/* Side by side, which is the whole of it: what was decided, what the verdict was, the evidence.
+   `display: contents` puts each row's three pieces straight into the grid, so the three columns
+   line up down the whole block without a table. */
+#panel .verdicts { display: grid; grid-template-columns: minmax(0, 2fr) 5rem minmax(0, 1.4fr); }
+#panel .vhead, #panel .verdicts .v { display: contents; }
+#panel .vhead span {
+  font-size: .66rem;
+  font-weight: 700;
+  letter-spacing: .09em;
+  text-transform: uppercase;
+  color: var(--muted);
+  padding: 0 10px 6px 0;
+}
+#panel .verdicts .what, #panel .verdicts .verdict, #panel .verdicts .ev {
+  border-top: 1px solid #e7cfcf;
+  padding: 9px 10px 9px 0;
+  font-size: .88rem;
+  min-width: 0;
+}
+#panel .verdicts .what b { display: block; font: 700 .78rem var(--mono); margin-bottom: 2px; }
+#panel .verdicts .verdict {
+  color: var(--alert);
+  font-weight: 700;
+  font-size: .74rem;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+}
+#panel .verdicts .ev { font: .78rem/1.5 var(--mono); color: var(--muted); overflow-wrap: anywhere; }
+#panel .verdicts .ev i { font-family: var(--sans); }
+
+#panel .runs { margin-top: 12px; border-collapse: collapse; font-size: .78rem; font-variant-numeric: tabular-nums; }
+#panel .runs th {
+  text-align: left;
+  font-size: .64rem;
+  letter-spacing: .09em;
+  text-transform: uppercase;
+  color: var(--muted);
+  padding: 0 14px 4px 0;
+}
+#panel .runs td { padding: 2px 14px 2px 0; color: var(--muted); }
+#panel .runs td:first-child { color: var(--ink); font-weight: 600; }
+#panel .runs td.bad { color: var(--alert); font-weight: 700; }
+
+/* ── The discussion ──────────────────────────────────────────────────────────- */
+#panel .round { border-left: 2px solid var(--line); padding-left: 15px; margin-bottom: 16px; }
+#panel .round h4 {
+  margin: 0 0 6px;
+  font: 700 .78rem var(--sans);
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+}
+#panel .round h4 time { font-weight: 400; font-size: .72rem; color: var(--muted); }
+#panel .round .q, #panel .round .a { position: relative; padding-left: 1.7rem; font-size: .9rem; }
+#panel .round .q::before, #panel .round .a::before {
+  position: absolute;
+  left: 0;
+  top: 0;
+  font: 700 .78rem var(--mono);
+  color: var(--muted);
+}
+#panel .round .q::before { content: 'Q'; }
+#panel .round .a::before { content: 'A'; }
+#panel .round .a { color: var(--ink); }
+#panel .round .a.waiting { color: var(--muted); font-style: italic; margin: 4px 0 0; }
+
+/* The rounds that happened on the epic, before this story existed. Folded away: they are the
+   argument behind the decisions, and you open them when the decisions surprise you. */
+#panel .inherited { margin-bottom: 16px; }
+#panel .inherited summary { cursor: pointer; font-size: .8rem; color: var(--muted); list-style: none; }
+#panel .inherited summary::-webkit-details-marker { display: none; }
+#panel .inherited summary::before { content: '▸ '; }
+#panel .inherited[open] summary::before { content: '▾ '; }
+#panel .inherited[open] { padding-bottom: 4px; }
+#panel .inherited .round { margin-top: 12px; border-left-style: dashed; }
+
+/* ── The decisions ───────────────────────────────────────────────────────────- */
+#panel .decisions { list-style: none; margin: 0; padding: 0; }
+#panel .decisions li {
+  display: grid;
+  grid-template-columns: 5rem minmax(0, 1fr);
+  gap: 2px 8px;
+  padding: 8px 0 8px 8px;
+  border-top: 1px solid var(--line);
+  font-size: .9rem;
+}
+#panel .decisions li b { font: 700 .78rem var(--mono); color: var(--ink); }
+#panel .decisions li em { grid-column: 2; font-style: normal; font-size: .74rem; color: var(--muted); }
+/* Inherited from the epic: the same rule, in force here, taken somewhere else. */
+#panel .decisions li.up b { color: var(--muted); }
+#panel .decisions li.gone span { text-decoration: line-through; color: var(--muted); }
+#panel .decisions li.bad { background: #fff5f4; box-shadow: inset 3px 0 0 var(--alert); }
+#panel .decisions li.bad b { color: var(--alert); }
+
+/* ── The checklist ───────────────────────────────────────────────────────────- */
+#panel .checks { list-style: none; margin: 0; padding: 0; }
+#panel .checks li {
+  display: grid;
+  grid-template-columns: 1.7rem minmax(0, 1fr) auto;
+  gap: 2px 8px;
+  align-items: start;
+  padding: 6px 0;
+  border-top: 1px solid var(--line);
+  font-size: .9rem;
+}
+#panel .checks li em {
+  grid-column: 2;
+  font-style: normal;
+  font: .76rem/1.5 var(--mono);
+  color: var(--muted);
+  overflow-wrap: anywhere;
+}
+#panel .checks li .by {
+  font-style: normal;
+  font-size: .68rem;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: .06em;
+}
+#panel .checks li.pass span { color: var(--muted); }
+#panel .tick {
+  width: 19px;
+  height: 19px;
+  padding: 0;
+  border-radius: 5px;
+  border: 1px solid var(--line);
+  background: #fff;
+  font-size: .8rem;
+  line-height: 1;
+  color: var(--muted);
+  cursor: pointer;
+}
+#panel .checks li.pass .tick { background: var(--calm); border-color: var(--calm); color: #fff; }
+#panel .checks li.fail .tick { background: var(--alert); border-color: var(--alert); color: #fff; }
+
+/* ── The log ─────────────────────────────────────────────────────────────────- */
+#panel .log { list-style: none; margin: 0; padding: 0; }
+/* When and who on one line, what was written underneath it. On the old page these were three
+   columns across the width of the sheet; in a panel a third of the screen wide the third column
+   had nowhere left to go, and a paragraph in a ten-character column is not a paragraph. */
+#panel .log li { padding: 8px 0; border-top: 1px solid var(--line); }
+#panel .log li time { font-size: .78rem; color: var(--muted); }
+#panel .log li i { font-style: normal; font: .74rem var(--mono); color: var(--muted); margin-left: 8px; }
+#panel .log li .prose { margin-top: 4px; }
+#panel .sessions { margin: 12px 0 0; font: .74rem var(--mono); color: var(--muted); }
+
+/* An epic's own panel: the bar, and the stories it turned into. */
+#panel .bar { height: 4px; border-radius: 2px; background: var(--bg); margin: 14px 0 0; overflow: hidden; }
+#panel .bar i { display: block; height: 100%; background: var(--calm); }
+#panel .mini { list-style: none; margin: 0; padding: 0; }
+#panel .mini li { display: flex; align-items: center; gap: 9px; padding: 3px 0; }
+#panel .mini button {
+  display: flex;
+  align-items: baseline;
+  gap: 9px;
+  flex: 1;
+  min-width: 0;
+  border: 0;
+  background: none;
+  padding: 0;
+  font: inherit;
+  font-size: .88rem;
+  text-align: left;
+  cursor: pointer;
+}
+#panel .mini button:hover { background: none; border: 0; }
+#panel .mini button:hover span { text-decoration: underline; }
+#panel .mini b { font: 600 .78rem var(--mono); }
+#panel .mini i { font-style: normal; font: .74rem var(--mono); color: var(--muted); }
+#panel .mini span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* ── Prose ───────────────────────────────────────────────────────────────────
+   The same measure and the same rules the ChangeLog keeps: a paragraph is a paragraph on every
+   page of k0. */
+#panel .prose { max-width: 44rem; }
+#panel .prose > :first-child { margin-top: 0; }
+#panel .prose > :last-child { margin-bottom: 0; }
+#panel .prose p { margin: 0 0 10px; }
+#panel .prose ul, #panel .prose ol { margin: 0 0 10px; padding-left: 20px; }
+#panel .prose li { margin-bottom: 3px; }
+#panel .prose h1, #panel .prose h2, #panel .prose h3 { margin: 14px 0 7px; font-size: .96rem; }
+#panel .prose code { font: .85em var(--mono); background: var(--bg); border-radius: 4px; padding: 1px 5px; }
+#panel .prose pre { background: var(--bg); border-radius: 8px; padding: 10px 12px; overflow-x: auto; font-size: .8rem; }
+#panel .prose blockquote {
+  margin: 0 0 10px;
+  padding-left: 12px;
+  border-left: 2px solid var(--line);
+  color: var(--muted);
+}
+#panel .prose a { color: inherit; }
+#panel .prose table { border-collapse: collapse; font-size: .86rem; margin-bottom: 10px; }
+#panel .prose th, #panel .prose td { border: 1px solid var(--line); padding: 4px 9px; text-align: left; }
+
+/* ── Driving mode ────────────────────────────────────────────────────────────
+   The list is text, and text goes up with the base size on its own. The one thing that does not is
+   the button at the end of a row — it is a target, and a target that only appears when the pointer
+   finds it is, from across the room, not a target at all. */
+html[data-driving] .rows .story .go { opacity: 1; padding: 5px 14px; }

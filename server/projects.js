@@ -1,7 +1,7 @@
 import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
-import { projectRecency } from './db.js'
+import { projectRecency, listStories } from './db.js'
 import { hasDocs } from './files.js'
 import { shell } from '../platform/index.js'
 
@@ -150,3 +150,25 @@ export function onDisk(stories) {
 }
 
 export const projectName = (p) => path.basename(p)
+
+/**
+ * The directories anything is allowed to open: the repositories k0 already knows, plus the ones
+ * sessions are really working in — which with a worktree are not the same thing. A path arriving
+ * from the address bar is not enough on its own: either it is in this list, or nothing is read.
+ *
+ * It lives here rather than beside the one endpoint that started it because three different parts
+ * of k0 now ask the same question — the file viewer, the backlog, the dev servers — and a second
+ * copy of "which directories are ours" is a second answer waiting to be the laxer one.
+ */
+export function rootOf(repo) {
+  if (!repo) return null
+  const roots = new Set(listProjects().map((p) => p.path))
+  // Both paths, and from the flattened row: `work_path` belongs to the session now, and a
+  // worktree that fell out of this list would make the viewer refuse exactly the sessions that
+  // most need it.
+  for (const story of listStories()) {
+    if (story.project_path) roots.add(story.project_path)
+    if (story.work_path) roots.add(story.work_path)
+  }
+  return roots.has(repo) ? repo : null
+}

@@ -1,6 +1,10 @@
 /* The house variables — colours, fonts, scale — live in base.css, which belongs to both
    pages. From here down there is only the board. */
 @import url('/base.css');
+/* And the list, which is the other half of the dashboard: the same stories as rows. It is a file
+   of its own because it is a view of its own — the board reaches it through one line in `render` —
+   and because it carries the whole of the panel that opens beside a row. */
+@import url('/list.css');
 
 /* The page no longer scrolls: it is the board that moves underneath the view. */
 body {
@@ -32,24 +36,32 @@ body {
   letter-spacing: 1px;
 }
 
+/* The pills, the shape of the view and the repository: one group on the bar, because they are one
+   question. Two of them say what you are looking at and the third says what shape it comes in, and
+   a switch that changed the shape from the other end of the bar would not look like it belonged to
+   the same answer. */
+.filterbar { display: flex; align-items: center; gap: 12px; flex: 1; flex-wrap: wrap; }
+
 /* The legend IS the filter: click a status and it leaves the board. */
-.filters { display: flex; gap: 8px; flex: 1; flex-wrap: wrap; }
+/* Seven pills is the widest thing on the bar by a long way, and the bar has to end up on one row:
+   what is trimmed here is the space around the words and never the words, which are the legend. */
+.filters { display: flex; gap: 6px; flex-wrap: wrap; }
 .filters button {
   display: flex;
   align-items: center;
-  gap: 7px;
+  gap: 6px;
   border: 1px solid var(--line);
   background: #fffdf7;
   border-radius: 999px;
-  padding: 5px 13px 5px 9px;
-  font-size: .82rem;
+  padding: 5px 11px 5px 8px;
+  font-size: .8rem;
   font-weight: 600;
   color: var(--ink);
   cursor: pointer;
 }
 .filters button i {
-  width: 13px;
-  height: 13px;
+  width: 12px;
+  height: 12px;
   border-radius: 4px;
   flex: none;
   border: 1px solid rgba(0, 0, 0, .12);
@@ -81,6 +93,11 @@ body {
 /* `display: flex` beats the browser's `[hidden]`: until there is a sample, it hides here. */
 .gauge[hidden] { display: none; }
 .gauge:hover { border-color: #bdb6a5; background: #fff; }
+/* RAM over CPU rather than side by side, with the closing time under them. The bar is one row again
+   and the four mode buttons have gone two by two: the gauge gives back the width it was taking by
+   going up instead of along, and written across it was over two hundred pixels of a bar that had
+   none to give. The dot stays where it was — the box is what became three lines, not the chip. */
+.gauge .nums { display: flex; flex-direction: column; line-height: 1.15; }
 .gauge i {
   width: 9px;
   height: 9px;
@@ -89,9 +106,9 @@ body {
   background: var(--calm);
 }
 /* That k0 is looking after the memory for you is worth knowing once and then forgetting: it sits
-   on the same chip, lighter than the numbers beside it, because the numbers are what you came to
-   read and this is only there so the closing is never a surprise. */
-.gauge .idle { font-weight: 500; opacity: .6; margin-left: -2px; white-space: nowrap; }
+   on the same chip, under the numbers and lighter than them, because the numbers are what you came
+   to read and this is only there so the closing is never a surprise. */
+.gauge .idle { font-weight: 500; opacity: .6; white-space: nowrap; }
 .gauge.warn i { background: var(--warn); }
 .gauge.bad i { background: var(--alert); }
 /* Solid red only when it is critical: the one moment it is allowed to interrupt. */
@@ -112,6 +129,50 @@ body {
 }
 .new svg,
 .log svg { width: 17px; height: 17px; display: block; }
+
+/* The plus opens a little menu, so it has to have something to hang off. */
+.new-wrap { position: relative; flex: none; display: flex; }
+
+/* Two entries and no more: the two things k0 can make. It is a menu and not a second dialog
+   because the choice is one word long — and the sentence under each word is the whole difference
+   between them, since one is typed here and the other is talked through in a terminal. */
+.new-wrap .menu {
+  position: absolute;
+  z-index: 6;
+  top: calc(100% + 6px);
+  left: 0;
+  min-width: 230px;
+  padding: 5px;
+  background: var(--paper);
+  border: 1px solid var(--line);
+  border-radius: 11px;
+  box-shadow: 0 12px 30px rgba(0, 0, 0, .18);
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.new-wrap .menu[hidden] { display: none; }
+.new-wrap .menu button {
+  display: block;
+  width: 100%;
+  border: none;
+  background: none;
+  border-radius: 7px;
+  padding: 8px 11px;
+  text-align: left;
+  font-size: .95rem;
+  font-weight: 600;
+  color: var(--ink);
+}
+.new-wrap .menu button:hover { background: #f0ede3; border: none; }
+.new-wrap .menu button em {
+  display: block;
+  margin-top: 2px;
+  font-style: normal;
+  font-size: .76rem;
+  font-weight: 400;
+  color: var(--muted);
+}
 
 /* The way out to the ChangeLog. It is a link, not a button, because it goes somewhere — and it
    is drawn quieter than the plus, because starting work matters more than reading about it. */
@@ -153,11 +214,11 @@ body {
 }
 .whatsnew:hover span { transform: scale(1.3); }
 
-/* ── What a column means ──────────────────────────────────────────────
-   One control with two halves, not two buttons: a column is a repository, which is what the board
-   has always been, or it is a state. It stands before the filters because it decides what they are
-   filtering, and it is on the bar at all only where there is a backlog behind the board — with the
-   feature off there is one answer, and a switch offering it would be a switch that does nothing. */
+/* ── Kanban or List ───────────────────────────────────────────────────
+   One control with two halves, not two buttons: the same stories as a board, or the same stories as
+   rows. It stands inside the filter group because it is the same kind of control as the pills next
+   to it — how you are looking at what you have already chosen to see — and it is on the bar at all
+   only where there is a backlog behind the board. */
 .columns {
   flex: none;
   display: flex;
@@ -174,8 +235,8 @@ body {
   border: none;
   background: none;
   border-radius: 999px;
-  padding: 4px 12px;
-  font-size: .82rem;
+  padding: 4px 10px;
+  font-size: .8rem;
   font-weight: 600;
   color: var(--muted);
 }
@@ -185,8 +246,8 @@ body {
 .columns button[aria-checked="true"] { background: var(--ink); color: var(--paper); }
 .columns button[aria-checked="true"]:hover { background: var(--ink); }
 
-/* And the repository the state columns are showing. It stands next to the switch because it
-   exists only for it: where the columns ARE the repositories there is nothing to filter to. */
+/* And which repository, which now serves both views: the list has no columns to be repositories,
+   and on the board it narrows what is already there. */
 .repo-filter {
   flex: none;
   font: inherit;
@@ -196,8 +257,10 @@ body {
   background: var(--paper);
   border: 1px solid var(--line);
   border-radius: 999px;
-  padding: 5px 11px;
-  max-width: 200px;
+  padding: 5px 10px;
+  /* A repository with a long name must not be what pushes the bar onto a second row: past this it
+     is cut with an ellipsis, and the whole name is still in the dropdown. */
+  max-width: 160px;
   cursor: pointer;
 }
 .repo-filter:hover { border-color: #bdb6a5; }
@@ -207,9 +270,14 @@ body {
    pale outlines like the statuses filtered away; the lit one takes the colour of its mode. The
    colour is not decoration: from across the room — which is what driving mode is for — you do not
    focus on the icon, but you do see the colour. */
+/* Two by two rather than four across: the bar was going to a second row, and of everything on it
+   these four are the ones that lose the least by being stacked — they are a scale you glance at,
+   not a sentence you read. The columns are `auto` and not a width, because driving mode makes each
+   button 46px and a fixed column would clip them. */
 .modes {
   flex: none;
-  display: flex;
+  display: grid;
+  grid-template-columns: repeat(2, auto);
   gap: 3px;
 }
 .modes button {
@@ -411,24 +479,7 @@ body {
 .column > h2 .fold[disabled] { opacity: .12; cursor: default; }
 .column > h2 .fold[disabled]:hover { opacity: .12; background: none; }
 
-/* ── The columns as states ────────────────────────────────────────────
-   Six of them instead of one per repository, and everything else the same: the same heading, the
-   same notes in the same order, the same gestures on them. What is different is that standing in
-   one MEANS something a story can be moved through, so this is the one view where a note is
-   dragged — and a column you can drop into has to be a target even when it is empty, which is
-   what the floor under it is for. */
-.column.state { min-height: 200px; }
-.column.state > h2 .name { flex: 1; }
-.column.state .postit { cursor: grab; }
-.postit.dragging { opacity: .4; cursor: grabbing; }
-/* The column lights up only where the drop would change something — Review does not light up for
-   a story already in Review — because a target that answers a move that does nothing teaches you
-   to distrust the ones that do. */
-.column.state.drop {
-  outline: 2px dashed #b4ad9a;
-  outline-offset: 7px;
-  border-radius: 10px;
-}
+/* Where the state columns used to be there is now a view of its own: see list.css. */
 
 .empty {
   position: absolute;
@@ -661,30 +712,30 @@ body {
 }
 .postit .waits svg { width: 13px; height: 13px; display: block; }
 
-/* The star, set from the note because that is where you are when you decide it matters. Unset it
-   waits for the pointer, the way the pencil in the corner does: an empty star on every note is a
-   column of empty stars, and a mark that is everywhere marks nothing. Set, it stays lit whether
-   or not anybody is looking. */
-.postit .star {
-  flex: none;
-  padding: 0;
-  width: 19px;
-  height: 19px;
-  margin: -2px 0 -2px -3px;
-  border: none;
-  background: none;
-  border-radius: 5px;
-  display: inline-flex;
+/* The flag, and it is a mark and not a target: it is put on from the pencil dialog, where the rest
+   of the decisions about a story are taken. An empty outline sitting on every note waiting to be
+   clicked was a mark that was everywhere and therefore marked nothing.
+
+   It sits at the bottom right, mirroring the pencil at the top, and the note itself takes a border
+   in the same colour — because the point of flagging something is to find it again from across the
+   room, and a twelve-pixel glyph cannot be seen from there. */
+.postit .flag {
+  position: absolute;
+  right: 6px;
+  bottom: 6px;
+  width: 20px;
+  height: 20px;
+  display: flex;
   align-items: center;
   justify-content: center;
-  color: rgba(0, 0, 0, .32);
-  opacity: 0;
-  transition: opacity .12s ease;
+  color: var(--warn);
+  pointer-events: none;
 }
-.postit .star svg { width: 14px; height: 14px; display: block; }
-.postit .star.on { opacity: 1; color: #c98a08; }
-.postit:hover .star, .postit .star:focus-visible { opacity: 1; }
-.postit .star:hover { background: rgba(0, 0, 0, .07); border: none; }
+.postit .flag svg { width: 15px; height: 15px; display: block; }
+.postit.flagged { border: 2px solid var(--warn); }
+/* The room the flag needs. It sits over the row of buttons, which is empty space until you hover:
+   this is what stops the last of them running underneath it once they come out. */
+.postit.flagged .actions { padding-right: 22px; }
 
 /* ── The last column: every repository ────────────────────────────────
    Headings only, one per repository, in the order you last used them. No cards and no counts:
@@ -801,7 +852,7 @@ body {
 .postit .load.hot { color: var(--alert); }
 
 /* The corner icon: the pencil opens the editor, and on a finished card — where there is nothing
-   left to edit — the bin takes its place. */
+   left to edit — the bin takes its place. The flag at the bottom right is hung the same way. */
 .postit .corner {
   position: absolute;
   top: 6px;
@@ -859,6 +910,41 @@ body {
 /* ── Editor ───────────────────────────────────────────────────────────
    The dialog and its buttons live in base.css, which belongs to both pages: the file viewer opens
    one too. What is left here is only what belongs to a card's editor and to nothing else. */
+
+/* A checkbox on a line of its own: the label is the sentence, not a heading above a field. The
+   dialog's own `label` is a block with the control underneath it, which is right for everything
+   here except this. */
+dialog label.check {
+  display: flex;
+  align-items: baseline;
+  gap: 9px;
+  flex-wrap: wrap;
+  font-size: .95rem;
+  font-weight: 500;
+  color: var(--ink);
+}
+dialog label.check input { width: auto; margin: 0; flex: none; }
+dialog label.check small { flex-basis: 100%; margin: 0 0 0 25px; color: var(--muted); }
+/* base.css hides a hidden label already, but this file is read after it and `display: flex` above
+   would win on the tie. Said again here so the flag is really gone with the backlog switched off. */
+dialog label.check[hidden] { display: none; }
+
+/* The epic dialog says what pressing the button will actually do, because what it does is open a
+   terminal — and a dialog whose one button starts a conversation somewhere else has to say so. */
+#epic-new select {
+  display: block;
+  width: 100%;
+  margin-top: 6px;
+  font: inherit;
+  font-size: 1rem;
+  color: var(--ink);
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fff;
+}
+#epic-new .note { margin: 0 0 18px; font-size: .88rem; line-height: 1.5; color: var(--muted); }
+#epic-new .note code { font: .85em var(--mono); background: var(--bg); border-radius: 4px; padding: 1px 5px; }
 
 /* Choosing the repository: a searchable field, most used at the top. */
 .picker { position: relative; }
@@ -956,12 +1042,11 @@ html[data-driving] .postit .corner svg { width: 20px; height: 20px; }
 html[data-driving] .zoom button { width: 40px; height: 40px; }
 html[data-driving] .zoom button svg { width: 22px; height: 22px; }
 
-/* The star: the one thing the backlog puts on a note that is pressed rather than read. It grows
-   and it stays out, for the same reason the pencil does — a target that expects to be found
-   before it will show itself is, from across the room, not a target. The epic label and the two
-   halves of the column switch are already text, and text goes up with the base size on its own. */
-html[data-driving] .postit .star { width: 27px; height: 27px; opacity: 1; }
-html[data-driving] .postit .star svg { width: 20px; height: 20px; }
+/* The flag. Nothing presses it — it is set in the dialog — but it is exactly what you are meant to
+   pick out from a distance, so it grows with everything else. The border round the note does the
+   work at that range; this is what says which mark it is once you are closer. */
+html[data-driving] .postit .flag { width: 28px; height: 28px; }
+html[data-driving] .postit .flag svg { width: 21px; height: 21px; }
 
 /* The card is in pixels too: with the text at 22 it would choke inside 268. And since the card is
    never taller than it is wide, raising this raises the ceiling with it. */

@@ -159,6 +159,23 @@ section('The statuses the board derives')
   check('a story that is not there is not a crash', store.applyDerivedStatus(999999, 'WORKING', true), undefined)
 }
 
+// A session opened to TALK about a story is not the work starting. Pressing "Discuss it" on a
+// note nobody has decided anything about used to move it to `Working` before the first question
+// was asked — and closing that terminal half way through left a story sitting in `Working` being
+// offered a counter-check on work that had never happened.
+{
+  const talked = store.createStory({ title: 'Too vague to build', project_path: REPO })
+  store.attachSession(talked.id, 'cccc-3333', 'k0-discuss')
+  store.applyDerivedStatus(talked.id, 'WORKING', true)
+  check('a session opened to discuss it leaves the story where it was', store.getStory(talked.id).state, 'Backlog')
+  check('though the session itself is running', store.getStory(talked.id).status, 'WORKING')
+
+  const worked = store.createStory({ title: 'Ready to build', project_path: REPO, state: 'Planned' })
+  store.attachSession(worked.id, 'dddd-4444', 'k0-work')
+  store.applyDerivedStatus(worked.id, 'WORKING', true)
+  check('and the one command that does the work still says so', store.getStory(worked.id).state, 'Working')
+}
+
 // ── Ticking it off ───────────────────────────────────────────────────────────
 section('Ticking it off')
 // COMPLETED is the one status you choose rather than one the session implies, which is why it

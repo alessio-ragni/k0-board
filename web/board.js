@@ -3,6 +3,7 @@ import { initView, refit } from '/view.js'
 import { weight, gb } from '/units.js'
 import { setFavicon } from '/favicon.js'
 import { split } from '/recency.js'
+import { drawList, leaveList } from '/list.js'
 
 // ── Statuses ───────────────────────────────────────────────────────
 // The order is the attention priority inside a column: first whoever is waiting for you,
@@ -24,16 +25,6 @@ const LABEL = {
 // cannot import a module that reads the filesystem — the way `ORDER` is already written twice.
 const BUSY = new Set(['WORKING', 'PLANNING'])
 
-// ── The six states ─────────────────────────────────────────────────
-// Where a story is in its life, which is a different axis from the seven statuses above: those
-// say what a live session is doing right now, these say how far the work has got. A story has
-// both at once, and the board draws both — the colour of the note is the session, the column it
-// stands in (with the switch on State) is the state.
-//
-// The order is the road, not a ranking: any state may follow any other, and Backlog straight to
-// Done is legal. It is the order the columns stand in and nothing more.
-const STATES = ['Backlog', 'Discussed', 'Planned', 'Working', 'Review', 'Done']
-
 const $ = (s) => document.querySelector(s)
 const api = async (url, opts) => {
   const r = await fetch(url, { headers: { 'content-type': 'application/json' }, ...opts })
@@ -54,7 +45,7 @@ const api = async (url, opts) => {
  *
  * `Run 3 found a decision broken` is true and useless on its own: it tells you to put something
  * right without saying what. The labels are `K7·D3` — an epic's key in front when the rule came
- * down from the epic — and they are the same names the dense page and the `.k0/` file print, so
+ * down from the epic — and they are the same names the panel and the `.k0/` file print, so
  * one of them is enough to find it. This is the only moment k0 talks about a broken decision to
  * somebody who is not already on the page where the evidence is.
  */
@@ -88,15 +79,18 @@ const held = new Set()
 // round; with it off the board is the board it has always been, down to the buttons on a post-it.
 let backlogOn = false
 
-// What a column means: a repository, as it always has, or a state. Remembered like the filters
-// and the folded columns are, because it is the same kind of choice — how you want to look at
-// the board, not what is on it. `repo` is the default and the only answer the switch gives while
-// the backlog is off.
-let columnsMean = localStorage.getItem('k0-columns') === 'state' ? 'state' : 'repo'
-const byState = () => backlogOn && columnsMean === 'state'
+// Which shape the same stories come in: the board as it has always been, or a list. Remembered
+// like the filters and the folded columns are, because it is the same kind of choice — how you
+// want to look at the board, not what is on it. `kanban` is the default and the only answer the
+// switch gives while the backlog is off.
+//
+// The key is the one the switch has always used, and only `list` is read out of it: a board that
+// was left on the old `state` columns comes back as a kanban rather than as nothing, which is what
+// a stored value nobody recognises would have meant.
+let columnsMean = localStorage.getItem('k0-columns') === 'list' ? 'list' : 'kanban'
+const byList = () => backlogOn && columnsMean === 'list'
 
-// With the columns being states, the repositories have nowhere left to be: this puts one of them
-// back. Empty means all of them.
+// Which repository, for both views. Empty means all of them.
 let repoFilter = localStorage.getItem('k0-repo-filter') || ''
 
 // The epic the board is standing inside, `{ key, path }`, or null for the whole board. It
@@ -104,10 +98,9 @@ let repoFilter = localStorage.getItem('k0-repo-filter') || ''
 // let go of it on every refresh would make it a place you cannot stay.
 let laneEpic = readLane()
 
-// The note being dragged from one state to another, while it is in the air. It is the story
-// itself and not its id: `dataTransfer` cannot be read during a dragover, and the column has to
-// know what it is being offered to decide whether it will take it.
-let dragging = null
+// Every epic k0 knows, kept from the last round: the editor's list is drawn from it, and so are
+// the headings in the list view.
+let allEpics = []
 
 // The weight of each session: on to begin with, switched off from the gauge at the top.
 let showLoad = localStorage.getItem('k0-load') !== '0'
@@ -131,11 +124,12 @@ function since(ts, now) {
 const tilt = (id) => (((id * 37) % 5) - 2) * 0.5
 
 // ── What the backlog adds to a post-it ─────────────────────────────
-// Four marks and no more: the name the story is called by, the epic it belongs to, the star, and
-// whether it is waiting on something. Everything else about a story — its decisions, its rounds,
-// its plan — is a page and not a note, and a post-it that tried to carry it would stop being a
-// post-it. They are all drawn only when the server says there is a backlog: with it off the note
-// is the note it has always been, down to the last element.
+// Four marks and one button. The marks are the name the story is called by, the epic it belongs to,
+// whether it is waiting on something, and the flag; the button is the one thing to do with it next.
+// Everything else about a story — its decisions, its rounds, its plan — is the panel in the list
+// and not a note, and a post-it that tried to carry it would stop being a post-it. They are all
+// drawn only when the server says there is a backlog: with it off the note is the note it has
+// always been, down to the last element.
 
 /**
  * The story's name, and where it is sitting.
@@ -178,6 +172,46 @@ function epicChip(story) {
   )}">${esc(label)}</button>`
 }
 
+/**
+ * The one thing to do with this story next, and it is the server that decided it — see `nextStep`
+ * in `server/backlog.js`. The note draws the answer and never has one of its own: these are the
+ * same rules `/k0-next` reasons over, and a second copy of them in here would be a second answer to
+ * one question from the day somebody edited one of the two.
+ *
+ * One button per note, not a row of them. It goes first, ahead of Start and Done, because it is the
+ * thing you are being told to do. It answers whether it drew anything, because that is what decides
+ * how loud Start is allowed to be next to it: `null` is an answer here — a story that came through
+ * its counter-check clean is waiting for a person to press Done, and filling that in with a command
+ * would be inventing work.
+ */
+function nextStepButton(story, btn) {
+  const step = story.next_step
+  if (!step || !(step.action === 'focus' || step.command)) return false
+  btn(step.label, () => doNextStep(story), step.why)
+  return true
+}
+
+/**
+ * Doing it, wherever it was pressed — the note or a row in the list.
+ *
+ * The two things a suggestion can be: go to the session that is already open, or start one saying
+ * `/k0-plan K42`. A step that is neither is a step from a server newer than this page, and doing
+ * nothing is the only honest answer left — guessing would put something on a command line.
+ *
+ * `/k0-work` asks the same question Start asks, because it is the same act: it is the one command
+ * here that goes and does the work, and doing it on a story that waits on something unfinished is
+ * the moment the note you left yourself was for. The other commands only talk about the story, and
+ * being asked before a discussion would be a question with nothing riding on it.
+ */
+async function doNextStep(story) {
+  const step = story.next_step
+  if (!step) return
+  if (step.action === 'focus') return focusTerminal(story.id)
+  if (!step.command) return
+  if (step.command === 'k0-work' && !(await mayStart(story))) return
+  startCommand(story, step.command)
+}
+
 /** What a story is still waiting for. Only what is not done: a dependency that closed is history. */
 const waitingOn = (story) => (story.deps ?? []).filter((d) => d.state !== 'Done')
 
@@ -198,16 +232,18 @@ function depMark(story) {
 }
 
 /**
- * The star, and it is set from the note because that is where you are when you decide it matters.
+ * The flag, at the bottom right, mirroring the pencil at the top.
  *
- * Unset it hides until the pointer is on the note, the same way the pencil in the corner does:
- * an empty star on every post-it is a column of empty stars, and a mark that is everywhere marks
- * nothing. Set, it stays lit whether or not anybody is looking.
+ * It is a mark and not a target: it is put on from the pencil's dialog, where the rest of the
+ * decisions about a story are taken. An empty outline sitting on every note waiting to be clicked
+ * was a mark that was everywhere and therefore marked nothing.
+ *
+ * The note takes a border in the same colour, and that is the half that does the work: the point
+ * of flagging something is to find it again from across the room, and a fifteen-pixel glyph cannot
+ * be seen from there.
  */
-const starMark = (story) =>
-  `<button class="star${story.starred ? ' on' : ''}" aria-pressed="${story.starred ? 'true' : 'false'}" title="${
-    story.starred ? 'Starred — click to take the star off' : 'Star this story'
-  }">${story.starred ? ICON.starOn : ICON.starOff}</button>`
+const flagMark = (story) =>
+  story.starred ? `<span class="flag" title="Flagged">${ICON.flag}</span>` : ''
 
 // ── The epic you are standing in ───────────────────────────────────
 
@@ -251,7 +287,7 @@ function currentEpic(data) {
 
 function postit(story, now) {
   const el = document.createElement('article')
-  el.className = `postit ${story.status}`
+  el.className = `postit ${story.status}${backlogOn && story.starred ? ' flagged' : ''}`
   el.dataset.id = story.id
   el.style.transform = `rotate(${tilt(story.id)}deg)`
 
@@ -288,10 +324,10 @@ function postit(story, now) {
     }
     <div class="foot">
       ${
-        // The star, the epic and what the story is waiting for: three marks on the line that was
-        // already there, rather than a row of their own. The foot is the quietest part of the note
-        // and it had one thing on it pushed to the right — which is exactly the room these need.
-        backlogOn ? `${starMark(story)}${epicChip(story)}${depMark(story)}` : ''
+        // The epic and what the story is waiting for: two marks on the line that was already there,
+        // rather than a row of their own. The flag is not among them — it is hung in the corner,
+        // where it can be seen without reading the note.
+        backlogOn ? `${epicChip(story)}${depMark(story)}` : ''
       }
       ${
         // Whoever shut the window, said in the same breath and the same weight — this line is
@@ -302,7 +338,8 @@ function postit(story, now) {
       }
       <span class="since" title="${LABEL[story.status]} for ${since(story.status_since, now)}">${since(story.status_since, now)}</span>
     </div>
-    <div class="actions"></div>`
+    <div class="actions"></div>
+    ${backlogOn ? flagMark(story) : ''}`
 
   // The only way to open the editor: clicking the story itself no longer does anything.
   el.querySelector('.corner').onclick = (e) => {
@@ -310,41 +347,15 @@ function postit(story, now) {
     corner.act()
   }
 
-  // The two marks in the foot that do something. `stopPropagation` for the same reason the corner
-  // has it: the note answers a double click by bringing its terminal up, and neither of these is
-  // a way of asking for that.
-  const star = el.querySelector('.star')
-  if (star)
-    star.onclick = (e) => {
-      e.stopPropagation()
-      toggleStar(story)
-    }
+  // The one mark in the foot that does something. `stopPropagation` for the same reason the corner
+  // has it: the note answers a double click by bringing its terminal up, and this is not a way of
+  // asking for that.
   const chip = el.querySelector('.epic')
   if (chip)
     chip.onclick = (e) => {
       e.stopPropagation()
       enterEpic(story)
     }
-
-  // Dragging a note from one column to another, and only where the columns are states: there it
-  // means something — the story has moved on — and on the repository board it would mean moving
-  // work between repositories, which is not a thing you do by dropping a piece of paper.
-  if (byState()) {
-    el.draggable = true
-    el.ondragstart = (e) => {
-      dragging = story
-      el.classList.add('dragging')
-      e.dataTransfer.effectAllowed = 'move'
-      // Nothing reads it — the story itself is held in `dragging` — but a drag that carries no
-      // data at all never starts in Firefox.
-      e.dataTransfer.setData('text/plain', String(story.id))
-    }
-    el.ondragend = () => {
-      dragging = null
-      el.classList.remove('dragging')
-      for (const c of document.querySelectorAll('.column.drop')) c.classList.remove('drop')
-    }
-  }
 
   const actions = el.querySelector('.actions')
   const btn = (text, fn, title, cls) => {
@@ -362,7 +373,13 @@ function postit(story, now) {
   if (story.completed_at) {
     btn('Reopen', () => setCompleted(story.id, false))
   } else if (!story.session_id) {
-    btn('Start', () => startStory(story))
+    // What to do next comes first, and where there is one Start goes to the end of the row as a
+    // link — the same place Close takes for the same reason. They are not the same thing: the
+    // suggestion opens a session on `/k0-discuss K42`, Start opens one on whatever the note itself
+    // says, which is what you wrote there and which the suggestion never overwrites. Where there is
+    // no suggestion Start is the button it has always been.
+    const suggested = backlogOn && nextStepButton(story, btn)
+    if (!suggested) btn('Start', () => startStory(story))
     // And Done beside it, once there is a backlog behind the board. A story with no session is not
     // only an idea nobody has touched: it is also the ordinary shape of one planned here and then
     // worked on in a terminal the user opened himself, or checked over by hand. `Done` is the only
@@ -370,7 +387,15 @@ function postit(story, now) {
     // and the backlog's own rule is that any state may follow any other, Backlog to Done included.
     // Switched off, the post-it is exactly the post-it it has always been.
     if (backlogOn) btn('Done', () => setCompleted(story.id, true), 'close this job')
+    if (suggested) btn('Start', () => startStory(story), 'open a session on what this note says', 'link')
   } else {
+    // Whatever became of the session, and NOT only while it is alive. A live one is answered with
+    // "Go to the terminal" — the note answers a double click by bringing the window up, but a
+    // gesture nobody knows about is not a way in. A session that has ended is the whole other half
+    // of the table: Check it, Put it right, Split it. A story only ever reaches `Working` by having
+    // had a live session, so gating this on `session_alive` made every one of those unreachable
+    // from a note while the list went on drawing them — one story, two views, two answers.
+    if (backlogOn) nextStepButton(story, btn)
     if (dead) btn('Resume', () => start(story.id, 'resume'))
     btn('Done', () => setCompleted(story.id, true), 'close this job and its terminal')
     // Close gives the memory back without declaring the work over, and it comes after Done, as a
@@ -412,10 +437,9 @@ const ICON = {
   // Waiting on something else: a link of a chain, because that is what a dependency is. Broken in
   // the middle, because it is the half that has not arrived that the mark is about.
   dep: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M10 14l4-4"/><path d="M13.5 7.5l1-1a3.5 3.5 0 1 1 5 5l-1 1"/><path d="M10.5 16.5l-1 1a3.5 3.5 0 1 1-5-5l1-1"/></svg>',
-  // The star, set and unset. The same outline both times, filled or not: two different shapes
-  // would make taking a star off look like a different gesture from putting one on.
-  starOn: '<svg viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"><path d="M12 3.6l2.6 5.3 5.8.8-4.2 4.1 1 5.8-5.2-2.7-5.2 2.7 1-5.8-4.2-4.1 5.8-.8Z"/></svg>',
-  starOff: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"><path d="M12 3.6l2.6 5.3 5.8.8-4.2 4.1 1 5.8-5.2-2.7-5.2 2.7 1-5.8-4.2-4.1 5.8-.8Z"/></svg>',
+  // Flagged. Filled, and drawn once — there is no empty flag, because the mark is only ever on a
+  // note that has one: an outline on every other note is a mark that says nothing.
+  flag: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 21V4"/><path d="M6 4.5h11.5l-2.4 3.8 2.4 3.7H6" fill="currentColor"/></svg>',
 }
 
 const esc = (s) =>
@@ -595,21 +619,55 @@ const byAttention = (a, b) =>
 
 function render(data) {
   const board = $('#board')
-  board.textContent = ''
+
+  // The list is a page that scrolls; the board is a surface that moves under a fixed window. The
+  // class is what takes the one out of the other — see list.css — and it goes on before anything is
+  // drawn, so nothing is ever measured in the wrong world.
+  const asList = byList()
+  // Emptying the board is how the kanban is redrawn, and in list mode it is exactly what must not
+  // happen: the list keeps its two halves between redraws (see `drawList`), and an element taken
+  // out of the document comes back scrolled to the top — which on a poll that runs once a second
+  // is the panel losing the reader's place while they are reading it.
+  if (!asList) board.textContent = ''
+  board.classList.toggle('list', asList)
+  $('#viewport').classList.toggle('list', asList)
+  if (!asList) {
+    board.classList.remove('open')
+    leaveList()
+  }
 
   // Inside an epic, the board is that epic. Everything below works on `pool` rather than on
   // `data.stories`, so the epic is a lens over the same board and not a second one: the filters
   // still filter, the columns still fold, the notes are the same notes.
   const inEpic = currentEpic(data)
   drawLane(inEpic)
-  const pool = inEpic
-    ? data.stories.filter((c) => c.epic_key === inEpic.key && c.project_path === inEpic.project_path)
-    : data.stories
+  renderRepoFilter(data, inEpic)
+  // The three things that decide what is in scope, applied once and before the fork: the epic lane,
+  // the repository, and the status pills. Both views work on what comes out, which is what makes
+  // switching between them a change of shape and never a change of what you are looking at.
+  const only = inEpic ? '' : repoFilter
+  const pool = data.stories.filter(
+    (c) =>
+      (!inEpic || (c.epic_key === inEpic.key && c.project_path === inEpic.project_path)) &&
+      (!only || c.project_path === only)
+  )
   const visible = pool.filter((c) => !hidden.has(c.status))
 
-  // With the switch on State the columns are the six states and the repositories step back into a
-  // filter. Nothing else about the board changes.
-  if (byState()) return drawStates(board, visible, data, inEpic)
+  if (asList) {
+    // The epics go through the same two narrowings the stories did. They are not filtered by status
+    // — an epic has none — but one belonging to a repository you have filtered away has no business
+    // heading a group of nothing.
+    const epics = (data.epics ?? []).filter(
+      (e) =>
+        (!inEpic || (e.key === inEpic.key && e.project_path === inEpic.project_path)) &&
+        (!only || e.project_path === only)
+    )
+    drawList(board, { stories: visible, all: data.stories, epics }, LIST)
+    // No message in the middle here: the list says for itself when there is nothing in it, and it
+    // says it where the rows would have been rather than across the whole window.
+    showEmpty(false, inEpic)
+    return
+  }
 
   const columns = (inEpic ? data.columns.filter((c) => c.path === inEpic.project_path) : data.columns)
     .map((col) => ({
@@ -639,7 +697,11 @@ function render(data) {
   // half of itself away would be answering a question you did not ask. Nothing is folded, and
   // nothing is remembered either — what you do in a lane must not decide what the board looks
   // like when you come back out of it.
-  const { open, alive } = inEpic
+  //
+  // The repository filter is the same answer twice over. You asked for one repository; folding it
+  // away for having been quiet would leave a board with nothing on it and the reason hidden inside
+  // a dropdown, and the way back would be through the `Old` column that is not drawn either.
+  const { open, alive } = inEpic || only
     ? { open: columns.map(({ col }) => col.path), alive: new Set() }
     : split({
         paths: columns.map((c) => c.col.path),
@@ -650,7 +712,7 @@ function render(data) {
   // A column open now is open for the rest of the visit, and a column that is open is not one
   // you have put away: a session woke up in there, or you went and fetched it back yourself.
   let forget = false
-  if (!inEpic)
+  if (!inEpic && !only)
     for (const p of open) {
       held.add(p)
       if (folded.delete(p)) forget = true
@@ -706,13 +768,14 @@ function render(data) {
     board.append(wrap)
   }
 
-  // The two columns on the right are about the repositories that are NOT in front of you, which
-  // is a question a lane has already answered: there is one repository in here, and it is this one.
-  if (!inEpic) {
+  // The two columns on the right are about the repositories that are NOT in front of you, which is
+  // a question a lane has already answered — there is one repository in here, and it is this one —
+  // and which the repository filter answers the same way.
+  if (!inEpic && !only) {
     board.append(oldColumn(columns.filter(({ col }) => !openSet.has(col.path))))
     board.append(repoColumn(data.projects ?? [], new Set(columns.map((c) => c.col.path))))
   }
-  showEmpty(columns.length === 0, inEpic)
+  showEmpty(columns.length === 0, inEpic, only)
   refit() // the board changed size: the view comes back inside its limits
 }
 
@@ -720,105 +783,17 @@ function render(data) {
  * The line in the middle of an empty board, and what it should say.
  *
  * "Add your first story" is right on a board with nothing on it and wrong everywhere else: inside
- * an epic it is not the dashboard that is empty, and with the columns being states it is a filter
- * that has emptied them. A message that answers the wrong question sends you looking for a fault
- * that is not there.
+ * an epic it is not the dashboard that is empty, and behind a repository filter it is not the
+ * dashboard that is being looked at. A message that answers the wrong question sends you looking
+ * for a fault that is not there.
  */
-function showEmpty(empty, inEpic) {
+function showEmpty(empty, inEpic, only = '') {
   const el = $('#empty')
   el.style.display = empty ? 'grid' : 'none'
   if (!empty) return
-  el.textContent = inEpic
-    ? `Nothing in ${inEpic.key} yet — or the filters have put it all away.`
-    : 'The dashboard is empty. Add your first story.'
-}
-
-// ── The columns as states ──────────────────────────────────────────
-// Six columns instead of one per repository, and everything else the same: the same notes in the
-// same order, the same filters deciding who is on the board, the same gestures on a post-it. What
-// the switch changes is what standing in a column MEANS — and because it now means something the
-// story itself can be moved through, this is the one view where a note can be dragged.
-
-/**
- * Which column a story stands in. A state the board has never heard of is drawn in the first one
- * rather than nowhere: a story that quietly falls off the board is worse than one in the wrong
- * column, because there is nothing left on screen to notice.
- */
-const bucket = (story) => (STATES.includes(story.state) ? story.state : STATES[0])
-
-function drawStates(board, visible, data, inEpic) {
-  renderRepoFilter(data, inEpic)
-  // In a lane the repository is already settled — an epic lives in exactly one — so the filter
-  // steps aside rather than being able to empty the epic you just went into.
-  const only = inEpic ? '' : repoFilter
-  const mine = only ? visible.filter((c) => c.project_path === only) : visible
-  for (const state of STATES) {
-    board.append(stateColumn(state, mine.filter((c) => bucket(c) === state).sort(byAttention), data.now))
-  }
-  // No message in the middle here: six columns each saying nought have already said it, and the
-  // one thing worse than an empty board is an empty board with a sentence written over it.
-  showEmpty(false, inEpic)
-  refit()
-}
-
-/**
- * One state, with whatever is in it, and a place to drop a note.
- *
- * The column takes a note only when it would change something — a story already in Review does
- * not highlight Review — because a target that lights up for a move that does nothing teaches you
- * to distrust the ones that do.
- */
-function stateColumn(state, stories, now) {
-  const wrap = document.createElement('section')
-  wrap.className = 'column state'
-  wrap.dataset.state = state
-  wrap.innerHTML = `<h2><span class="name">${state}</span><small>${stories.length}</small></h2>`
-  for (const c of stories) wrap.append(postit(c, now))
-
-  wrap.addEventListener('dragover', (e) => {
-    if (!dragging || bucket(dragging) === state) return
-    e.preventDefault() // without this the browser refuses the drop, silently
-    e.dataTransfer.dropEffect = 'move'
-    wrap.classList.add('drop')
-  })
-  // `relatedTarget` is where the pointer has gone: leaving one post-it for the next one inside the
-  // same column is not leaving the column, and without this the highlight would flicker off on
-  // every note the pointer crosses.
-  wrap.addEventListener('dragleave', (e) => {
-    if (!wrap.contains(e.relatedTarget)) wrap.classList.remove('drop')
-  })
-  wrap.addEventListener('drop', (e) => {
-    e.preventDefault()
-    wrap.classList.remove('drop')
-    if (dragging) moveTo(dragging, state)
-  })
-  return wrap
-}
-
-/**
- * Moving a story from one state to another, which is what the drop does.
- *
- * `Done` is not one of the six here: it is the Done button, and it goes through the same door —
- * so it closes the terminal, and so the server's one refusal reaches it. A story dragged back out
- * of Done is reopened first, by the same call `Reopen` makes, and then put where you dropped it:
- * `completed` and `state` in one request would fight, because reopening chooses a state of its own.
- */
-async function moveTo(story, state) {
-  if (bucket(story) === state) return
-  const to = `/api/story/${story.id}`
-  try {
-    if (state === 'Done') await api(to, { method: 'PATCH', body: JSON.stringify({ completed: true }) })
-    else {
-      if (story.completed_at) await api(to, { method: 'PATCH', body: JSON.stringify({ completed: false }) })
-      await api(to, { method: 'PATCH', body: JSON.stringify({ state }) })
-    }
-  } catch (e) {
-    // The refusal the whole backlog exists for arrives here as well as on the button: a decision
-    // the last counter-check found broken. It is a paragraph, so it is left up for longer.
-    toast(refusal(e), 12000)
-  }
-  lastSignature = ''
-  refresh()
+  if (inEpic) el.textContent = `Nothing in ${inEpic.key} yet — or the filters have put it all away.`
+  else if (only) el.textContent = `Nothing in ${nameOf(only)} — or the filters have put it all away.`
+  else el.textContent = 'The dashboard is empty. Add your first story.'
 }
 
 // ── The epic you are standing in ───────────────────────────────────
@@ -844,15 +819,15 @@ function drawLane(epic) {
 }
 
 /**
- * The repository the state columns are showing, when they are showing one.
+ * Which repository both views are showing, when they are showing one.
  *
  * The list is rebuilt only when it really changes: a `<select>` redrawn under an open dropdown
  * closes it, and this runs on every redraw of the board.
  */
 function renderRepoFilter(data, inEpic) {
   const sel = $('#repo-filter')
-  // Whether it is on the bar at all belongs to `renderColumnsSwitch`, which is the only place
-  // that knows all three answers. Here there is only what is in it.
+  // Whether it is on the bar at all belongs to `renderColumnsSwitch`, which is the only place that
+  // knows all the answers. Here there is only what is in it.
   if (inEpic) return
   // A repository that has no stories left has no column and cannot be filtered to: keeping it
   // would leave the board empty with the reason hidden inside a dropdown nobody has opened.
@@ -873,22 +848,22 @@ function chooseRepo(path) {
 }
 
 /**
- * The switch itself: which of the two is lit, and whether it is on the bar at all — and with it
- * the repository filter, which is only ever there for the state columns.
+ * The switch itself: which of the two is lit, and whether it is on the bar at all — and with it the
+ * repository filter, which is on the bar exactly when the switch is.
  *
- * The filter is hidden from here and not from the redraw because the redraw does not always
- * happen: coming back to the repository columns changes nothing the board compares, so the
- * dropdown would have stayed on the bar, still filtering, over a board that has no filter left to
- * apply. Inside a lane there is one repository and it was settled by going in, so there is
- * nothing to choose there either.
+ * Both are hidden from here and not from the redraw because the redraw does not always happen:
+ * switching the backlog off changes nothing the board compares, so the dropdown would have stayed
+ * on the bar, still filtering, over a board that has no filter left to apply. Inside a lane there
+ * is one repository and it was settled by going in, so there is nothing to choose there either.
  */
 function renderColumnsSwitch() {
   $('#columns').hidden = !backlogOn
-  // And the door to the dense page with them. It leads to a page that is nothing but one sentence
-  // while the feature is off, and an icon that was not on this bar yesterday is the one thing that
-  // would still make the board different from the board it has always been.
-  $('#backlog-link').hidden = !backlogOn
-  $('#repo-filter').hidden = !byState() || !!laneEpic
+  $('#repo-filter').hidden = !backlogOn || !!laneEpic
+  // And what the `+` promises. With a backlog behind the board it opens a menu with two things on
+  // it, and a button whose label says one of them is a button that lied about the other.
+  const plus = backlogOn ? 'New story or epic' : 'New story'
+  $('#new-story').title = plus
+  $('#new-story').setAttribute('aria-label', plus)
   for (const b of document.querySelectorAll('#columns button')) {
     b.setAttribute('aria-checked', b.dataset.columns === columnsMean ? 'true' : 'false')
   }
@@ -1017,8 +992,13 @@ function renderMachine(m, stories, idleHours = 0) {
   // chip and nowhere else: this is where the memory is already being talked about, and a thing
   // that quietly closes your windows should not be something you have to know about beforehand.
   // Its presence is the whole message — switched off, there is nothing here rather than a nought.
-  const closes = idleHours > 0 ? `<span class="idle">· closes at ${idleHours}h</span>` : ''
-  el.innerHTML = `<i></i>RAM ${ram}% · CPU ${cpu}${closes}`
+  const closes = idleHours > 0 ? `<span class="idle">closes at ${idleHours}h</span>` : ''
+  // RAM over CPU rather than side by side, and the closing time under them rather than beside them.
+  // The four mode buttons went two by two to get the bar back onto one row, and this is the other
+  // half of the same move: the chip gives back the width it was taking by going up instead of
+  // along, and "· closes at 12h" written across was a hundred pixels of it on its own. The dot
+  // stays beside the stack, centred on it.
+  el.innerHTML = `<i></i><span class="nums"><span>RAM ${ram}%</span><span>CPU ${cpu}</span>${closes}</span>`
 
   const top = stories.find((c) => c.id === heaviest)
   const lines = [
@@ -1055,17 +1035,74 @@ function toast(msg, ms = 4000) {
   toast.timer = setTimeout(() => t.classList.remove('show'), ms)
 }
 
+/**
+ * What a launched terminal is told to say, whichever door it came through. There are three of them
+ * now — the story's own prompt, a command the interface suggested, and an epic that has no story to
+ * belong to — and one sentence about how it went, so they cannot report the same thing three ways.
+ */
+function launched(r) {
+  // Switched off, every door into the backlog answers with the same sentence and an HTTP 200 — a
+  // skill has to be able to tell "there is nothing here" from "you turned this off", and neither
+  // of those is an error. `api()` only throws on an error status, so a refusal arrives here looking
+  // like a launch with no window in it, and without this the user would be told the opposite of
+  // what happened about a session that was never opened.
+  if (r.enabled === false) return toast(r.why || 'The k0 backlog is switched off.', 8000)
+  if (!r.up) return toast(`${r.name} was launched, but I didn't see it come up within 30s`)
+  // `autoSent` before `pasted`, and they are not exclusive: a prompt sent with the session goes on
+  // the command line, which counts as pasted too. Asking somebody to hit enter on a session that
+  // is already answering is telling them the opposite of what happened.
+  if (r.autoSent && r.pasted) return toast(`${r.name} is running and the prompt has gone in`)
+  if (r.autoSent) {
+    const why = `without the Accessibility permission I can't leave the prompt waiting`
+    return toast(`${r.name} started on its own (${why})`, 8000)
+  }
+  if (r.pasted) return toast(`${r.name} is ready, the prompt is in the terminal: hit enter`)
+  toast(`${r.name} is running, but I couldn't write the prompt`, 8000)
+}
+
 async function start(id, mode) {
   toast(mode === 'resume' ? 'Resuming the session…' : 'Opening the terminal…', 30000)
   try {
-    const r = await api(`/api/story/${id}/${mode}`, { method: 'POST' })
-    if (!r.up) toast(`${r.name} was launched, but I didn't see it come up within 30s`)
-    else if (r.pasted) toast(`${r.name} is ready, the prompt is in the terminal: hit enter`)
-    else if (r.autoSent) toast(`${r.name} started on its own (without the Accessibility permission I can't leave the prompt waiting)`, 8000)
-    else toast(`${r.name} is running, but I couldn't write the prompt`, 8000)
+    launched(await api(`/api/story/${id}/${mode}`, { method: 'POST' }))
   } catch (e) {
     toast(`Couldn't do it: ${e.message}`, 8000)
   }
+  refresh()
+}
+
+/**
+ * The suggestion, pressed: a session that opens saying `/k0-plan K42` instead of what the note
+ * says. The command is the server's own word — it came down on the story and goes back up
+ * unchanged — and the server holds it against a closed list before it goes anywhere near a command
+ * line, so a refusal here is a sentence and not a silence.
+ */
+async function startCommand(story, command) {
+  toast(`Opening the terminal on /${command} ${story.key ?? ''}`.trim() + '…', 30000)
+  try {
+    launched(await api(`/api/backlog/story/${story.id}/start`, {
+      method: 'POST',
+      body: JSON.stringify({ command }),
+    }))
+  } catch (e) {
+    toast(`Couldn't do it: ${e.message}`, 8000)
+  }
+  lastSignature = ''
+  refresh()
+}
+
+/**
+ * An epic, which is not a row anywhere yet and is not meant to be: a session in that repository
+ * running `/k0-epic`, and the discussion writes the epic down itself once it knows what it is.
+ * That is why this takes a repository and nothing else — there is nothing to type in.
+ */
+async function startEpic(path) {
+  toast('Opening the terminal…', 30000)
+  try {
+    launched(await api('/api/backlog/epic/start', { method: 'POST', body: JSON.stringify({ project_path: path }) }))
+  } catch (e) {
+    toast(`Couldn't do it: ${e.message}`, 8000)
+  }
+  lastSignature = ''
   refresh()
 }
 
@@ -1090,28 +1127,19 @@ async function focusTerminal(id) {
  * Asked once, per click: there is nothing remembered here, because the answer belongs to this
  * moment and the dependency may well be closed by the next one.
  */
-async function startStory(story) {
+async function mayStart(story) {
   const open = waitingOn(story)
-  if (open.length) {
-    const list = open.map((d) => `${d.key} ${d.title}`).join(', ')
-    const ok = await ask(`“${story.title}” waits on ${list}, which ${open.length === 1 ? 'is' : 'are'} not done.`, {
-      yes: 'Start anyway',
-      destructive: false,
-    })
-    if (!ok) return
-  }
-  start(story.id, 'start')
+  if (!open.length) return true
+  const list = open.map((d) => `${d.key} ${d.title}`).join(', ')
+  return await ask(`“${story.title}” waits on ${list}, which ${open.length === 1 ? 'is' : 'are'} not done.`, {
+    yes: 'Start anyway',
+    destructive: false,
+  })
 }
 
-/** The star goes on and comes off from the note, which is where you are when you decide it matters. */
-async function toggleStar(story) {
-  try {
-    await api(`/api/story/${story.id}`, { method: 'PATCH', body: JSON.stringify({ starred: !story.starred }) })
-  } catch (e) {
-    toast(`Couldn't do it: ${e.message}`)
-  }
-  lastSignature = ''
-  refresh()
+async function startStory(story) {
+  if (!(await mayStart(story))) return
+  start(story.id, 'start')
 }
 
 /**
@@ -1186,7 +1214,42 @@ async function setCompleted(id, completed) {
   refresh()
 }
 
-// ── Editor ─────────────────────────────────────────────────────────
+// ── Making something ───────────────────────────────────────────────
+/**
+ * The little menu under the `+`.
+ *
+ * It is a menu and not a second dialog because the choice is one word long — and because the two
+ * words are the whole difference between them: a story is typed here, an epic is told. It only
+ * exists where there is a backlog; without one the `+` goes straight to the story dialog it always
+ * went to.
+ */
+function toggleNewMenu(open = null) {
+  const menu = $('#new-menu')
+  const show = open === null ? menu.hidden : open
+  menu.hidden = !show
+  $('#new-story').setAttribute('aria-expanded', show ? 'true' : 'false')
+}
+
+/**
+ * The epic dialog, which asks for a repository and nothing else.
+ *
+ * There is no title field and there is not going to be one. An epic is what is left when a
+ * discussion has finished arguing about what the work is; typing a name for it first is naming
+ * something nobody has decided the shape of yet, and that name is then what every story under it
+ * inherits. So this opens a terminal and `/k0-epic` does the asking.
+ */
+function openEpicDialog() {
+  const sel = $('#e-project')
+  // In the order they were last used, which for this one dialog is the right order: you are about
+  // to spend an hour talking about a repository, and it is almost always the one you were just in.
+  sel.innerHTML = projects
+    .map((p) => `<option value="${esc(p.path)}">${esc(p.name)}</option>`)
+    .join('')
+  const here = laneEpic?.path || repoFilter || projects[0]?.path
+  if (here) sel.value = here
+  $('#epic-new').showModal()
+}
+
 /**
  * `presetPath` is the repository of the column you pressed "+" on: it arrives already chosen and
  * the cursor jumps straight to the title, which is the only thing missing.
@@ -1204,6 +1267,13 @@ function openEditor(story, presetPath = null) {
   $('#f-project').classList.remove('bad')
   $('#f-title').value = story?.title ?? ''
   $('#f-prompt').value = story?.prompt ?? ''
+  // The two the backlog adds. They are not on the dialog at all with the feature off: an empty
+  // field for something that does not exist is a question nobody can answer.
+  $('#f-epic-row').hidden = !backlogOn
+  $('#f-flag-row').hidden = !backlogOn
+  $('#f-epic').value = story?.epic_title ?? ''
+  $('#f-flag').checked = !!story?.starred
+  fillEpics()
   $('#f-delete').style.display = story ? '' : 'none'
   // A live session is not restarted: there is only saving to do there.
   $('#f-start').style.display = story?.session_alive ? 'none' : ''
@@ -1216,6 +1286,69 @@ function openEditor(story, presetPath = null) {
 
 const nameOf = (p) => projects.find((x) => x.path === p)?.name ?? p
 
+/** The epics of the repository the dialog is on. An epic belongs to one repository and only one. */
+const epicsHere = () => allEpics.filter((e) => e.project_path === chosenProject)
+
+/**
+ * The names the epic field offers. A datalist and not a `<select>`, because the field has to do two
+ * things at once: pick one of the epics this repository already has, or name one that does not
+ * exist yet — and a dropdown cannot be typed into.
+ *
+ * The key is the option's label rather than its value: what you leave in the field is a name, so
+ * that a name typed from scratch and a name picked from the list are the same thing to `save`.
+ */
+function fillEpics() {
+  $('#f-epics').innerHTML = epicsHere()
+    .map((e) => `<option value="${esc(e.title)}">${esc(e.key)}</option>`)
+    .join('')
+}
+
+/**
+ * Which epic the dialog is asking for, as a key: one that already exists, one made on the spot, or
+ * `null` for none.
+ *
+ * Made on the spot is the whole point of the field. An epic wanted while writing a story is an epic
+ * wanted now, and sending somebody to another screen to make one first is how a story ends up
+ * outside the epic it belongs to for ever.
+ */
+async function chosenEpic() {
+  const name = $('#f-epic').value.trim()
+  if (!name) return null
+  const q = name.toLowerCase()
+  const found = epicsHere().find((e) => e.title.toLowerCase() === q || e.key.toLowerCase() === q)
+  if (found) return found.key
+  const made = await api('/api/backlog/epic', {
+    method: 'POST',
+    body: JSON.stringify({ project_path: chosenProject, title: name }),
+  })
+  return made.key
+}
+
+/**
+ * The two fields that are the backlog's and not the board's, written after the story itself.
+ *
+ * They go through `/api/backlog/story/:id`, which is the door that resolves an epic's key and
+ * writes the `.k0/` file; the board's own door knows about neither. It is a second request and it
+ * is worth it: it means the story is saved whatever happens here, and if the epic cannot be made —
+ * a repository gone read-only, a name that collides — what is said is that the epic did not happen,
+ * not that the story did not.
+ */
+async function stampBacklog(id, story) {
+  if (!backlogOn) return
+  const starred = $('#f-flag').checked
+  const before = story?.epic_title ?? ''
+  const typed = $('#f-epic').value.trim()
+  const epicChanged = typed !== before
+  if (!epicChanged && starred === !!story?.starred) return
+  try {
+    const change = { starred }
+    if (epicChanged) change.epic_key = await chosenEpic()
+    await api(`/api/backlog/story/${id}`, { method: 'PATCH', body: JSON.stringify(change) })
+  } catch (e) {
+    toast(`The story is saved, but: ${e.message}`, 8000)
+  }
+}
+
 let hits = [] // the repositories shown in the list right now
 let active = 0 // where you are with the arrows: the row Enter picks
 
@@ -1224,6 +1357,8 @@ function chooseProject(path) {
   $('#f-project').value = nameOf(path)
   $('#f-project').classList.remove('bad')
   $('#f-project-list').hidden = true
+  // An epic belongs to one repository: changing the repository changes which ones are on offer.
+  fillEpics()
 }
 
 /** With a repository already chosen the whole list is shown: that is where you change it. */
@@ -1309,7 +1444,9 @@ async function save() {
     const saved = editing
       ? await api(`/api/story/${editing}`, { method: 'PATCH', body: JSON.stringify(payload) })
       : await api('/api/story', { method: 'POST', body: JSON.stringify(payload) })
+    await stampBacklog(saved.id, editingStory)
     $('#editor').close()
+    lastSignature = ''
     refresh()
     return saved
   } catch (e) {
@@ -1388,6 +1525,27 @@ function setWhatsNew(u) {
   }
 }
 
+/**
+ * What the list view is lent, and the whole of what it is lent.
+ *
+ * It is handed over rather than imported from the other side, so the list has no way to reach back
+ * into the board: everything it can do to a story is on this object, and the day one of these
+ * changes there is one place that says so. `redraw` is the pair of lines every write in here ends
+ * with — forget what is on screen, and ask again.
+ */
+const LIST = {
+  api,
+  toast,
+  hue: epicHue,
+  flag: ICON.flag,
+  next: doNextStep,
+  done: (id) => setCompleted(id, true),
+  redraw: () => {
+    lastSignature = ''
+    refresh()
+  },
+}
+
 // ── The loop ──────────────────────────────────────────────────────
 async function refresh() {
   try {
@@ -1402,6 +1560,9 @@ async function refresh() {
     setMode(data.mode, data.reason)
     setWhatsNew(data.update)
     backlogOn = !!data.backlog
+    // Every epic k0 knows, kept for the editor's list: the dialog is opened between rounds and has
+    // to be able to offer them without a request of its own.
+    allEpics = data.epics ?? []
     // The switch belongs to the bar and not to the board: it has to appear the moment the server
     // says there is a backlog, whether or not anything on the board changed with it.
     renderColumnsSwitch()
@@ -1431,7 +1592,16 @@ async function refresh() {
       // The epics, for the progress on the strip at the top and for the labels on the notes. Only
       // with the backlog on: off, there are none, and a null here is one fewer thing to compare.
       backlogOn
-        ? (data.epics ?? []).map((e) => [e.key, e.project_path, e.title, e.progress.done, e.progress.total])
+        ? (data.epics ?? []).map((e) => [
+            e.key,
+            e.project_path,
+            e.title,
+            e.progress.done,
+            e.progress.total,
+            // Which round the discussion is on. The list draws it, and it is the only thing moving
+            // on an epic that has not turned into stories yet — which is most of an epic's life.
+            e.round?.n ?? '',
+          ])
         : null,
       // Not `heaviest` as it is: on a calm machine the heaviest changes constantly without
       // anything changing on screen, and it would redraw for nothing.
@@ -1450,14 +1620,18 @@ async function refresh() {
         c.updated_at,
         gitSig(c.git),
         c.load ? weight(c.load.rss) : '',
-        // What the backlog draws on the note, and what decides which column it stands in. They
-        // are all `undefined` with the feature off, which compares as well as anything else.
+        // What the backlog draws on the note and on a row in the list. They are all `undefined`
+        // with the feature off, which compares as well as anything else.
         c.state,
         c.starred,
         c.alias,
         c.epic_key,
         c.epic_title,
         c.blocked,
+        // The label on the one button that says what to do next. It changes without anything else
+        // on the row changing — a story sitting still for a fortnight starts suggesting a split —
+        // and a suggestion nothing noticed would stay wrong until something else moved.
+        c.next_step?.label ?? '',
       ]),
       // The server state belongs in here for the same reason the git state does: without it the
       // globe would keep the colour it had on the first round for the rest of the visit.
@@ -1533,8 +1707,8 @@ async function boot() {
     }
   }
 
-  // What a column means. It is a radiogroup like the modes are, and it behaves like one: clicking
-  // the lit half does nothing, because you leave a view by going to the other one.
+  // Kanban or List. It is a radiogroup like the modes are, and it behaves like one: clicking the
+  // lit half does nothing, because you leave a view by going to the other one.
   $('#columns').onclick = (e) => {
     const b = e.target.closest('button[data-columns]')
     if (!b || b.dataset.columns === columnsMean) return
@@ -1555,7 +1729,35 @@ async function boot() {
   // board is not closing something, and there is nothing here to close.
   $('#epic-out').onclick = () => setLane(null)
 
-  $('#new-story').onclick = () => openEditor(null)
+  // The `+` has two things to make now, and they are made in two different ways: a story is typed
+  // here, an epic is told to Claude in a terminal. With the backlog off there is only one of them
+  // and the menu never opens — the plus is the plus it has always been.
+  $('#new-story').onclick = () => (backlogOn ? toggleNewMenu() : openEditor(null))
+  $('#new-menu').onclick = (e) => {
+    const b = e.target.closest('button[data-new]')
+    if (!b) return
+    toggleNewMenu(false)
+    if (b.dataset.new === 'story') openEditor(null)
+    else openEpicDialog()
+  }
+  // Anywhere else shuts it, which is what a menu does. It is caught on the way down so a click on
+  // something else still does that something else.
+  document.addEventListener('pointerdown', (e) => {
+    if (!e.target.closest('.new-wrap')) toggleNewMenu(false)
+  })
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') toggleNewMenu(false)
+  })
+
+  $('#e-close').onclick = () => $('#epic-new').close()
+  $('#e-cancel').onclick = () => $('#epic-new').close()
+  $('#epic-form').onsubmit = (e) => {
+    e.preventDefault()
+    const path = $('#e-project').value
+    if (!path) return
+    $('#epic-new').close()
+    startEpic(path)
+  }
   $('#f-close').onclick = () => $('#editor').close()
   $('#editor-form').onsubmit = (e) => {
     e.preventDefault()

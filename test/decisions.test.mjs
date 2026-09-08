@@ -223,8 +223,8 @@ section('The story as a skill reads it')
   check('with nothing proved yet', view.checks[0].state, 'todo')
   check('and no run to report', view.runs.length, 0)
 
-  // And the cheap half of it, which is what the dense page asks for once a second while a
-  // discussion is going on. It says the same things and reads none of the text.
+  // And the cheap half of it, which is what the panel open beside a row asks for once a second
+  // while a discussion is going on. It says the same things and reads none of the text.
   const live = backlog.liveView(story.id)
   check('the poll says which round the discussion is on', live.round.n, 1)
   check('out of how many it expects', live.round.estimated_total, 3)

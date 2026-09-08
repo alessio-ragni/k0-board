@@ -1,6 +1,8 @@
+import fs from 'node:fs'
+import path from 'node:path'
 import * as db from './db.js'
 import * as settings from './settings.js'
-import { projectName } from './projects.js'
+import { projectName, rootOf } from './projects.js'
 
 // ── The backlog ──────────────────────────────────────────────────────────────
 // Epics, stories, tasks, decisions, dependencies, order. It is the model: pure logic over
@@ -97,6 +99,31 @@ export function storyByKey(repo, key) {
   return n == null ? null : (db.getStoryByKey(repo, n) ?? null)
 }
 
+/**
+ * Which repository a request is talking about — the one guard every door into the backlog goes
+ * through, and the only thing standing between a path somebody sent and a `.k0/` folder.
+ *
+ * `rootOf` on its own is too tight here. It answers "a repository k0 already knows", and the very
+ * first story in a repository is created by a skill running in one k0 has never had a story for —
+ * which would be refused with "k0 does not know that repository" at exactly the moment somebody
+ * is trying to start using it. A directory that is a checkout is enough, and it is not nothing:
+ * this path is what `mirror.js` writes a `.k0/` folder into, so `/etc` still gets a no.
+ *
+ * `.git` is a folder in a clone and a FILE in a worktree — which is where `/k0-work` leaves the
+ * user — so what is asked is whether the name is there at all, not what shape it has.
+ */
+export function backlogRepo(raw) {
+  const known = rootOf(raw)
+  if (known) return known
+  const dir = typeof raw === 'string' ? raw : ''
+  if (!dir || !path.isAbsolute(dir)) return null
+  try {
+    return fs.existsSync(path.join(dir, '.git')) && fs.statSync(dir).isDirectory() ? dir : null
+  } catch {
+    return null
+  }
+}
+
 // ── What a story looks like from outside ─────────────────────────────────────
 
 /**
@@ -134,6 +161,8 @@ export function publicStory(story, { git = null } = {}) {
   const deps = db.dependenciesOf(story.id)
   const decisions = db.effectiveDecisions(story.id)
   const checks = db.listCheckItems(story.id)
+  const violations = db.openViolations(story.id)
+  const standing = decisions.filter((d) => !d.superseded_by).length
   return {
     id: story.id,
     key: story.key,
@@ -156,10 +185,10 @@ export function publicStory(story, { git = null } = {}) {
     deps: deps.map((d) => ({ id: d.id, key: d.key, title: d.title, state: d.state })),
     blocked: blockedBy(deps).length > 0,
     decisions_total: decisions.length,
-    decisions_open: decisions.filter((d) => !d.superseded_by).length,
+    decisions_open: standing,
     checks_total: checks.length,
     checks_passed: checks.filter((c) => c.state === 'pass').length,
-    violations_open: db.openViolations(story.id).length,
+    violations_open: violations.length,
     session: sessionOf(story),
     git,
     sort_hint: story.sort_hint,
@@ -167,6 +196,11 @@ export function publicStory(story, { git = null } = {}) {
     updated_at: story.updated_at,
     completed_at: story.completed_at ?? null,
     status_since: story.status_since ?? null,
+    state_since: story.state_since ?? null,
+    // The one thing to do with it next, decided here so that the post-it, the list row and the
+    // skill all draw the same button and give the same reason for it — and handed the two counts
+    // this function has just made, rather than letting it go and make them a second time.
+    next_step: nextStep(story, { decided: standing > 0, broken: violations.length > 0 }),
   }
 }
 
@@ -186,10 +220,10 @@ export function publicEpic(epic) {
     project_path: epic.project_path,
     project_name: projectName(epic.project_path),
     sort_hint: epic.sort_hint,
-    // How far the discussion has got, and how much it has settled. The board draws neither; the
-    // dense page does, and without them an epic being argued out in a terminal — which is what
-    // `/k0-epic` is, and it happens before a single story exists — is a card that says nothing is
-    // under it yet and never moves for as long as anybody is watching.
+    // How far the discussion has got, and how much it has settled. The kanban draws neither; the
+    // list does, on the epic's own row, and without them an epic being argued out in a terminal —
+    // which is what `/k0-epic` is, and it happens before a single story exists — is a line that
+    // says nothing is under it yet and never moves for as long as anybody is watching.
     round: last ? { n: last.n, estimated_total: last.estimated_total } : null,
     decisions_total: decisions.length,
     decisions_open: decisions.filter((d) => !d.superseded_by).length,
@@ -367,6 +401,138 @@ export function liveView(id) {
 }
 
 // ── What to do now ───────────────────────────────────────────────────────────
+// Two questions with one answer between them: WHICH story to pick up — `next()`, which is what
+// `/k0-next` asks — and, once somebody is looking at one, WHAT to do with it — `nextStep()`, which
+// is the button on every post-it and every row. They meet where they should: `next()` hands its
+// pick back through `publicStory`, so the sentence the skill reads and the button the page draws
+// come out of the same place and cannot drift apart.
+
+/**
+ * How long a story may sit before the suggestion stops being "carry on" and becomes "cut it up".
+ *
+ * Fourteen days is a guess and nothing measured it. It is two weeks of a story not moving, which
+ * is long enough that the reason is usually not effort but shape: what is written on the post-it
+ * turned out to be two pieces of work, and no amount of doing it as one will close it.
+ */
+const STUCK_DAYS = 14
+
+/**
+ * The one thing to do with this story next, and the sentence saying why it is this and not
+ * something else.
+ *
+ * It is worked out here and never in the browser. These are the same rules `/k0-next` reasons
+ * over, and a second copy of them written in the page would be a second answer to one question
+ * from the day somebody edited one of the two.
+ *
+ * `null` is an answer and not a hole: a finished story has nothing left to suggest, and one that
+ * came through its counter-check clean is waiting for a person to press Done. Filling either of
+ * those in with a command would be inventing work.
+ *
+ * The story is the flat row `db.listStories()` and `publicStory` both already hold. Two of the
+ * rules below need a fact that is not on it — whether anything has been decided about the story,
+ * and whether the counter-check left a decision broken — and both are HANDED IN by whoever already
+ * counted them rather than asked for here. This is drawn on every row of a board that is asked for
+ * once a second by every open tab, and one query written here is two hundred queries a second.
+ *
+ * Left out, each falls back to asking, because a caller holding one story is not a caller worth
+ * making count first. That is why the fallback for `broken` sits inside the `Review` arm, where
+ * few stories ever are, and why the board hands `decided` in: `Backlog` is where most of them sit.
+ */
+export function nextStep(story, known = {}) {
+  // Whatever else is true, an open session is where the work is. Sending somebody off to start a
+  // second one on the same story is how two half-done things happen.
+  if (story.session_alive) {
+    return { command: null, label: 'Go to the terminal', action: 'focus', why: 'A session is already open on it.' }
+  }
+  if (story.state === 'Done') return null
+
+  // Ahead of the rest, because the rest can only see WHICH state a story is in and this is about
+  // how long it has been true. `state_since` and not `status_since`: the second one is the live
+  // session's clock, so a story whose terminal was abandoned in the spring and whose state moved
+  // yesterday would be offered for splitting on the strength of a session nobody has touched.
+  const still = daysSince(story.state_since ?? story.updated_at)
+  if (still > STUCK_DAYS && (story.state === 'Working' || story.state === 'Planned')) {
+    return { command: 'k0-split', label: 'Split it', why: `It has not moved in ${still} days.` }
+  }
+
+  if (story.state === 'Review') {
+    // Asked only here, and so only of the few stories in Review: it is four queries per story and
+    // the board wants an answer on every row it has, once a second.
+    const broken = known.broken ?? db.openViolations(story.id).length > 0
+    if (!broken) return null
+    return { command: 'k0-work', label: 'Put it right', why: 'The last counter-check found a decision broken.' }
+  }
+  if (story.state === 'Working') {
+    return { command: 'k0-verify', label: 'Check it', why: 'The work was left with no session running.' }
+  }
+  if (story.state === 'Planned') {
+    return { command: 'k0-work', label: 'Work on it', why: 'It has a plan and nothing has started it.' }
+  }
+  if (story.state === 'Discussed') {
+    return { command: 'k0-plan', label: 'Plan it', why: 'It has been discussed and has no plan yet.' }
+  }
+  if (story.state === 'Backlog') {
+    // Its epic's decisions count as much as its own, because they are what it will be held to: a
+    // story under an epic that has been argued out is not a story nobody has decided anything about.
+    const decided = known.decided ?? db.effectiveDecisions(story.id).some((d) => !d.superseded_by)
+    return decided
+      ? { command: 'k0-plan', label: 'Plan it', why: 'Something has already been decided about it.' }
+      : { command: 'k0-discuss', label: 'Discuss it', why: 'Nothing has been decided about it yet.' }
+  }
+  // A state nothing here knows — a row edited by hand, a database older than this list. Saying
+  // nothing is the only honest answer left; guessing would put a command on a command line.
+  return null
+}
+
+// ── The commands the interface may start ─────────────────────────────────────
+
+/**
+ * The nine commands, written out one by one.
+ *
+ * By name, and never by reading `.claude/skills/`. What leaves here goes onto a command line, and
+ * a directory listing is a list other people can add to: a folder arriving in that directory —
+ * from a clone, a package, an installer — would become something a request could ask k0 to run.
+ * Nine strings in a file cannot grow on their own, and the day there is a tenth command somebody
+ * has to come here and say so, which is the point.
+ *
+ * Every command `nextStep` hands back is on this list and has to stay on it: the button the page
+ * draws sends back exactly what it was given.
+ */
+export const COMMANDS = [
+  'k0-story',
+  'k0-epic',
+  'k0-discuss',
+  'k0-split',
+  'k0-plan',
+  'k0-work',
+  'k0-verify',
+  'k0-next',
+  'k0-order',
+]
+
+/**
+ * What a session started on a command opens with: `/k0-plan K42`, the line the user would have
+ * typed himself. A command with nothing to name — `/k0-epic`, which runs before there is an epic —
+ * gets the command on its own.
+ *
+ * The refusal is a sentence and not a throw because there is a person at the end of it: whatever
+ * sent this is something somebody pressed, and a "no" is only useful when it says which nine
+ * words would have worked.
+ */
+export function commandPrompt(raw, key = null) {
+  // A leading slash is how these are written everywhere else — in the README, in the skills, in
+  // the user's own mouth — so it is taken and dropped rather than left to become a tenth spelling
+  // of nine commands that would then be refused.
+  const name = String(raw ?? '').trim().replace(/^\/+/, '')
+  if (!COMMANDS.includes(name)) {
+    const list = COMMANDS.map((c) => `/${c}`).join(', ')
+    return { prompt: null, name: null, error: `k0 does not start "${name}". The commands it can start are ${list}.` }
+  }
+  // The name comes back beside the line it became, spelled the one way this file spells it. It is
+  // kept against the session (see `attachSession`), and a session recorded as having been opened
+  // with `/k0-plan ` — somebody's spacing — is a session nothing can ask a question about later.
+  return { prompt: key ? `/${name} ${key}` : `/${name}`, name, error: null }
+}
 
 // Where a story is in its life, most nearly finished first. It is the first thing `next()` sorts
 // on: something already planned is closer to being done than something not yet discussed, and
@@ -472,7 +638,7 @@ function reasonFor(c) {
  * than editing the one before it.
  *
  * It is a refusal with a reason and never a silent no, and it applies to whatever is asking:
- * the button on the post-it, the dense page, a skill.
+ * the button on the post-it, the button on a list row, a skill.
  */
 export function mayFinish(id) {
   const open = db.openViolations(id)
