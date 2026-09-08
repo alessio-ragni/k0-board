@@ -163,12 +163,13 @@ socket is opened, ever. Everything else stays as it was: no fonts fetched, no te
 ### The board
 
 - **+** — at the left, next to k0, and next to every repository name on the board: that one opens
-  a story with the repository already chosen. Three fields and no more: the repository, a title,
-  and what Claude should do when it starts. The prompt can be left empty — nothing stops you from
-  starting the session and typing straight into Claude Code. (With a backlog behind the board the
-  `+` at the left is a menu of two — a story typed here, or an epic told to a terminal — and the
-  dialog gains a field for the story's epic and a box for the flag. It is written out
-  [below](#the-two-views).)
+  a story with the repository already chosen. Two fields and no more: the repository and a title.
+  Nothing is asked about what the story is for, because both ways out of the dialog open a terminal
+  and you say it there. (With a backlog behind the board the `+` at the left is a menu of two — a
+  story typed here, or an epic told to a terminal — the dialog gains a field for the story's epic,
+  and the two buttons are *Discuss* and *Quick Start*. Editing a story that exists adds a list of
+  **notes**, which sit on the post-it for you to read and are never sent to Claude Code. It is
+  written out [below](#the-two-views).)
 
   The repository has to be **picked from the list** (searchable, most used at the top; arrow keys
   to move, Enter takes the highlighted row): a name typed by hand does not count. On leaving the
@@ -483,13 +484,16 @@ under you.
 
 **Kanban is for working.** It is the board you already know — one column per repository, notes
 that reorder themselves by who is waiting for you. With a backlog behind it a note grows four
-marks and no more: its **key and position**; the **epic** it belongs to, as a small label in the
-epic's own colour, worked out from the key so there is nothing to choose and nothing to keep in
-step; a **flag** in the bottom corner, with a border round the note in the same colour, because
-the point of flagging something is finding it again from across the room and a fifteen-pixel glyph
-cannot be seen from there; and a warning when something it **waits on** is not finished. The flag
-is set from the pencil, along with the rest of the decisions about a story — it is a mark, not a
-target sitting on every note waiting to be clicked.
+marks and no more: its **key**; the **epic** it belongs to, as a small label in the epic's own
+colour, worked out from the key so there is nothing to choose and nothing to keep in step; a
+**flag** in the bottom corner; and a warning when something it **waits on** is not finished.
+
+The flag is put on and taken off **from the note itself** — it is the mark and the target both,
+and it mirrors the pencil at the other corner. It is invisible until the pointer is on the note,
+because an outline sitting on every note all the time is a mark that is everywhere and therefore
+marks nothing. Once it is on it stays on, and the note takes a border and its key and title take
+the flag's colour with it: the point of flagging something is finding it again from across the
+room, and a fifteen-pixel glyph cannot be seen from there.
 
 **Click an epic's label and the board becomes that epic.** A strip appears under the top bar with
 its key, its title, its repository, a progress bar and `4 of 11 done`, and the way back out. Inside
@@ -504,9 +508,8 @@ Anything else is an estimate, and an estimate here is a lie with a progress bar 
 once: a thin heading per repository, an epic that opens and closes with its progress bar — and,
 while a discussion is running on it, which round that is on — and under it its stories, with tasks
 indented beneath the story they were cut from. Stories belonging to no epic are grouped at the
-end. A row carries key, position, title, state, flag, how many decisions are still standing, how
-much of the checklist has passed, and the same next-step button. Which epics you left open is
-remembered.
+end. A row carries key, title, state, flag, how many decisions are still standing, how much of
+the checklist has passed, and the same next-step button. Which epics you left open is remembered.
 
 **Click a row and the story opens beside it**, not underneath: the counter-check first, then why
 it exists, the rounds with their questions and answers, the decisions with the verdict each one
@@ -754,7 +757,7 @@ it. k0 says so when it happens rather than being quiet about it.
 
 Each repository with a backlog grows a `.k0/` folder: a `README.md` explaining itself, one file per
 epic under `epics/`, one per story or task under `stories/`. A story file opens with its header —
-key, position, epic, state, flag, what it waits on, the sessions it has lived through — and then
+key, epic, state, flag, what it waits on, the sessions it has lived through — and then
 **Why**, the **Prompt**, the **Discussion** round by round, the **Decisions**, the **Plan**, the
 **Verification** run by run with its checklist, and the **Log**. An epic's file is the same header,
 its own **Why**, **Discussion** and **Decisions**, and then the list of its stories with a line

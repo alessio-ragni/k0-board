@@ -737,30 +737,44 @@ body {
 }
 .postit .waits svg { width: 13px; height: 13px; display: block; }
 
-/* The flag, and it is a mark and not a target: it is put on from the pencil dialog, where the rest
-   of the decisions about a story are taken. An empty outline sitting on every note waiting to be
-   clicked was a mark that was everywhere and therefore marked nothing.
+/* The flag: the mark and the target both, at the bottom right, mirroring the pencil at the top.
 
-   It sits at the bottom right, mirroring the pencil at the top, and the note itself takes a border
-   in the same colour — because the point of flagging something is to find it again from across the
-   room, and a twelve-pixel glyph cannot be seen from there. */
+   It is invisible until the pointer is on the note, and then it is a faint outline — an outline
+   sitting on every note all the time is a mark that is everywhere and therefore marks nothing. Set,
+   it stays on whether or not anybody is looking, and the note takes a border and its key and name
+   take the same colour: the point of flagging something is to find it again from across the room,
+   and a fifteen-pixel glyph cannot be seen from there. */
 .postit .flag {
   position: absolute;
   right: 6px;
   bottom: 6px;
-  width: 20px;
-  height: 20px;
+  width: 24px;
+  height: 24px;
+  padding: 0;
   display: flex;
   align-items: center;
   justify-content: center;
-  color: var(--warn);
-  pointer-events: none;
+  border-radius: 6px;
+  background: none;
+  border-color: transparent;
+  box-shadow: none;
+  color: rgba(0, 0, 0, .35);
+  opacity: 0;
+  cursor: pointer;
+  transition: opacity .12s ease;
 }
 .postit .flag svg { width: 15px; height: 15px; display: block; }
+.postit:hover .flag, .postit .flag:focus-visible { opacity: 1; }
+.postit .flag:hover { background: rgba(255, 255, 255, .72); border-color: rgba(0, 0, 0, .14); }
+/* On: the colour, and no longer waiting to be hovered. */
+.postit .flag.on { opacity: 1; color: var(--warn); }
 .postit.flagged { border: 2px solid var(--warn); }
+/* And the two pieces of writing at the top take it with them, so a flagged note is told apart from
+   the ones beside it by more than a hairline of border. */
+.postit.flagged .key, .postit.flagged .title { color: var(--warn); }
 /* The room the flag needs. It sits over the row of buttons, which is empty space until you hover:
    this is what stops the last of them running underneath it once they come out. */
-.postit.flagged .actions { padding-right: 22px; }
+.postit .actions { padding-right: 22px; }
 
 /* ── The last column: every repository ────────────────────────────────
    Headings only, one per repository, in the order you last used them. No cards and no counts:
@@ -940,23 +954,10 @@ body {
    The dialog and its buttons live in base.css, which belongs to both pages: the file viewer opens
    one too. What is left here is only what belongs to a card's editor and to nothing else. */
 
-/* A checkbox on a line of its own: the label is the sentence, not a heading above a field. The
-   dialog's own `label` is a block with the control underneath it, which is right for everything
-   here except this. */
-dialog label.check {
-  display: flex;
-  align-items: baseline;
-  gap: 9px;
-  flex-wrap: wrap;
-  font-size: .95rem;
-  font-weight: 500;
-  color: var(--ink);
-}
-dialog label.check input { width: auto; margin: 0; flex: none; }
-dialog label.check small { flex-basis: 100%; margin: 0 0 0 25px; color: var(--muted); }
-/* base.css hides a hidden label already, but this file is read after it and `display: flex` above
-   would win on the tie. Said again here so the flag is really gone with the backlog switched off. */
-dialog label.check[hidden] { display: none; }
+/* An aside on the label's own line rather than under it. base.css makes a dialog's `small` a block,
+   which is right where it explains a field you have already filled in and wrong where it is a
+   parenthesis after the field's name — there it costs a whole line to say four words. */
+dialog label small.aside { display: inline; margin: 0; font-weight: 400; }
 
 /* The epic dialog says what pressing the button will actually do, because what it does is open a
    terminal — and a dialog whose one button starts a conversation somewhere else has to say so. */
@@ -1071,7 +1072,7 @@ html[data-driving] .postit .corner svg { width: 20px; height: 20px; }
 html[data-driving] .zoom button { width: 40px; height: 40px; }
 html[data-driving] .zoom button svg { width: 22px; height: 22px; }
 
-/* The flag. Nothing presses it — it is set in the dialog — but it is exactly what you are meant to
+/* The flag. It is exactly what you are meant to
    pick out from a distance, so it grows with everything else. The border round the note does the
    work at that range; this is what says which mark it is once you are closer. */
 html[data-driving] .postit .flag { width: 28px; height: 28px; }

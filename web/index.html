@@ -133,9 +133,8 @@
         </div>
       </label>
 
-      <label>Title
+      <label>Title <small class="aside">(this is also the session name)</small>
         <input id="f-title" required autocomplete="off" spellcheck="false" placeholder="Fix-Login-Bug">
-        <small>this is also the session name</small>
       </label>
 
       <!-- Notes, and only notes: they stay on the note and on the post-it, and nothing ever sends
@@ -155,13 +154,6 @@
         <datalist id="f-epics"></datalist>
       </label>
 
-      <!-- The flag. It used to sit on every note waiting to be clicked, which made it a mark that
-           was everywhere and therefore marked nothing. It is a decision, so it is taken here,
-           where the rest of the decisions about a story are taken. -->
-      <label class="check" id="f-flag-row" hidden>
-        <input type="checkbox" id="f-flag"> Flag it
-        <small>it stands out on the board, and comes first when k0 is asked what to do next</small>
-      </label>
 
       <footer>
         <button type="button" id="f-delete" class="danger">Delete</button>

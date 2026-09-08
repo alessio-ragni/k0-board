@@ -41,8 +41,14 @@ is exactly the board it was.
   story down.
 - **Notes on a story, which are yours and go nowhere.** Editing a story gives you a list to jot
   things into; they sit on the post-it where you can read them and are never sent to Claude Code.
-  A story being written for the first time is not asked for them, nor for the flag: at that moment
-  there is nothing to note down yet.
+  A story being written for the first time is not asked for them: at that moment there is nothing
+  to note down yet.
+- **The flag is put on from the note, in passing.** It was a checkbox in the pencil dialog, which
+  meant opening the dialog, ticking a box and saving for a mark you change your mind about twice a
+  day. It is now the glyph at the bottom corner of the post-it: invisible until the pointer is on
+  the note, one click on, one click off. A flagged note keeps it lit, takes its border, and its key
+  and title take the same colour — so you can tell a flagged one from across the room and not only
+  by a hairline.
 - **The repository menu is k0's own, with a search in it.** It was the system's dropdown, which on
   macOS opens a panel from another application in the middle of a board made of paper and cannot
   hold a search at all. It is now the same picker the new-story dialog has: type three letters,

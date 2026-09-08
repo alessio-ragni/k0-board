@@ -228,12 +228,22 @@ function depMark(story) {
  * decisions about a story are taken. An empty outline sitting on every note waiting to be clicked
  * was a mark that was everywhere and therefore marked nothing.
  *
- * The note takes a border in the same colour, and that is the half that does the work: the point
- * of flagging something is to find it again from across the room, and a fifteen-pixel glyph cannot
- * be seen from there.
+ * It is the target too, and it is the only place the flag is set: a checkbox in the dialog meant
+ * opening the dialog, ticking a box and saving, for a mark you put on and take off in passing. It
+ * is invisible until the pointer is on the note — an outline on every note waiting to be clicked
+ * is a mark that is everywhere and therefore marks nothing — and once it is on it stays on, in the
+ * warn colour, with the key and the name taking that colour with it. That is the half that does
+ * the work: the point of flagging something is to find it again from across the room, and a
+ * fifteen-pixel glyph cannot be seen from there.
  */
-const flagMark = (story) =>
-  story.starred ? `<span class="flag" title="Flagged">${ICON.flag}</span>` : ''
+const flagMark = (story) => {
+  const on = !!story.starred
+  const why = on
+    ? 'Flagged — click to take it off'
+    : 'Flag it: it stands out on the board, and comes first when k0 is asked what to do next'
+  return `<button type="button" class="flag${on ? ' on' : ''}" aria-pressed="${on}"
+      title="${esc(why)}" aria-label="${esc(why)}">${ICON.flag}</button>`
+}
 
 // ── The epic you are standing in ───────────────────────────────────
 
@@ -403,6 +413,18 @@ function postit(story, now) {
         'stop the session and its terminal, and leave the story where it is',
         'link'
       )
+  }
+
+  // The flag: pressed here and nowhere else. `stopPropagation` for the reason the corner and the
+  // epic chip have it — the note answers a click of its own, and this is not a way of asking for
+  // that.
+  const flag = el.querySelector('.flag')
+  if (flag) {
+    flag.onclick = (e) => {
+      e.stopPropagation()
+      setFlag(story)
+    }
+    flag.addEventListener('dblclick', (e) => e.stopPropagation())
   }
 
   // The git mark is a link: a double click on it would open two tabs and bring the terminal to
@@ -1301,12 +1323,11 @@ function openEditor(story, presetPath = null) {
   // the only two things there are to do with a new story.
   $('#f-notes-row').hidden = !story
   $('#f-notes').value = story?.description ?? ''
-  // The two the backlog adds. They are not on the dialog at all with the feature off: an empty
-  // field for something that does not exist is a question nobody can answer.
+  // The one the backlog adds. It is not on the dialog at all with the feature off: an empty field
+  // for something that does not exist is a question nobody can answer. The flag is not here at
+  // all — it is put on and taken off from the note, which is where you are when you decide.
   $('#f-epic-row').hidden = !backlogOn
-  $('#f-flag-row').hidden = !backlogOn || !story
   $('#f-epic').value = story?.epic_title ?? ''
-  $('#f-flag').checked = !!story?.starred
   fillEpics()
   $('#f-delete').style.display = story ? '' : 'none'
   // Saving without starting anything is what editing a story is for. A NEW story on a board with
@@ -1376,18 +1397,35 @@ async function chosenEpic() {
  */
 async function stampBacklog(id, story) {
   if (!backlogOn) return
-  const starred = $('#f-flag').checked
   const before = story?.epic_title ?? ''
   const typed = $('#f-epic').value.trim()
-  const epicChanged = typed !== before
-  if (!epicChanged && starred === !!story?.starred) return
+  if (typed === before) return
   try {
-    const change = { starred }
-    if (epicChanged) change.epic_key = await chosenEpic()
+    const change = { epic_key: await chosenEpic() }
     await api(`/api/backlog/story/${id}`, { method: 'PATCH', body: JSON.stringify(change) })
   } catch (e) {
     toast(`The story is saved, but: ${e.message}`, 8000)
   }
+}
+
+/**
+ * On and off, from the note itself.
+ *
+ * Through the backlog's own door and not the board's: it is the one that writes the `.k0/` file,
+ * so a flag put on here is on the disk copy too and survives a lost database like everything else
+ * about the story.
+ */
+async function setFlag(story) {
+  try {
+    await api(`/api/backlog/story/${story.id}`, {
+      method: 'PATCH',
+      body: JSON.stringify({ starred: !story.starred }),
+    })
+  } catch (e) {
+    toast(`Couldn't do it: ${e.message}`, 8000)
+  }
+  lastSignature = ''
+  refresh()
 }
 
 let hits = [] // the repositories shown in the list right now
