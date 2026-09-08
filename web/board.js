@@ -4,6 +4,7 @@ import { weight, gb } from '/units.js'
 import { setFavicon } from '/favicon.js'
 import { split } from '/recency.js'
 import { drawList, leaveList } from '/list.js'
+import { search as fuzzy } from '/fuzzy.js'
 
 // ── Statuses ───────────────────────────────────────────────────────
 // The order is the attention priority inside a column: first whoever is waiting for you,
@@ -131,19 +132,8 @@ const tilt = (id) => (((id * 37) % 5) - 2) * 0.5
 // drawn only when the server says there is a backlog: with it off the note is the note it has
 // always been, down to the last element.
 
-/**
- * The story's name, and where it is sitting.
- *
- * Two different things and they are drawn as two: `K42` is what the story is called and never
- * changes, `1.12` is where it stands in the tree today and moves the moment the tree does. Saying
- * them in one breath — `K42.1.12` — would make the second look like part of the first.
- */
-const keyMark = (story) => {
-  const where = story.alias ? `, ${story.alias} in the backlog` : ''
-  return `<span class="key" title="${esc(`${story.key}${where}`)}">${esc(story.key)}${
-    story.alias ? `<em>${esc(story.alias)}</em>` : ''
-  }</span>`
-}
+/** The story's name — `K42`, allocated once and never reused, never reassigned, never renamed. */
+const keyMark = (story) => `<span class="key" title="${esc(story.key)}">${esc(story.key)}</span>`
 
 /**
  * An epic's colour. Nothing stores one and nothing should: a colour somebody had to choose is one
@@ -186,7 +176,7 @@ function epicChip(story) {
  */
 function nextStepButton(story, btn) {
   const step = story.next_step
-  if (!step || !(step.action === 'focus' || step.command)) return false
+  if (!step || !(step.action || step.command)) return false
   btn(step.label, () => doNextStep(story), step.why)
   return true
 }
@@ -194,19 +184,19 @@ function nextStepButton(story, btn) {
 /**
  * Doing it, wherever it was pressed — the note or a row in the list.
  *
- * The two things a suggestion can be: go to the session that is already open, or start one saying
- * `/k0-plan K42`. A step that is neither is a step from a server newer than this page, and doing
- * nothing is the only honest answer left — guessing would put something on a command line.
+ * The two things a suggestion can be: pick a closed conversation back up, or start a session
+ * saying `/k0-plan K42`. A step that is neither is a step from a server newer than this page, and
+ * doing nothing is the only honest answer left — guessing would put something on a command line.
  *
- * `/k0-work` asks the same question Start asks, because it is the same act: it is the one command
- * here that goes and does the work, and doing it on a story that waits on something unfinished is
- * the moment the note you left yourself was for. The other commands only talk about the story, and
- * being asked before a discussion would be a question with nothing riding on it.
+ * `/k0-work` asks the same question Quick Start asks, because it is the same act: it is the one
+ * command here that goes and does the work, and doing it on a story that waits on something
+ * unfinished is the moment the note you left yourself was for. The other commands only talk about
+ * the story, and being asked before a discussion would be a question with nothing riding on it.
  */
 async function doNextStep(story) {
   const step = story.next_step
   if (!step) return
-  if (step.action === 'focus') return focusTerminal(story.id)
+  if (step.action === 'resume') return start(story.id, 'resume')
   if (!step.command) return
   if (step.command === 'k0-work' && !(await mayStart(story))) return
   startCommand(story, step.command)
@@ -293,7 +283,13 @@ function postit(story, now) {
 
   const alive = story.session_id && story.session_alive && !story.completed_at
   const dead = story.session_id && !story.session_alive && !story.completed_at
-  if (alive) el.title = 'Double-click to bring its terminal up front'
+  el.title = alive
+    ? 'Double-click to bring its terminal up front'
+    : story.completed_at
+      ? ''
+      : story.session_id
+        ? 'Double-click to pick the conversation up where it was'
+        : 'Double-click to open a session on it'
 
   // On a finished story there is nothing left to edit: the bin takes the pencil's place.
   const corner = story.completed_at
@@ -373,13 +369,13 @@ function postit(story, now) {
   if (story.completed_at) {
     btn('Reopen', () => setCompleted(story.id, false))
   } else if (!story.session_id) {
-    // What to do next comes first, and where there is one Start goes to the end of the row as a
-    // link — the same place Close takes for the same reason. They are not the same thing: the
-    // suggestion opens a session on `/k0-discuss K42`, Start opens one on whatever the note itself
-    // says, which is what you wrote there and which the suggestion never overwrites. Where there is
-    // no suggestion Start is the button it has always been.
+    // What to do next comes first, and where there is one Quick Start goes to the end of the row as
+    // a link — the same place Close takes for the same reason. They are the two roads out and they
+    // are not the same road: the suggestion opens a session on `/k0-discuss K42` and takes the long
+    // way round, Quick Start opens an empty one and leaves the typing to you. Where there is no
+    // suggestion Quick Start is the button it has always been.
     const suggested = backlogOn && nextStepButton(story, btn)
-    if (!suggested) btn('Start', () => startStory(story))
+    if (!suggested) btn('Quick Start', () => startStory(story))
     // And Done beside it, once there is a backlog behind the board. A story with no session is not
     // only an idea nobody has touched: it is also the ordinary shape of one planned here and then
     // worked on in a terminal the user opened himself, or checked over by hand. `Done` is the only
@@ -387,16 +383,15 @@ function postit(story, now) {
     // and the backlog's own rule is that any state may follow any other, Backlog to Done included.
     // Switched off, the post-it is exactly the post-it it has always been.
     if (backlogOn) btn('Done', () => setCompleted(story.id, true), 'close this job')
-    if (suggested) btn('Start', () => startStory(story), 'open a session on what this note says', 'link')
+    if (suggested) btn('Quick Start', () => startStory(story), 'open a session on it and type there yourself', 'link')
   } else {
-    // Whatever became of the session, and NOT only while it is alive. A live one is answered with
-    // "Go to the terminal" — the note answers a double click by bringing the window up, but a
-    // gesture nobody knows about is not a way in. A session that has ended is the whole other half
-    // of the table: Check it, Put it right, Split it. A story only ever reaches `Working` by having
-    // had a live session, so gating this on `session_alive` made every one of those unreachable
-    // from a note while the list went on drawing them — one story, two views, two answers.
-    if (backlogOn) nextStepButton(story, btn)
-    if (dead) btn('Resume', () => start(story.id, 'resume'))
+    // A session that is running needs no button at all: the terminal is where the work is, and a
+    // double click on the note goes there. One that has ended is a conversation waiting to be
+    // picked up, and that is the suggestion the server gives back — so with a backlog behind the
+    // board Resume arrives as the suggestion, and the line under it is only for a board with the
+    // backlog switched off, where nothing suggests anything.
+    const suggested = backlogOn && nextStepButton(story, btn)
+    if (dead && !suggested) btn('Resume', () => start(story.id, 'resume'))
     btn('Done', () => setCompleted(story.id, true), 'close this job and its terminal')
     // Close gives the memory back without declaring the work over, and it comes after Done, as a
     // link rather than a button: it is the rarer of the two and should not compete with it. Not
@@ -414,11 +409,15 @@ function postit(story, now) {
   // the front into the bargain. Double clicks do not reach it.
   el.querySelector('.git')?.addEventListener('dblclick', (e) => e.stopPropagation())
 
-  // Double click: back to this session's terminal, wherever it has ended up.
+  // Double click: into the work, whatever state the note is in. Its terminal if one is running,
+  // the conversation it left behind if there is one, and a fresh session if there is neither — a
+  // gesture that does nothing on half the notes is a gesture nobody ends up trusting.
   el.ondblclick = (e) => {
-    if (!alive) return
+    if (story.completed_at) return
     e.preventDefault()
-    focusTerminal(story.id)
+    if (alive) return focusTerminal(story.id)
+    if (story.session_id) return start(story.id, 'resume')
+    startStory(story)
   }
   return el
 }
@@ -818,27 +817,46 @@ function drawLane(epic) {
   $('#epic-count').textContent = `${done} of ${total} done`
 }
 
+/** Everything the repository menu can offer, newest board first. `''` is all of them. */
+let repoOptions = [['', 'All repositories']]
+
 /**
  * Which repository both views are showing, when they are showing one.
  *
- * The list is rebuilt only when it really changes: a `<select>` redrawn under an open dropdown
- * closes it, and this runs on every redraw of the board.
+ * Only the list is kept here; drawing it is `paintRepoList`, which happens when the menu is opened
+ * and not on every redraw of the board. The board is asked for once a second, and rebuilding rows
+ * under an open menu is how a menu closes itself out from under the pointer.
  */
 function renderRepoFilter(data, inEpic) {
-  const sel = $('#repo-filter')
   // Whether it is on the bar at all belongs to `renderColumnsSwitch`, which is the only place that
   // knows all the answers. Here there is only what is in it.
   if (inEpic) return
   // A repository that has no stories left has no column and cannot be filtered to: keeping it
-  // would leave the board empty with the reason hidden inside a dropdown nobody has opened.
+  // would leave the board empty with the reason hidden inside a menu nobody has opened.
   if (repoFilter && !data.columns.some((c) => c.path === repoFilter)) chooseRepo('')
-  const options = [['', 'All repositories'], ...data.columns.map((c) => [c.path, c.name])]
-  const sig = JSON.stringify(options)
-  if (sel.dataset.sig !== sig) {
-    sel.dataset.sig = sig
-    sel.innerHTML = options.map(([v, label]) => `<option value="${esc(v)}">${esc(label)}</option>`).join('')
-  }
-  sel.value = repoFilter
+  repoOptions = [['', 'All repositories'], ...data.columns.map((c) => [c.path, c.name])]
+  $('#repo-filter-btn').textContent = repoOptions.find(([v]) => v === repoFilter)?.[1] ?? 'All repositories'
+}
+
+/** The rows of the repository menu, narrowed by what has been typed into it. */
+function paintRepoList(query = '') {
+  const rows = fuzzy(repoOptions, query, ([, label]) => label)
+  $('#repo-filter-rows').innerHTML = rows.length
+    ? rows
+        .map(([v, label]) => `<div role="option" data-repo="${esc(v)}" class="${v === repoFilter ? 'on' : ''}"
+             aria-selected="${v === repoFilter}">${esc(label)}</div>`)
+        .join('')
+    : '<div style="color:var(--muted)">no repository with that name</div>'
+}
+
+/** Open or shut, in one place: the arrow on the button and the list itself always agree. */
+function showRepoList(open) {
+  $('#repo-filter-list').hidden = !open
+  $('#repo-filter-btn').setAttribute('aria-expanded', String(open))
+  if (!open) return
+  $('#repo-filter-q').value = ''
+  paintRepoList('')
+  $('#repo-filter-q').focus()
 }
 
 function chooseRepo(path) {
@@ -858,7 +876,11 @@ function chooseRepo(path) {
  */
 function renderColumnsSwitch() {
   $('#columns').hidden = !backlogOn
-  $('#repo-filter').hidden = !backlogOn || !!laneEpic
+  const hide = !backlogOn || !!laneEpic
+  // Shut before it goes: a menu left open under a hidden element comes back open the next time
+  // the element does, over a board nobody asked it to cover.
+  if (hide && !$('#repo-filter-list').hidden) showRepoList(false)
+  $('#repo-filter').hidden = hide
   // And what the `+` promises. With a backlog behind the board it opens a menu with two things on
   // it, and a button whose label says one of them is a button that lied about the other.
   const plus = backlogOn ? 'New story or epic' : 'New story'
@@ -1110,9 +1132,17 @@ async function focusTerminal(id) {
   // The answer says `ok: false` when the window could not be brought up, and the request itself
   // can fail — a story deleted in another tab, the server restarting. Both are the same news to
   // whoever double-clicked, and neither may be a double click that did nothing.
+  //
+  // `resumable` is the difference between news and a dead end: the window is gone but there is a
+  // conversation behind it, and the one thing worth doing about that is offered rather than
+  // described. Answered with a question and not by resuming on its own — a double click asked for
+  // the window that was there, not for a new one.
   try {
     const r = await api(`/api/story/${id}/focus`, { method: 'POST' })
-    if (!r.ok) toast(r.error || 'That terminal could not be brought up front')
+    if (r.ok) return
+    const said = r.error || 'That terminal could not be brought up front'
+    if (!r.resumable) return toast(said)
+    if (await ask(`${said} Open it again?`, { yes: 'Resume', destructive: false })) start(id, 'resume')
   } catch (e) {
     toast(`Couldn't do it: ${e.message}`)
   }
@@ -1266,18 +1296,29 @@ function openEditor(story, presetPath = null) {
   $('#f-project').disabled = !!story?.session_id
   $('#f-project').classList.remove('bad')
   $('#f-title').value = story?.title ?? ''
-  $('#f-prompt').value = story?.prompt ?? ''
+  // Notes and the flag are things you have an opinion about once the story exists and you have
+  // been back to it. Asked at the moment of writing it down they are two fields between you and
+  // the only two things there are to do with a new story.
+  $('#f-notes-row').hidden = !story
+  $('#f-notes').value = story?.description ?? ''
   // The two the backlog adds. They are not on the dialog at all with the feature off: an empty
   // field for something that does not exist is a question nobody can answer.
   $('#f-epic-row').hidden = !backlogOn
-  $('#f-flag-row').hidden = !backlogOn
+  $('#f-flag-row').hidden = !backlogOn || !story
   $('#f-epic').value = story?.epic_title ?? ''
   $('#f-flag').checked = !!story?.starred
   fillEpics()
   $('#f-delete').style.display = story ? '' : 'none'
+  // Saving without starting anything is what editing a story is for. A NEW story on a board with
+  // a backlog does not have it: there are two roads out of this dialog and both of them open a
+  // terminal — the long way round through a discussion, or straight in. A board with the backlog
+  // switched off keeps it, because that board is the board it always was.
+  $('#f-save').style.display = story || !backlogOn ? '' : 'none'
+  // The long way in, and only where there is a backlog to discuss anything into.
+  $('#f-discuss').style.display = !story && backlogOn ? '' : 'none'
   // A live session is not restarted: there is only saving to do there.
   $('#f-start').style.display = story?.session_alive ? 'none' : ''
-  $('#f-start').textContent = story?.session_id ? 'Resume' : 'Start'
+  $('#f-start').textContent = story?.session_id ? 'Resume' : 'Quick Start'
   $('#f-project-list').hidden = true
   $('#editor').showModal()
   ;(chosenProject ? $('#f-title') : $('#f-project')).focus()
@@ -1415,6 +1456,24 @@ function resolveProject() {
   el.classList.remove('bad')
 }
 
+/**
+ * The notes, as a list.
+ *
+ * A dash is put in front of every line that has not got one, on the way to being saved rather than
+ * as you type: a box that rewrites the line under the cursor is a box that fights you in the middle
+ * of a word. Blank lines go, because a bullet with nothing after it is not a note.
+ *
+ * It is what makes the box a list and not a paragraph — which is the whole difference between
+ * somewhere to jot three things down and somewhere to write an essay nobody will read again.
+ */
+const bulleted = (text) =>
+  String(text ?? '')
+    .split('\n')
+    .map((line) => line.trim())
+    .filter(Boolean)
+    .map((line) => (/^[-*•]\s*/.test(line) ? line.replace(/^[-*•]\s*/, '- ') : `- ${line}`))
+    .join('\n')
+
 /** Returns the saved story, or null if it could not be saved. */
 async function save() {
   if (!$('#editor-form').reportValidity()) return null
@@ -1431,15 +1490,12 @@ async function save() {
     toast('A title is required')
     return null
   }
-  // No description here on purpose: a story written by hand does not need one. The field only
-  // ever mattered for an imported session, where it is the one line saying what happened in
-  // there — and that one is written by the import. Leaving the key out of the payload is what
-  // keeps it: `patchStory` writes only the keys it is given.
-  const payload = {
-    title,
-    project_path: chosenProject,
-    prompt: $('#f-prompt').value,
-  }
+  // The notes go in only when the dialog was showing them, which is to say only when a story was
+  // being edited. Leaving the key out of the payload is what keeps what is already there:
+  // `patchStory` writes only the keys it is given, so a new story is written without touching a
+  // description an import may later put on it.
+  const payload = { title, project_path: chosenProject }
+  if (!$('#f-notes-row').hidden) payload.description = bulleted($('#f-notes').value)
   try {
     const saved = editing
       ? await api(`/api/story/${editing}`, { method: 'PATCH', body: JSON.stringify(payload) })
@@ -1539,7 +1595,6 @@ const LIST = {
   hue: epicHue,
   flag: ICON.flag,
   next: doNextStep,
-  done: (id) => setCompleted(id, true),
   redraw: () => {
     lastSignature = ''
     refresh()
@@ -1624,13 +1679,12 @@ async function refresh() {
         // with the feature off, which compares as well as anything else.
         c.state,
         c.starred,
-        c.alias,
         c.epic_key,
         c.epic_title,
         c.blocked,
-        // The label on the one button that says what to do next. It changes without anything else
-        // on the row changing — a story sitting still for a fortnight starts suggesting a split —
-        // and a suggestion nothing noticed would stay wrong until something else moved.
+        // The label on the one button that says what to do next. It can change without anything
+        // else on the row changing, and a suggestion nothing noticed would stay wrong until
+        // something else moved.
         c.next_step?.label ?? '',
       ]),
       // The server state belongs in here for the same reason the git state does: without it the
@@ -1719,11 +1773,40 @@ async function boot() {
     refresh()
   }
 
-  $('#repo-filter').onchange = (e) => {
-    chooseRepo(e.target.value)
+  // The repository menu: a button that opens a list with a search in it. Everything that closes
+  // it goes through `showRepoList`, so there is no way to leave the arrow saying one thing and the
+  // list doing another.
+  $('#repo-filter-btn').onclick = (e) => {
+    e.stopPropagation()
+    showRepoList($('#repo-filter-list').hidden)
+  }
+  $('#repo-filter-q').oninput = (e) => paintRepoList(e.target.value)
+  $('#repo-filter-q').onkeydown = (e) => {
+    if (e.key === 'Escape') {
+      e.stopPropagation()
+      showRepoList(false)
+      $('#repo-filter-btn').focus()
+      return
+    }
+    // Enter takes the first row that is left, which is the one the search put at the top: typing
+    // three letters and pressing Enter is the whole gesture, without reaching for the pointer.
+    if (e.key !== 'Enter') return
+    e.preventDefault()
+    $('#repo-filter-rows').querySelector('[data-repo]')?.click()
+  }
+  $('#repo-filter-rows').onclick = (e) => {
+    const row = e.target.closest('[data-repo]')
+    if (!row) return
+    chooseRepo(row.dataset.repo)
+    showRepoList(false)
     lastSignature = ''
     refresh()
   }
+  // Anywhere else on the page shuts it. A menu you have to press the button again to be rid of is
+  // a menu that stays open over the board.
+  document.addEventListener('click', (e) => {
+    if (!$('#repo-filter-list').hidden && !e.target.closest('#repo-filter')) showRepoList(false)
+  })
 
   // The way out of an epic. It is a button with words on it and not an ✕: going back to the whole
   // board is not closing something, and there is nothing here to close.
@@ -1763,11 +1846,19 @@ async function boot() {
     e.preventDefault()
     save()
   }
-  // Save and go: the same thing the button on the story does, without going through it.
+  // Save and go: the same thing the button on the story does, without going through it. Nothing
+  // is sent with it — the terminal opens empty and you type there, which is the whole of what
+  // makes this the quick way in.
   $('#f-start').onclick = async () => {
     const saved = await save()
     if (!saved) return
     start(saved.id, editingStory?.session_id ? 'resume' : 'start')
+  }
+  // And the long way round: the story is written down and the discussion starts on it at once,
+  // which is the same `/k0-discuss K42` the post-it's own button would have opened later.
+  $('#f-discuss').onclick = async () => {
+    const saved = await save()
+    if (saved) startCommand(saved, 'k0-discuss')
   }
   // Esc with the list open closes only the list: the dialog leaves on the second Esc.
   $('#editor').oncancel = (e) => {

@@ -247,9 +247,15 @@ body {
 .columns button[aria-checked="true"]:hover { background: var(--ink); }
 
 /* And which repository, which now serves both views: the list has no columns to be repositories,
-   and on the board it narrows what is already there. */
-.repo-filter {
-  flex: none;
+   and on the board it narrows what is already there.
+
+   Drawn here rather than left to the browser. It was a `<select>`, which on macOS opens the
+   system's own list in the system's own type in the middle of the screen — a panel from another
+   application landing on top of a board made of paper — and which cannot hold the search that
+   makes a list of twenty repositories usable at all. It is the same picker the new-story dialog
+   has, so there is one way of choosing a repository in k0 and not two. */
+.repo-filter { flex: none; }
+.repo-filter > button {
   font: inherit;
   font-size: .82rem;
   font-weight: 600;
@@ -257,13 +263,32 @@ body {
   background: var(--paper);
   border: 1px solid var(--line);
   border-radius: 999px;
-  padding: 5px 10px;
+  padding: 5px 12px;
   /* A repository with a long name must not be what pushes the bar onto a second row: past this it
-     is cut with an ellipsis, and the whole name is still in the dropdown. */
+     is cut with an ellipsis, and the whole name is still in the list. */
   max-width: 160px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
   cursor: pointer;
 }
-.repo-filter:hover { border-color: #bdb6a5; }
+.repo-filter > button:hover { border-color: #bdb6a5; }
+.repo-filter > button[aria-expanded="true"] { border-color: #bdb6a5; background: var(--bg); }
+/* Wider than the button it hangs off: the button is cut short on purpose and the list is where the
+   whole name is read. */
+.repo-filter .picker-list { left: 0; right: auto; min-width: 260px; }
+.repo-filter .picker-list input {
+  display: block;
+  width: 100%;
+  font: inherit;
+  font-size: .9rem;
+  padding: 7px 10px;
+  margin-bottom: 5px;
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  background: var(--paper);
+}
+.repo-filter .picker-list input:focus { outline: none; border-color: #bdb6a5; }
 
 /* ── The four modes ───────────────────────────────────────────────────
    At the end of the bar, a row of four: how awake the machine has to stay. Switched off they are
@@ -877,9 +902,12 @@ body {
    git mark stays next to the repository name instead of next to the pencil. */
 .postit .head, .postit .title { padding-right: 26px; }
 
-/* The buttons stay hidden until you hover: the dashboard stays clean. */
+/* The buttons stay hidden until you hover: the dashboard stays clean. The row wraps and the words
+   in it do not — a note is 268px wide and three buttons can outgrow that, but a label broken over
+   two lines reads as two buttons and made the post-it grow a row taller than the ones beside it. */
 .postit .actions {
   display: flex;
+  flex-wrap: wrap;
   gap: 7px;
   margin-top: 11px;
   opacity: 0;
@@ -889,6 +917,7 @@ body {
 .postit .actions button {
   font-size: .84rem;
   font-weight: 600;
+  white-space: nowrap;
   padding: 6px 13px;
   background: rgba(255, 255, 255, .72);
   border-color: rgba(0, 0, 0, .14);

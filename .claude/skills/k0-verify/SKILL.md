@@ -37,7 +37,7 @@ subdirectory of it or inside a session's worktree. That last case is the reason 
 - **A listing with `stories: []`** → say that plainly and stop. There is nothing here to check
   against, and it is not a reason to ask the user for what the board would have told you.
 
-That answer holds every story in this repository with its key, alias, state and title, so work
+That answer holds every story in this repository with its key, state and title, so work
 out which story is meant from it — never ask the user for a key you can look up. With no
 argument, take the story of the session you are in, or the one in `Working`; if two could be
 meant, ask once, showing both.
@@ -195,7 +195,7 @@ curl -sS --max-time 30 -X POST "http://127.0.0.1:$PORT/api/backlog/story/$STORY_
 
 - **Talk to the user in his language, and store what he says in his language.** The evidence
   strings that are file and line stay as they are; the sentences around them are his.
-- **Never ask for what the API can tell you** — the key, the alias, the state, the decisions,
+- **Never ask for what the API can tell you** — the key, the state, the decisions,
   what is blocked. It is all in the two calls at the top.
 - **Do not invent evidence.** A line number you did not open is worse than no verdict.
 - **Do not edit or delete a decision.** Verdicts are recorded against it; the sentence itself

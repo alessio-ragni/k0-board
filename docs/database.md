@@ -92,8 +92,8 @@ Indexed by `(project_path, sort_hint, id)`.
 **The key.** `K` + `key_num`, e.g. `K42`, counted per repository and shared between epics and
 stories. Two repositories can both have a `K42`; that is intended, a key means something inside
 its repository and nowhere else. The counter lives in `key_seq` rather than being a `MAX()`, so a
-deleted `K42` is never handed out again. The **alias** — `1.12.1`, the position in the tree — is
-computed on the way out and never stored, so it cannot disagree with the tree it describes.
+deleted `K42` is never handed out again. It is the only name a story has: there is no second
+number saying where it sits, because where it sits is the tree itself and the tree can be read.
 
 **What may be edited from outside.** Only `title`, `description`, `project_path`, `prompt`,
 `body`, `plan`, `starred`, `lang`, `color`, `sort_hint`, `epic_id` and `parent_story_id`. `state`

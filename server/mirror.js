@@ -3,7 +3,6 @@ import path from 'node:path'
 import * as db from './db.js'
 import * as settings from './settings.js'
 import { matter } from '../web/md.js'
-import { storyAlias, epicAlias } from './backlog.js'
 
 // ── The readable copy ────────────────────────────────────────────────────────
 // The board's database is the source of truth. `.k0/` is the same backlog written down where a
@@ -37,9 +36,9 @@ const EPIC_SECTIONS = ['Why', 'Discussion', 'Decisions', 'Stories']
 // added by hand — `owner:`, `ticket:` — is theirs and is printed back untouched, for the same
 // reason a section they wrote is: a header that quietly loses a line is a header nobody writes in
 // twice.
-const STORY_KEYS = ['key', 'alias', 'epic', 'parent', 'state', 'color', 'starred', 'depends_on', 'sessions', 'lang',
+const STORY_KEYS = ['key', 'order', 'epic', 'parent', 'state', 'color', 'starred', 'depends_on', 'sessions', 'lang',
   'created', 'updated', 'completed']
-const EPIC_KEYS = ['key', 'alias', 'state', 'lang', 'created', 'updated']
+const EPIC_KEYS = ['key', 'order', 'state', 'lang', 'created', 'updated']
 
 // ── Where it may write ───────────────────────────────────────────────────────
 
@@ -188,15 +187,14 @@ function place(repoPath, folder, key, title) {
   return `${folder}/${want}`
 }
 
-// ── The alias ────────────────────────────────────────────────────────────────
-// A position, never a stored number, so it cannot disagree with the tree. It is written into the
-// file for the person reading it and ignored on the way back in: on import the tree is rebuilt
-// from the files, and the position falls out of it again.
-//
-// The rule itself lives in `backlog.js` and is imported rather than repeated: the alias in a
-// `.k0/` file and the alias the API hands a skill have to be the same string, and two copies of
-// one rule drift — after which the file names a position the board does not show.
+// ── The order ────────────────────────────────────────────────────────────────
+// `order` is the row's own `sort_hint`, written down because it is the one thing about a file
+// that the folder itself cannot say: a directory listing is alphabetical, and the board's order
+// is whatever it was dragged into. It is copied and not computed, so there is no second rule here
+// to drift from the first — and on the way back in it is what puts the files in the order the
+// board had them.
 
+/** An epic's own stories, without the tasks they were split into: those hang off their story. */
 const topLevel = (stories) => stories.filter((s) => !s.parent_story_id)
 
 // ── Headings inside a section ────────────────────────────────────────────────
@@ -451,7 +449,7 @@ function storyFile(story) {
   const text = page([
     frontMatter([
       ['key', story.key],
-      ['alias', storyAlias(story)],
+      ['order', story.sort_hint ?? 0],
       ['epic', epic ? epic.key : null],
       // Only a task has one, so a story's header stays exactly what the format says it is. It has
       // to be written: without it a restored task comes back as a top-level story and the work it
@@ -505,7 +503,6 @@ function epicFile(epic) {
   const rel = place(epic.project_path, 'epics', epic.key, epic.title)
   const prev = existing(inside(epic.project_path, rel))
   const stories = topLevel(db.storiesOfEpic(epic.id))
-  const pos = epicAlias(epic)
   const done = stories.filter((s) => s.state === 'Done').length
   const decisions = db.listEpicDecisions(epic.id).map((d) => ({ ...d, label: `D${d.n}` }))
   const labelOf = (id) => decisions.find((d) => d.id === id)?.label ?? null
@@ -513,13 +510,13 @@ function epicFile(epic) {
   const list = [
     `${done}/${stories.length} done`,
     '',
-    ...stories.map((s, i) => `- **${s.key}** · ${pos}.${i + 1} · ${s.title} — ${s.state}`),
+    ...stories.map((s) => `- **${s.key}** · ${s.title} — ${s.state}`),
   ].join('\n')
 
   const text = page([
     frontMatter([
       ['key', epic.key],
-      ['alias', pos],
+      ['order', epic.sort_hint ?? 0],
       ['state', epic.state],
       ['lang', epic.lang || ''],
       ['created', stamp(epic.created_at)],
@@ -870,16 +867,12 @@ function usable(repoPath, folder, report) {
   return out
 }
 
-/** Files in the order their alias puts them, which is the order the board had them in. */
-const byAlias = (a, b) => {
-  const A = String(a.data.alias ?? '').split('.').map(Number)
-  const B = String(b.data.alias ?? '').split('.').map(Number)
-  for (let i = 0; i < Math.max(A.length, B.length); i++) {
-    const d = (A[i] || 0) - (B[i] || 0)
-    if (d) return d
-  }
-  return a.key - b.key
-}
+/**
+ * Files in the order the board had them in, which is what `order` was written down for. A file
+ * with no `order` — hand-written, or older than this format — sorts by its key, so it lands after
+ * nothing in particular rather than at the top of everything.
+ */
+const byOrder = (a, b) => (Number(a.data.order ?? a.key) - Number(b.data.order ?? b.key)) || a.key - b.key
 
 /**
  * The files back into the database.
@@ -909,7 +902,7 @@ function restore(repoPath, report) {
   // Per epic, the file's D-numbers against the rows they became: a story's verdict may be about
   // its epic's D3, and only the epic knows which row that is.
   const epicDecisions = new Map()
-  const epicFiles = usable(repoPath, 'epics', report).sort(byAlias)
+  const epicFiles = usable(repoPath, 'epics', report).sort(byOrder)
   epicFiles.forEach((f, i) => {
     const epic = db.createEpic({
       project_path: repoPath,
@@ -930,7 +923,7 @@ function restore(repoPath, report) {
   })
 
   const storyIds = new Map()
-  const storyFiles = usable(repoPath, 'stories', report).sort(byAlias)
+  const storyFiles = usable(repoPath, 'stories', report).sort(byOrder)
   storyFiles.forEach((f, i) => {
     const story = db.createStory({
       project_path: repoPath,

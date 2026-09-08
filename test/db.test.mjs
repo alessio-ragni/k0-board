@@ -159,7 +159,7 @@ section('The statuses the board derives')
   check('a story that is not there is not a crash', store.applyDerivedStatus(999999, 'WORKING', true), undefined)
 }
 
-// A session opened to TALK about a story is not the work starting. Pressing "Discuss it" on a
+// A session opened to TALK about a story is not the work starting. Pressing "Discuss" on a
 // note nobody has decided anything about used to move it to `Working` before the first question
 // was asked — and closing that terminal half way through left a story sitting in `Working` being
 // offered a counter-check on work that had never happened.

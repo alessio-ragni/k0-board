@@ -502,8 +502,8 @@ section('A sweep of the whole repository')
   check('the folder explains itself here too', read(k0(REPO, 'README.md')).startsWith('# .k0'), true)
 
   const epicText = () => read(k0(REPO, 'epics', names(k0(REPO, 'epics'))[0]))
-  check('the epic lists the story under it, at the position the board has it in',
-    epicText().includes(`- **${one.key}** · 1.1 · One — Backlog`), true)
+  check('the epic lists the story under it, by the name it is called and the state it is in',
+    epicText().includes(`- **${one.key}** · One — Backlog`), true)
   check('and counts how many of them are done', epicText().includes('0/1 done'), true)
 
   // The epic's file carries that line and that count, so it is stale the moment a story under it
@@ -820,16 +820,16 @@ section('A parent that would make a loop')
 }
 
 // ── The order the files come back in ─────────────────────────────────────────
-// The alias is a position, and it is what the board had. A folder read in name order is not that
-// order: `K10-…` sorts before `K2-…` in every directory listing there is.
+// `order` is what the board had, written down. A folder read in name order is not that order:
+// `K10-…` sorts before `K2-…` in every directory listing there is.
 section('The order the files come back in')
 {
   const REPO = repo()
-  handWritten(REPO, 'stories', 'K1-last.md', ['---', 'key: K1', 'alias: 3', '---', '', '# K1 · Last'])
-  handWritten(REPO, 'stories', 'K2-first.md', ['---', 'key: K2', 'alias: 1', '---', '', '# K2 · First'])
-  handWritten(REPO, 'stories', 'K3-middle.md', ['---', 'key: K3', 'alias: 2', '---', '', '# K3 · Middle'])
+  handWritten(REPO, 'stories', 'K1-last.md', ['---', 'key: K1', 'order: 30', '---', '', '# K1 · Last'])
+  handWritten(REPO, 'stories', 'K2-first.md', ['---', 'key: K2', 'order: 10', '---', '', '# K2 · First'])
+  handWritten(REPO, 'stories', 'K3-middle.md', ['---', 'key: K3', 'order: 20', '---', '', '# K3 · Middle'])
   mirror.importRepo(REPO)
-  check('the aliases decide the order, not the keys and not the names',
+  check('the order decides, not the keys and not the names',
     db.storiesOfProject(REPO).map((s) => s.title).join(','), 'First,Middle,Last')
 }
 {
@@ -837,8 +837,22 @@ section('The order the files come back in')
   handWritten(REPO, 'stories', 'K10-ten.md', ['---', 'key: K10', '---', '', '# K10 · Ten'])
   handWritten(REPO, 'stories', 'K2-two.md', ['---', 'key: K2', '---', '', '# K2 · Two'])
   mirror.importRepo(REPO)
-  check('with no alias to go on the key decides, and not the name the folder sorted by',
+  check('with no order to go on the key decides, and not the name the folder sorted by',
     db.storiesOfProject(REPO).map((s) => s.title).join(','), 'Two,Ten')
+}
+{
+  // What the board is dragged into is what comes back. This is the whole reason the number is in
+  // the file at all: without it a restore would hand back an order nobody chose.
+  const REPO = repo()
+  const a = db.createStory({ project_path: REPO, title: 'Second', sort_hint: 20 })
+  const b = db.createStory({ project_path: REPO, title: 'First', sort_hint: 10 })
+  mirror.writeStory(a.id)
+  mirror.writeStory(b.id)
+  db.deleteStory(a.id)
+  db.deleteStory(b.id)
+  mirror.importRepo(REPO)
+  check('a story written out and read back keeps the place it had on the board',
+    db.storiesOfProject(REPO).map((s) => s.title).join(','), 'First,Second')
 }
 
 // ── Notes under the title are not eaten ──────────────────────────────────────

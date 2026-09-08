@@ -18,11 +18,9 @@ const db = await import('../server/db.js')
 const backlog = await import('../server/backlog.js')
 
 // The model, without HTTP and without a disk. What is checked here is the arithmetic nobody should
-// ever have to do twice: the key that is a name for good, the alias that is only a position, what
-// is blocking what, and the one sentence that says what to pick up. A skill asked to work any of
-// this out for itself is a skill that gets it wrong once in twenty and never says so.
-
-const alias = (id) => backlog.storyAlias(db.getStory(id))
+// ever have to do twice: the key that is a name for good, what is blocking what, and the one
+// sentence that says what to pick up. A skill asked to work any of this out for itself is a skill
+// that gets it wrong once in twenty and never says so.
 
 // The settings file is only re-read when its mtime moves, so two writes inside the same
 // millisecond would leave the second one unread and the test reading the switch it had before.
@@ -69,9 +67,8 @@ section('A key is handed out once')
   check('so two repositories can both have a K1', db.getStoryByKey(OTHER, 1).id, first.id)
   check('and the other K1 is still the epic', db.getEpicByKey(REPO, 1).id, epic.id)
 
-  // Filing a story under an epic is where it sits changing, not what it is called. The alias
-  // moves — that is what an alias is for — and the key, which is the name a skill was told and
-  // the name a branch is cut with, does not move with it.
+  // Filing a story under an epic is where it sits changing, not what it is called: the key, which
+  // is the name a skill was told and the name a branch is cut with, does not move with it.
   const filed = db.getStoryByKey(REPO, 4)
   db.patchStory(filed.id, { epic_id: epic.id })
   check('a story filed under an epic keeps its key', db.getStory(filed.id).key, 'K4')
@@ -79,47 +76,26 @@ section('A key is handed out once')
   check('and keeps it on the way back out', db.getStory(filed.id).key, 'K4')
 }
 
-// ── The alias is a position and nothing else ─────────────────────────────────
-section('The alias is a position and nothing else')
+// ── An epic counts its stories ───────────────────────────────────────────────
+section('An epic counts its stories')
 {
-  const REPO = '/tmp/k0-backlog-alias'
+  const REPO = '/tmp/k0-backlog-epic-progress'
   const invoicing = db.createEpic({ project_path: REPO, title: 'Invoicing' })
-  const search = db.createEpic({ project_path: REPO, title: 'Search' })
   const one = db.createStory({ project_path: REPO, title: 'One', epic_id: invoicing.id })
   const two = db.createStory({ project_path: REPO, title: 'Two', epic_id: invoicing.id })
-  const loose = db.createStory({ project_path: REPO, title: 'On its own' })
-  const alsoLoose = db.createStory({ project_path: REPO, title: 'Also on its own' })
-  const piece = db.createStory({
+  db.createStory({
     project_path: REPO,
     title: 'A piece of Two',
     epic_id: invoicing.id,
     parent_story_id: two.id,
   })
 
-  check('an epic is its place in the repository', backlog.epicAlias(invoicing), '1')
-  check('and the next one is the next place', backlog.epicAlias(search), '2')
-  check('a story in an epic counts from the epic', alias(one.id), '1.1')
-  check('in the order the board is in', alias(two.id), '1.2')
-  check('a story with no epic counts among the ones with none', alias(loose.id), '1')
-  check('and only among those', alias(alsoLoose.id), '2')
-  const smaller = db.createStory({
-    project_path: REPO,
-    title: 'A piece of the piece',
-    epic_id: invoicing.id,
-    parent_story_id: piece.id,
-  })
-
-  check('a task counts from the story it came out of', alias(piece.id), '1.2.1')
-  check('and a task of that task counts from it in turn', alias(smaller.id), '1.2.1.1')
-  check('and does not take a place among its epic\'s stories', alias(two.id), '1.2')
-
-  // The alias is computed on every read, which is the whole reason it is not stored: this is one
-  // patch and four numbers change with it.
+  // A story filed under an epic keeps the name it was given: the key is the one thing here that
+  // never moves, and every skill that was told K4 is still holding K4.
   const keyBefore = db.getStory(one.id).key
+  const search = db.createEpic({ project_path: REPO, title: 'Search' })
   db.patchStory(one.id, { epic_id: search.id })
-  check('moving a story to another epic moves its alias', alias(one.id), '2.1')
-  check('and the one behind it takes its place', alias(two.id), '1.1')
-  check('while the key it is called by does not move at all', db.getStory(one.id).key, keyBefore)
+  check('a story moved to another epic keeps its key', db.getStory(one.id).key, keyBefore)
   db.patchStory(one.id, { epic_id: invoicing.id })
 
   const epic = backlog.publicEpic(db.getEpic(invoicing.id))
@@ -254,6 +230,10 @@ section('A story that was split is not the work any more')
 // The button drawn on every post-it and every row, and the sentence under it. Every arm of it is
 // proved here because the alternative was the page deciding: two sets of rules for one question,
 // and a board suggesting one thing while `/k0-next` said another.
+//
+// There are three commands on the list and no more, and they go in the order the work goes in:
+// Discuss, Plan, Work. `Resume` is the fourth answer and is not a command at all. Everything else
+// is `null` — an answer, and not a hole.
 section('The one thing to do with it next')
 {
   const REPO = '/tmp/k0-backlog-step'
@@ -262,7 +242,7 @@ section('The one thing to do with it next')
 
   const fresh = storyIn('The importer')
   check('a story nobody has decided anything about is one to talk through', step(fresh).command, 'k0-discuss')
-  check('with the words that go on the button', step(fresh).label, 'Discuss it')
+  check('with the one word that goes on the button', step(fresh).label, 'Discuss')
   check('and a sentence saying why it is this and not something else', step(fresh).why,
     'Nothing has been decided about it yet.')
 
@@ -270,7 +250,7 @@ section('The one thing to do with it next')
   // been settled about this one, so the round of questions has already happened somewhere.
   db.addDecision(fresh, { text: 'A file that fails to import is left where it was.' })
   check('once something has been decided about it, it is one to plan', step(fresh).command, 'k0-plan')
-  check('and the button changes with the answer', step(fresh).label, 'Plan it')
+  check('and the button changes with the answer', step(fresh).label, 'Plan')
 
   // Its epic's decisions count as its own, because they are what it will be held to: a story under
   // an epic that has been argued out is not a story nobody has decided anything about.
@@ -287,99 +267,59 @@ section('The one thing to do with it next')
 
   const planned = storyIn('Planned out', 'Planned')
   check('a planned story is one to work on', step(planned).command, 'k0-work')
-  check('which is the button pressed most', step(planned).label, 'Work on it')
+  check('which is the button pressed most', step(planned).label, 'Work')
 
+  // The end of the road, three times over. None of these is a hole: a story being worked on in a
+  // terminal, one waiting for somebody to look at it and one that is finished are all stories
+  // where a command on a command line would be k0 inventing work.
   const working = storyIn('Left half done', 'Working')
-  check('work left with no terminal running is one to check', step(working).command, 'k0-verify')
-  check('and the sentence says what became of it', step(working).why, 'The work was left with no session running.')
+  check('work begun somewhere k0 cannot see is the user\'s own to carry on with', step(working), null)
 
   const finished = storyIn('Shipped')
   db.setState(finished, 'Done')
   check('a finished story has nothing left to suggest', step(finished), null)
 
-  // The two arms of Review, which are the two halves of the promise the counter-check makes.
   const review = storyIn('Under the counter-check')
-  const rule = db.addDecision(review, { text: 'The importer never deletes what it could not read.' })
+  db.addDecision(review, { text: 'The importer never deletes what it could not read.' })
   db.setState(review, 'Review')
-  check('a story that came through its check clean is waiting for a person, not a command', step(review), null)
-  db.recordRunChecks(review, 1, [{ decision_id: rule.id, verdict: 'violated', evidence: 'server/import.js:31' }])
-  check('one with a decision broken is one to put right', step(review).command, 'k0-work')
-  check('and says so rather than saying Work on it', step(review).label, 'Put it right')
-  check('with the reason anybody would want first', step(review).why,
-    'The last counter-check found a decision broken.')
-  db.recordRunChecks(review, 2, [{ decision_id: rule.id, verdict: 'kept', evidence: 'server/import.js:31' }])
-  check('and is waiting for a person again once a run finds the decision kept', step(review), null)
+  check('and one waiting to be looked at is waiting for a person, not a command', step(review), null)
 
-  // A terminal that is open is the strongest thing k0 knows about where the work is, so it is
-  // asked before anything else: sending somebody off to start a second session on the same story
-  // is how two half-done things happen.
+  // A terminal that is open is the strongest thing k0 knows about where the work is, and it is
+  // answered with silence: the terminal is where the work is, the post-it goes there on a double
+  // click, and a button saying the same thing a second time is one button too many.
   const running = storyIn('Being worked on now')
   db.attachSession(running, 'a-live-session')
-  check('a story with a session open sends you to the terminal', step(running).label, 'Go to the terminal')
-  check('and offers no command to start a second one', step(running).command, null)
-  check('what it asks for is the window that is already there', step(running).action, 'focus')
-  check('and it says as much in words', step(running).why, 'A session is already open on it.')
+  check('a story with a session open suggests nothing at all', step(running), null)
+
+  // The session that has ended is the one case where there is something to offer and it is not a
+  // command: the conversation is still there, and starting a second one beside it is how two
+  // half-done things happen.
+  byHand('UPDATE session SET alive = 0 WHERE story_id = ?', running)
+  check('a story whose terminal was closed is one to pick back up', step(running).label, 'Resume')
+  check('and it starts nothing on a command line', step(running).command, null)
+  check('what it asks for is the session that was there', step(running).action, 'resume')
+  check('and it says as much in words', step(running).why,
+    'Its terminal was closed. This picks the conversation up where it was.')
   db.setState(running, 'Done')
-  check('and it is still the answer on a story somebody has ticked off', step(running).label, 'Go to the terminal')
+  check('but a story somebody has ticked off is finished, whatever it left behind', step(running), null)
 
-  // Fourteen days is a guess and the code says so. What is worth holding to is the edge: the day
-  // it turns over, and the states it is allowed to turn over in.
-  const aged = (id, days) =>
-    byHand("UPDATE session_event SET at = ? WHERE story_id = ? AND kind = 'state'",
-      Date.now() - days * 86400000 - 1000, id)
+  // Resume comes before every command, because a conversation already begun about this story
+  // beats any suggestion about how to begin one.
+  const halfTalked = storyIn('Talked through, terminal closed', 'Discussed')
+  db.attachSession(halfTalked, 'a-closed-session')
+  byHand('UPDATE session SET alive = 0 WHERE story_id = ?', halfTalked)
+  check('a closed session beats the command the state would have suggested',
+    step(halfTalked).label, 'Resume')
 
-  const stuck = storyIn('Two stories in one', 'Working')
-  aged(stuck, 14)
-  check('a fortnight is not yet long enough to give up on the shape of it', step(stuck).command, 'k0-verify')
-  aged(stuck, 15)
-  check('a day past it and it is one to cut in two', step(stuck).command, 'k0-split')
-  check('with the button saying so', step(stuck).label, 'Split it')
-  check('and the count in the sentence', step(stuck).why, 'It has not moved in 15 days.')
-
-  const sitting = storyIn('Planned and forgotten', 'Planned')
-  aged(sitting, 40)
-  check('a plan nobody has started in forty days is the same answer', step(sitting).command, 'k0-split')
-
-  // The fortnight is about the STATE and not about the terminal. `status_since` — the figure the
-  // line at the bottom of a post-it counts from — is the live session's own clock for anything
-  // that has ever had one, so a story whose session was abandoned in the spring reads as months
-  // old however recently somebody moved it.
-  const revived = storyIn('Abandoned, then planned', 'Backlog')
-  const spring = Date.now() - 60 * 86400000
-  db.attachSession(revived, 'a-session-from-the-spring')
-  byHand('UPDATE session SET alive = 0, started_at = ? WHERE story_id = ?', spring, revived)
-  byHand('UPDATE session_event SET at = ? WHERE story_id = ?', spring, revived)
-  db.setState(revived, 'Planned')
-  check('a story whose session is two months old still counts as old',
-    Math.floor((Date.now() - db.getStory(revived).status_since) / 86400000), 60)
-  check('but the state moved today, and that is what the fortnight asks about',
-    step(revived).command, 'k0-work')
-
-  // Only where there is work to cut up. A note that has sat in the backlog for a month is not two
-  // stories, it is a story nobody has talked through — and splitting it would only make two.
-  const old = storyIn('Sitting in the backlog')
-  aged(old, 40)
-  check('an undiscussed story is never split, however long it has sat', step(old).command, 'k0-discuss')
-
-  const openStill = storyIn('Stuck, but somebody is in there', 'Working')
-  aged(openStill, 40)
-  db.attachSession(openStill, 'another-live-session')
-  check('and a terminal that is open beats the fortnight too', step(openStill).label, 'Go to the terminal')
-
-  // The two facts that are not on the row are handed in by whoever already counted them — the
-  // board counts them for the whole screen at once, `publicStory` has them in local variables —
-  // and what is handed in is what is used. Getting this wrong is not a wrong button, it is four
-  // queries per post-it per second on a board that has already answered the question.
+  // The one fact that is not on the row is handed in by whoever already counted it — the board
+  // counts it for the whole screen at once, `publicStory` has it in a local variable — and what is
+  // handed in is what is used. Getting this wrong is not a wrong button, it is four queries per
+  // post-it per second on a board that has already answered the question.
   const told = storyIn('Nobody has said anything about it')
   check('a Backlog story told something has been decided is one to plan',
     backlog.nextStep(db.getStory(told), { decided: true }).command, 'k0-plan')
   check('and told nothing has, one to talk through',
     backlog.nextStep(db.getStory(told), { decided: false }).command, 'k0-discuss')
-  const checked = storyIn('Come back from the counter-check', 'Review')
-  check('a Review story told a decision is broken is one to put right',
-    backlog.nextStep(db.getStory(checked), { broken: true }).label, 'Put it right')
-  check('and told none is, is waiting for a person',
-    backlog.nextStep(db.getStory(checked), { broken: false }), null)
 
   // A row edited by hand, or a database older than this list. Guessing here would put a command on
   // a command line on the strength of a word nothing in k0 ever wrote.
@@ -391,7 +331,6 @@ section('The one thing to do with it next')
   // the sentence off the pick: it is the same function, or they are two answers to one question.
   check('the post-it is handed the answer rather than working it out',
     backlog.publicStory(db.getStory(planned)).next_step.command, 'k0-work')
-  check('and so is the story the skill picks up', backlog.next(REPO).story.next_step.label, 'Go to the terminal')
 }
 
 // ── The commands the interface may start ─────────────────────────────────────
@@ -433,9 +372,13 @@ section('The commands the interface may start')
     return backlog.nextStep(db.getStory(story.id))?.command
   }).filter(Boolean)
   check('every command a next step can suggest is one of them',
-    suggested.join(' '), 'k0-discuss k0-plan k0-work k0-verify')
+    suggested.join(' '), 'k0-discuss k0-plan k0-work')
   check('and all of them are on the list', suggested.every((c) => backlog.COMMANDS.includes(c)), true)
-  check('the one the fortnight suggests is there too', backlog.COMMANDS.includes('k0-split'), true)
+  // The rest of the list is not a menu: they are commands somebody types, and being reachable by
+  // hand is exactly why the whitelist still has to name them.
+  check('the one that checks the finished work is on it, though nothing suggests it',
+    backlog.COMMANDS.includes('k0-verify'), true)
+  check('and so is the one that cuts a story in two', backlog.COMMANDS.includes('k0-split'), true)
   check('and the one an epic is told with', backlog.COMMANDS.includes('k0-epic'), true)
 }
 
@@ -601,11 +544,11 @@ section('The listing one board is drawn from')
   check('while the feature itself is still on', backlog.listing(null).enabled, true)
 }
 
-// ── The alias when the tree underneath it is broken ──────────────────────────
+// ── A tree that has been hand-edited into a shape the board refuses ──────────
 // `.k0/` is a folder people hand-edit and a database can be older than the guard that would have
-// refused the shape. None of these is a wrong alias if it goes wrong: it is a stack overflow, or a
-// crash, thrown out of the middle of a request nothing above it expects to be able to fail.
-section('The alias when the tree underneath it is broken')
+// refused the shape. What is proved here is that reading one of these answers at all: a throw out
+// of the middle of a request is a request nothing above it expects to be able to fail.
+section('A tree that has been hand-edited into a shape the board refuses')
 {
   const REPO = '/tmp/k0-backlog-broken'
   const first = db.createStory({ project_path: REPO, title: 'One half' })
@@ -621,20 +564,20 @@ section('The alias when the tree underneath it is broken')
   byHand('UPDATE story SET parent_story_id = 999999 WHERE id = ?', orphan.id)
   byHand('UPDATE story SET epic_id = 999999 WHERE id = ?', stray.id)
 
-  // The value is nonsense, and it is meant to be: what is being proved is that there is a value
-  // at all. A throw would happen while the argument was being worked out, before `check` was ever
-  // entered, and would take the whole file down instead of failing one line of it.
+  // The shape of the answer is not what is being proved: that there is an answer at all is. A
+  // throw would happen while the argument was being worked out, before `check` was ever entered,
+  // and would take the whole file down instead of failing one line of it.
   const answered = (id) => {
     try {
-      return alias(id)
+      return typeof backlog.publicStory(db.getStory(id)).key
     } catch (e) {
       return `threw ${e.name}`
     }
   }
-  check('two stories each named as the other\'s parent still answer', answered(first.id), '.1.1')
-  check('and so does the one on the other side of it', answered(second.id), '.1.1')
-  check('a task whose story is gone has nothing to count from', answered(orphan.id), '')
-  check('and neither has a story filed under an epic that is gone', answered(stray.id), '')
+  check('two stories each named as the other\'s parent still answer', answered(first.id), 'string')
+  check('and so does the one on the other side of it', answered(second.id), 'string')
+  check('a task whose story is gone still answers', answered(orphan.id), 'string')
+  check('and so does a story filed under an epic that is gone', answered(stray.id), 'string')
 }
 
 // ── When everything is waiting on something ──────────────────────────────────

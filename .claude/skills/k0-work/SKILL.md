@@ -75,7 +75,7 @@ Then read the story file and obey what is in it:
   that epic, while the story may have a `D3` of its own saying something else entirely. Two
   different sentences both called "D3" is how the wrong rule gets honoured and the right one
   quietly dropped.
-- The key, the alias, the epic, the dependencies, the checks and the session are all in those two
+- The key, the epic, the dependencies, the checks and the session are all in those two
   files. Do not ask the user for anything they already say.
 
 The server sets the story to `Working` by itself when the session goes live. If the API still

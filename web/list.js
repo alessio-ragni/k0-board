@@ -12,8 +12,8 @@ import { render, esc } from '/md.js'
 // what is in scope — only its shape. That is why `drawList` is handed a list of stories and never
 // goes and asks for one.
 //
-// Nothing is worked out here that the server already knows. The alias, whether a story is blocked,
-// how far an epic has got, and above all WHAT TO DO NEXT — all of it arrives decided. The button
+// Nothing is worked out here that the server already knows. Whether a story is blocked, how far
+// an epic has got, and above all WHAT TO DO NEXT — all of it arrives decided. The button
 // at the end of a row draws the answer `server/backlog.js` gave; it does not have an opinion.
 //
 // And every call it makes says so when it is refused. A button that goes quietly dead is worse
@@ -81,25 +81,29 @@ const day = (t) => (t ? new Date(Number(t)).toLocaleDateString(undefined, { day:
 /** A state as a pill. The colours are the board's own, from base.css: nothing new was invented. */
 const pill = (state) => `<span class="pill" data-state="${esc(state)}">${esc(state)}</span>`
 
-/** Positions compare piece by piece, as numbers: 1.9 comes before 1.12, which is why it is here. */
-function byAlias(a, b) {
-  const x = String(a.alias ?? '').split('.').map(Number)
-  const y = String(b.alias ?? '').split('.').map(Number)
-  for (let i = 0; i < Math.max(x.length, y.length); i++) {
-    const d = (x[i] ?? -1) - (y[i] ?? -1)
-    if (d) return d
+/**
+ * How deep in the tree a story sits, which is how far its title is indented — and, at nought, what
+ * makes it a story you can drag rather than a task belonging to one.
+ *
+ * Walked over every story the board knows and not over the rows on screen: a task whose parent has
+ * been filtered away is still a task, and drawing it flush with the stories would say it was not.
+ * `seen` is the guard against a pair of rows each naming the other as parent — a shape `.k0/` is
+ * hand-edited into now and then, and one that would otherwise spin here forever.
+ */
+function depth(s) {
+  const seen = new Set()
+  let at = s?.parent_story_id ?? null
+  let deep = 0
+  while (at && !seen.has(at)) {
+    seen.add(at)
+    deep++
+    at = parents.get(at) ?? null
   }
-  return 0
+  return deep
 }
 
-/**
- * How deep in the tree a story sits, which is how far its title is indented.
- *
- * It is read off the alias rather than walked up the parents: the alias already says `1.12.1`, the
- * list is holding one flat array, and a story whose parent has been filtered off the screen still
- * has to be drawn at the depth it really is.
- */
-const depth = (s) => Math.max(0, String(s.alias ?? '').split('.').length - 1 - (s.epic_key ? 1 : 0))
+/** Every story's parent, for `depth`, rebuilt whenever the board hands a new set of rows over. */
+let parents = new Map()
 
 /** The story's counted facts, from whichever of the two answers arrived last. */
 const countsOf = (s) => counts.get(s.id) ?? s
@@ -109,9 +113,9 @@ const countsOf = (s) => counts.get(s.id) ?? s
 /**
  * The rows, in the three levels they are drawn in: repository, epic, story.
  *
- * The order inside a group is the alias's, which is the order the server put the stories in —
- * `sort_hint`, then id — with the tasks falling in directly under the story they belong to. It is
- * also the order a drag rewrites, so what you see and what you are moving are the same list.
+ * The order inside a group is the one the rows arrived in, which is the order the server put them
+ * in — `sort_hint`, then id — with the tasks falling in directly under the story they belong to.
+ * It is also the order a drag rewrites, so what you see and what you are moving are the same list.
  */
 function grouped(stories, epics) {
   const repos = new Map()
@@ -125,17 +129,22 @@ function grouped(stories, epics) {
   for (const e of epics) of(e.project_path, e.project_name).groups.set(e.key, { epic: e, stories: [] })
   for (const s of stories) {
     const repo = of(s.project_path, s.project_name)
-    const group = s.epic_key ? repo.groups.get(s.epic_key) : null
-    if (group) group.stories.push(s)
-    else repo.loose.push(s)
+    if (!s.epic_key) {
+      repo.loose.push(s)
+      continue
+    }
+    // A story that names an epic the list was not handed one for still belongs to it, and the
+    // heading is written from what the story itself carries. Dropping it in with the ones that
+    // have no epic would say something about it that is not true — and it is exactly the name you
+    // came to the list to read.
+    if (!repo.groups.has(s.epic_key)) {
+      const stub = { key: s.epic_key, title: s.epic_title ?? '', project_path: s.project_path }
+      repo.groups.set(s.epic_key, { epic: stub, stories: [] })
+    }
+    repo.groups.get(s.epic_key).stories.push(s)
   }
-  const order = (list) => list.map((s, i) => [s, i]).sort((a, b) => byAlias(a[0], b[0]) || a[1] - b[1]).map(([s]) => s)
   return [...repos.values()]
-    .map((r) => ({
-      ...r,
-      groups: [...r.groups.values()].map((g) => ({ ...g, stories: order(g.stories) })),
-      loose: order(r.loose),
-    }))
+    .map((r) => ({ ...r, groups: [...r.groups.values()], loose: r.loose }))
     // Only what has something in it. A repository whose every story is filtered away is a heading
     // over nothing, and a dozen of those is the list saying "no" a dozen times.
     .filter((r) => r.loose.length || r.groups.some((g) => g.stories.length || g.epic))
@@ -181,22 +190,17 @@ panelEl.hidden = true
  * `server/backlog.js`. One button and not a row of them: the interface says what to do next and
  * starts it, and a story offering ten things to do is a story offering none.
  *
- * `null` is an answer. A finished story has nothing left to suggest, and one that came through its
- * counter-check clean is waiting for a person to press Done — which is the one case where the page
- * draws a button of its own, because "press Done" is what the server's own comment says is left.
+ * `null` is an answer and the page does not argue with it: a story whose terminal is open, one
+ * waiting to be looked at, one that is done. Nothing here invents a label the server did not give,
+ * because a row and a post-it that disagree about the same story is the whole failure this was
+ * moved to one place to avoid.
  */
 function goHtml(s) {
   const step = s.next_step
-  if (step) {
-    return `<button type="button" class="go" data-go="${s.id}" title="${esc(step.why ?? '')}">${esc(
-      step.label
-    )}</button>`
-  }
-  if (s.state === 'Review') {
-    const why = 'The counter-check found nothing broken: it is waiting for you to close it.'
-    return `<button type="button" class="go" data-done="${s.id}" title="${why}">Done</button>`
-  }
-  return ''
+  if (!step) return ''
+  return `<button type="button" class="go" data-go="${s.id}" title="${esc(step.why ?? '')}">${esc(
+    step.label
+  )}</button>`
 }
 
 function storyRow(s) {
@@ -211,7 +215,6 @@ function storyRow(s) {
   return `<div class="story${s.id === openId ? ' on' : ''}${broken ? ' broken' : ''}" data-id="${s.id}"
        data-repo="${esc(s.project_path)}"${depth(s) ? '' : ' draggable="true"'} title="${esc(title)}">
       <span class="k">${esc(s.key)}</span>
-      <span class="pos">${esc(s.alias || '—')}</span>
       <span class="title"><span class="in" style="--deep:${depth(s)}">${esc(s.title)}</span></span>
       <span>${pill(s.state)}</span>
       <span class="flag">${s.starred ? hooks.flag : ''}</span>
@@ -229,21 +232,29 @@ function storyRow(s) {
  * most of an epic's life — `/k0-epic` runs its rounds before a single story exists. Without it the
  * card said "0 of 0" for as long as anybody was watching.
  */
-function epicRow(e, open) {
-  const { done, total } = e.progress
+function epicRow(e, open, n) {
+  // An epic the list was handed knows how far it has got and which round it is on. One written
+  // from a story that merely names it knows neither, and says so by leaving the bar out rather
+  // than drawing an empty one — and it carries no id, so it folds and does not open a panel.
+  const { done, total } = e.progress ?? {}
   const pct = total ? Math.round((done / total) * 100) : 0
   const of = e.round?.estimated_total ? ` of about ${e.round.estimated_total}` : ''
   const round = e.round ? `round ${e.round.n}${of}` : ''
+  const known = e.progress != null
   return `<button type="button" class="epic" style="--h:${hooks.hue(e.key)}" data-group="${groupKey(
     e.project_path,
     e.key
-  )}" data-epic-id="${e.id}" data-repo="${esc(e.project_path)}" data-key="${esc(e.key)}"
+  )}"${e.id ? ` data-epic-id="${e.id}"` : ''} data-repo="${esc(e.project_path)}" data-key="${esc(e.key)}"
       aria-expanded="${open}" title="${esc(`${e.key} — click to open it, or drop a story on it to move it here`)}">
       <span class="caret">${open ? '⌄' : '›'}</span>
       <span class="key">${esc(e.key)}</span>
       <span class="name">${esc(e.title)}</span>
-      <span class="prog" role="img" aria-label="${done} of ${total} done"><i style="width:${pct}%"></i></span>
-      <span class="count">${done}/${total}</span>
+      ${
+        known
+          ? `<span class="prog" role="img" aria-label="${done} of ${total} done"><i style="width:${pct}%"></i></span>
+      <span class="count">${done}/${total}</span>`
+          : `<span class="count push">${n}</span>`
+      }
       ${round ? `<span class="round">${esc(round)}</span>` : ''}
     </button>`
 }
@@ -275,7 +286,7 @@ function paintRows() {
       const body = [
         ...r.groups.map((g) => {
           const on = open(r.path, g.epic.key)
-          return epicRow(g.epic, on) + (on ? g.stories.map(storyRow).join('') : '')
+          return epicRow(g.epic, on, g.stories.length) + (on ? g.stories.map(storyRow).join('') : '')
         }),
         r.loose.length
           ? looseRow(r.path, open(r.path, ''), r.loose.length) +
@@ -523,7 +534,7 @@ function storyHtml(v) {
     .join('  ·  ')
   return `<header class="head">
       <div class="who">
-        <b class="key">${esc(s.key)}</b><i class="pos">${esc(s.alias || '')}</i>
+        <b class="key">${esc(s.key)}</b>
         <h2>${esc(s.title)}</h2>
         ${s.starred ? `<span class="flag" title="Flagged">${hooks.flag}</span>` : ''}
       </div>
@@ -556,13 +567,13 @@ function epicPanelHtml(v) {
     .filter((s) => !s.parent_key)
     .map(
       (s) =>
-        `<li><button type="button" data-id="${s.id}"><b>${esc(s.key)}</b><i>${esc(s.alias || '')}</i>` +
+        `<li><button type="button" data-id="${s.id}"><b>${esc(s.key)}</b>` +
         `<span>${esc(s.title)}</span></button>${pill(s.state)}</li>`
     )
     .join('')
   return `<header class="head">
       <div class="who">
-        <b class="key">${esc(e.key)}</b><i class="pos">${esc(e.alias || '')}</i>
+        <b class="key">${esc(e.key)}</b>
         <h2>${esc(e.title)}</h2>
       </div>
       <p class="where">${esc(`${e.project_name}  ·  ${e.progress.done} of ${e.progress.total} done`)}</p>
@@ -793,15 +804,14 @@ const clearMarks = () => {
 /**
  * The top-level stories of one group, in the order they are drawn in.
  *
- * Tasks are not in it and are never dragged: a task's place is under the story it was split out of,
- * and the alias counts it from there. Moving one is moving its parent.
+ * Tasks are not in it and are never dragged: a task's place is under the story it was split out
+ * of. Moving one is moving its parent.
+ *
+ * The order is the one the rows arrived in, which is the server's — `sort_hint`, then id — so the
+ * list being renumbered is the same list that was on the screen.
  */
 function groupOf(repo, epicKey) {
-  return last.all
-    .filter((s) => s.project_path === repo && (s.epic_key ?? '') === epicKey && !depth(s))
-    .map((s, i) => [s, i])
-    .sort((a, b) => byAlias(a[0], b[0]) || a[1] - b[1])
-    .map(([s]) => s)
+  return last.all.filter((s) => s.project_path === repo && (s.epic_key ?? '') === epicKey && !depth(s))
 }
 
 /**
@@ -849,11 +859,6 @@ rowsEl.onclick = (e) => {
     e.stopPropagation()
     const story = last.stories.find((s) => s.id === Number(go.dataset.go))
     return story && hooks.next(story)
-  }
-  const done = e.target.closest('[data-done]')
-  if (done) {
-    e.stopPropagation()
-    return hooks.done(Number(done.dataset.done))
   }
   const epic = e.target.closest('.epic')
   if (epic) {
@@ -975,6 +980,7 @@ async function tickCheck(id, state) {
 export function drawList(board, data, wiring) {
   hooks = wiring
   last = data
+  parents = new Map((data.all ?? []).map((s) => [s.id, s.parent_story_id ?? null]))
   paintRows()
   drawPanel()
   // Put in place once and then left alone. `append` on a child that is already where it should be

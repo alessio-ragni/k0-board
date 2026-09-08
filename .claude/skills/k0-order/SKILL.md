@@ -33,7 +33,7 @@ Several instructions in one breath is the normal case, not the exception.
      **stop**.
    - `REPO` empty → this is not a git repository. Ask once which repository this belongs to.
 
-   That one file has every key, alias, title, state, star, `sort_hint` and dependency you need.
+   That one file has every key, title, state, star, `sort_hint` and dependency you need.
    Do not ask the user for any of it and do not fetch it twice.
 
 2. **Resolve what he named.** `K42` is a key; *the login one* is a title. Keys are per

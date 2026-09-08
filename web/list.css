@@ -110,21 +110,24 @@
 }
 .rows .epic .prog i { display: block; height: 100%; background: hsl(var(--h) 52% 46%); }
 .rows .epic .count { flex: none; font-size: .76rem; color: var(--muted); font-variant-numeric: tabular-nums; }
+/* Where there is no bar to push it over — an epic written from a story that merely names it, whose
+   progress nothing on this screen knows — the count takes the bar's place at the right. */
+.rows .epic .count.push { margin-left: auto; }
 .rows .epic .round { flex: none; font-size: .76rem; color: var(--muted); }
 /* The group with no epic. It is a heading and not a card: there is no epic to say anything about. */
 .rows .epic.loose .key, .rows .epic.loose .name { color: var(--muted); }
 
 /* ── A story ─────────────────────────────────────────────────────────────────
-   Eight things and nothing else: what it is called, where it sits, what it is, how far it has got,
-   whether it is flagged, what has been decided, what has been checked, and the one thing to do
-   with it next. Every column that was proposed after those eight was a column somebody would have
-   read once. */
+   Seven things and nothing else: what it is called, what it is, how far it has got, whether it is
+   flagged, what has been decided, what has been checked, and the one thing to do with it next.
+   Every column that was proposed after those seven was a column somebody would have read once. */
 .rows .story {
   display: grid;
-  /* The last track is a fixed width and not `auto`: the suggestion is a different length on every
-     row — "Plan it" against "Go to the terminal" — and an auto track made each row set its own
-     right edge, so the state pills walked about instead of standing in a column. */
-  grid-template-columns: 3.4rem 3rem minmax(0, 1fr) 5.6rem 1.2rem 3.4rem 3.4rem 8.6rem;
+  /* The last track is a fixed width and not `auto`: the suggestion is a different length from one
+     row to the next — "Discuss" against "Resume" — and an auto track made each row set its own
+     right edge, so the state pills walked about instead of standing in a column. It is as wide as
+     the longest word that can land in it and not a millimetre more. */
+  grid-template-columns: 3.4rem minmax(0, 1fr) 5.6rem 1.2rem 3.4rem 3.4rem 5.4rem;
   align-items: center;
   gap: 0 10px;
   padding: 4px 8px 4px 30px;
@@ -137,7 +140,6 @@
    inside a column: it is the one thing here that has to be impossible to scroll past. */
 .rows .story.broken { box-shadow: inset 3px 0 0 var(--alert); }
 .rows .story .k { font: 600 .8rem var(--mono); }
-.rows .story .pos { font: 400 .76rem var(--mono); color: var(--muted); }
 /* The same face the title has on a post-it, which is the one piece of type that carries a note.
    Everything else on this row is already mono or a board colour, and a proportional title in the
    middle of it was the list reading as a table out of another application — and switching from the
@@ -216,7 +218,6 @@
 #panel .head { position: relative; padding-right: 40px; border-bottom: 1px solid var(--line); padding-bottom: 14px; }
 #panel .who { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }
 #panel .who .key { font: 700 1rem var(--mono); }
-#panel .who .pos { font: 400 .85rem var(--mono); color: var(--muted); font-style: normal; }
 #panel .who h2 { margin: 0; font: 600 1.3rem/1.25 var(--sans); }
 #panel .who .flag { color: var(--warn); display: flex; align-items: center; }
 #panel .who .flag svg { width: 15px; height: 15px; display: block; }
@@ -491,7 +492,6 @@
 #panel .mini button:hover { background: none; border: 0; }
 #panel .mini button:hover span { text-decoration: underline; }
 #panel .mini b { font: 600 .78rem var(--mono); }
-#panel .mini i { font-style: normal; font: .74rem var(--mono); color: var(--muted); }
 #panel .mini span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
 /* ── Prose ───────────────────────────────────────────────────────────────────

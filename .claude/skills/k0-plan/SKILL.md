@@ -47,7 +47,7 @@ curl -sS --max-time 30 "http://127.0.0.1:$PORT/api/backlog/story/$STORY_ID" -o "
 
 `$STORY_ID` is the `id` of the story you just matched, not its key. That file holds the body, the
 rounds, the decisions, the checks, any plan already stored and the log. Everything else — the
-alias, the epic, the dependencies, what is blocked — is in the first call. Do not ask the user
+epic, the dependencies, what is blocked — is in the first call. Do not ask the user
 for any of it, and do not work it out yourself.
 
 - **No decisions at all** → the story was never discussed. Say so, offer `/k0-discuss`, and go on

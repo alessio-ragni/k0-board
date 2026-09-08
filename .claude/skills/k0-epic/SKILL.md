@@ -53,7 +53,7 @@ curl -sS --max-time 30 -X POST "http://127.0.0.1:$PORT/api/backlog/epic" \
 ```
 
 with `{ "project_path": "…", "title": "…", "body": "…", "lang": "it" }`. The `body` is why this
-epic exists, in his words and his language. The answer carries the `key`, the `alias` and the
+epic exists, in his words and his language. The answer carries the `key` and the
 `id`; use those from now on and never work them out yourself.
 
 An epic with no stories yet costs nothing and means the next ten minutes survive a dead terminal.
@@ -132,7 +132,7 @@ Only when the rounds have stopped. One message, in his language:
 - under each, the dependency when there is one: *needs the first one done*;
 - what you have deliberately left out, if anything, one line.
 
-No numbering scheme of your own — k0 gives every story a key and an alias the moment it exists,
+No numbering scheme of your own — k0 gives every story a key the moment it exists,
 and inventing a second one now only makes two things to reconcile.
 
 Then ask for the tree as a whole, with `AskUserQuestion` under the rules in §3 of `rounds.md`:
@@ -189,7 +189,7 @@ which you get from `/api/backlog/next` — asked the same way as the listing abo
   for.
 - **Everything he says is stored in the language he said it in.** Titles, bodies, decisions.
   The interface stays English; his words do not get translated.
-- **Never ask for what the API already knows** — keys, aliases, positions, an epic's progress,
+- **Never ask for what the API already knows** — keys, states, an epic's progress,
   what is blocked. `rounds.md` §7 has the table.
 - **Decisions are written the way `rounds.md` §5 says**, and at the ceiling the discussion stops
   the way §2 says. Neither rule is repeated here, and neither is yours to soften.
