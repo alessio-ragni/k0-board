@@ -86,6 +86,26 @@ curl -sS --max-time 30 -X PATCH "http://127.0.0.1:$PORT/api/backlog/story/$STORY
   -H 'content-type: application/json' -d '{"state": "Working"}'
 ```
 
+**Then turn the plan into tasks — every time, before the worktree.** One `TaskCreate` for each
+step of the stored plan, in the plan's order: the subject is the step in a few words, the
+description is the step in full with the labels of the decisions it serves. On a handover, only
+the steps the Log does not record as done. The merge (§6) and the closing entry (§7) are tasks
+too, the last two. From then on:
+
+- exactly **one** task `in_progress` at a time, set with `TaskUpdate` when the step starts — not
+  after it is over;
+- `completed` the moment that step is really done, never in a batch at the end;
+- a step the plan did not foresee becomes a new task the moment you find it, and a step that turns
+  out to be unnecessary is deleted with one sentence saying why.
+
+The tasks are for whoever is watching this terminal now; the Log is for whoever picks the story up
+cold. Keep both — neither stands in for the other.
+
+If `TaskCreate` is not among your tools, say so in one line — the session was not opened by k0, or
+Claude Code is older than the commands; on newer models Claude Code only offers the task tools
+when `CLAUDE_CODE_ENABLE_TODO_TOOLS=1` is in the environment — and carry on with the Log alone.
+Never call it again to see whether it has come back.
+
 ## 3. Open the worktree
 
 ```bash
@@ -124,7 +144,8 @@ curl -sS --max-time 30 -X POST "http://127.0.0.1:$PORT/api/backlog/story/$STORY_
   -H 'content-type: application/json' -d @"$SCRATCH/k0-decision.json"   # {"text": "…", "source": "chat"}
 ```
 
-**Append to the Log after every meaningful step** — not at the end, not in one lump:
+**Append to the Log after every meaningful step** — not at the end, not in one lump. The same
+moment is when that step's task goes to `completed` and the next one to `in_progress`:
 
 ```bash
 curl -sS --max-time 30 -X POST "http://127.0.0.1:$PORT/api/backlog/story/$STORY_ID/log" \

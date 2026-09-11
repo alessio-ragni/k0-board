@@ -69,6 +69,13 @@ the two skills are siblings wherever k0 is installed. Read that file; it is not 
 and if you cannot find it, say so and **stop**. Planning is usually two or three rounds, not
 eight: most of the unknowns were closed by the discussion.
 
+**Keep the planning on tasks.** The task tools work in plan mode, so before the first question
+create one task per phase — reading the story, the rounds of questions, writing the constraints
+and the plan, storing it once approved (§4) — and move each one to `in_progress` when it starts
+and `completed` when it is over. They are how somebody glancing at this terminal sees where the
+planning has got to. If `TaskCreate` is not among your tools, say so in one line and carry on;
+never call it again to see whether it has come back.
+
 ## 3. The constraints go in the plan, in writing
 
 The plan opens with two blocks, above anything technical:
@@ -101,6 +108,9 @@ Then the plan itself. Rules that make it worth reading:
   should win and why, and wait — the collision rules are §4 of `rounds.md`.
 - The rest of the plan is a plan: what gets touched, in what order, what could go wrong. Keep it
   short enough to be read in one sitting.
+- **Write the steps so each one can be a task.** `/k0-work` opens with one task per step of the
+  stored plan, so a step is one thing somebody could say is finished — not a paragraph holding
+  three.
 
 Anything settled while planning is a **new decision**, written the moment it is settled, in the
 user's language, one sentence about behaviour and not implementation (§5 of `rounds.md`):

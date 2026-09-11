@@ -75,6 +75,22 @@ function copyTree(from, to) {
   }
 }
 
+/** The same files, byte for byte, and no others — on either side. */
+function sameTree(a, b) {
+  const files = (dir) =>
+    fs
+      .readdirSync(dir, { withFileTypes: true, recursive: true })
+      .filter((entry) => entry.isFile())
+      .map((entry) => path.relative(dir, path.join(entry.parentPath, entry.name)))
+      .sort()
+  const left = files(a)
+  const right = files(b)
+  return (
+    left.length === right.length &&
+    left.every((f, i) => f === right[i] && fs.readFileSync(path.join(a, f)).equals(fs.readFileSync(path.join(b, f))))
+  )
+}
+
 // ── The tray icon ────────────────────────────────────────────────────────────
 /**
  * The three trays are three different things — a compiled Swift app, a Python script, a
@@ -294,12 +310,25 @@ const SKILLS = [
  *
  * One question for all of them, and it is asked only about the ones that are not already there:
  * somebody upgrading has answered it once, and being asked ten times is how a yes becomes a no.
+ *
+ * The ones that are already there are brought up to date without asking, for the same reason. A
+ * copy is taken once and Claude Code reads it from then on, so a command fixed in a new version
+ * went on running the old text for good — the yes was to having the commands, not to having the
+ * first version of them.
  */
 async function offerSkill() {
   const home = path.join(os.homedir(), '.claude', 'skills')
-  const missing = SKILLS.filter(
-    ([name]) => fs.existsSync(path.join(APP_DIR, '.claude', 'skills', name)) && !fs.existsSync(path.join(home, name))
-  )
+  const source = (name) => path.join(APP_DIR, '.claude', 'skills', name)
+  const shipped = SKILLS.filter(([name]) => fs.existsSync(source(name)))
+
+  const stale = shipped.filter(([name]) => fs.existsSync(path.join(home, name)) && !sameTree(source(name), path.join(home, name)))
+  for (const [name] of stale) {
+    fs.rmSync(path.join(home, name), { recursive: true, force: true })
+    copyTree(source(name), path.join(home, name))
+  }
+  if (stale.length) ok(`brought up to date in ${home}: ${stale.map(([name]) => `/${name}`).join(', ')}`)
+
+  const missing = shipped.filter(([name]) => !fs.existsSync(path.join(home, name)))
   if (!missing.length) return
   say('')
   for (const [name, what] of missing) note(`${bold(`/${name}`)} ${dim(`— ${what}`)}`)
