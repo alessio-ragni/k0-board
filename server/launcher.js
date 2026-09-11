@@ -80,6 +80,17 @@ async function waitForPrompt(handle, timeoutMs = 15000) {
 }
 
 /**
+ * What every session is started with, new or resumed.
+ *
+ * Claude Code decides when it starts, model by model, whether a session gets its task tools —
+ * TaskCreate, TaskUpdate and the rest — and a newer model such as Opus 5 does not get them unless
+ * this is in the environment. The commands k0 ships keep a task per step of the work, so without
+ * it a session is told to do something it has no tool for, and nothing warns: the call is refused
+ * and the model carries on without. It is read at startup, which is why a resume carries it too.
+ */
+export const SESSION_ENV = { CLAUDE_CODE_ENABLE_TODO_TOOLS: '1' }
+
+/**
  * Starts (or resumes) a story's session.
  * mode: 'start' assigns a new session id, 'resume' reopens the existing one.
  *
@@ -114,7 +125,7 @@ export async function launch({ story, sessionId, mode = 'start' }) {
   const autoSend = mode === 'start' && story.auto_send && story.prompt?.trim()
   if (autoSend) args.push(story.prompt.trim())
 
-  const command = terminal.buildCommand({ cwd: story.project_path, bin, args })
+  const command = terminal.buildCommand({ cwd: story.project_path, bin, args, env: SESSION_ENV })
   const winId = await terminal.open({ command, title: name, fontSize: await fontSize(), coverage: coverage() })
   const up = await waitForSession(sessionId)
 

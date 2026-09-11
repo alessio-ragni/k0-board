@@ -186,6 +186,15 @@ is exactly the board it was.
 
 ### Fixed
 
+- **Sessions opened by k0 have Claude Code's task list again.** On a newer model such as Opus 5,
+  Claude Code starts without its task tools unless it is told otherwise, so a session asked to keep
+  a task per step was refused every time it tried. Every session k0 starts, new or resumed, now has
+  them, and `/k0-plan`, `/k0-work` and `/k0-verify` keep one task per phase, per step and per
+  decision. A session that was already open gets them by being resumed.
+- **Installing again brings your copies of the commands up to date.** They were copied into
+  `~/.claude/skills/` once and never again, so a command fixed in a later version kept running its
+  old text. Copies that differ from the ones in the package are now replaced, and the installer
+  names them.
 - **Double-clicking a post-it does something on every note, not on half of them.** It brought the
   terminal to the front on a story that had one running and did nothing at all on any other, so it
   was a gesture you could not rely on. It now goes where the work is: the terminal if one is

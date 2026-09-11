@@ -142,7 +142,7 @@ Nothing on this list happens before you have seen it and said yes. Everything on
 | **macOS only** — one administrator rule | `/etc/sudoers.d/k0-pmset` | to keep the Mac awake with the lid closed. Asks for your password once, and grants exactly two command lines |
 | **macOS only** — one key binding | your Terminal profile (backed up first) | so Shift+Enter starts a new line |
 | **macOS only** — Accessibility for `node` | you grant it by hand, in System Settings | so k0 can place a prompt without sending it |
-| The commands, if you want them | `~/.claude/skills/` | Claude Code looks there and in the repository you have open, and nowhere else |
+| The commands, if you want them | `~/.claude/skills/` | Claude Code looks there and in the repository you have open, and nowhere else. Asked once; installing again brings the copies up to date without asking |
 
 That last one deserves a sentence of its own: a process with the Accessibility permission can
 send keystrokes to any application, and here it is granted to your `node`, not to a signed k0
@@ -203,6 +203,11 @@ socket is opened, ever. Everything else stays as it was: no fonts fetched, no te
   In exchange, **once the plan is approved it asks for confirmations**: starting inside a plan and
   never asking anything are two things Claude Code does not do together — the why is
   [further down](#the-traps).
+
+  Every session, new or resumed, is also born **with Claude Code's task list switched on**. On a
+  newer model Claude Code leaves it off unless it is told otherwise, and the commands that plan,
+  work and check keep a task per step — so without it they would be asking for a tool that is not
+  there.
 
   The window is born **centred on the screen you are using**, at 86% of the free space: the same
   margin on all four sides, never under a menu bar or a dock. Open more than one and they stack
@@ -1523,6 +1528,9 @@ writes for itself:
 
 Sessions are launched with `--session-id` (k0 chooses the id, so the story ↔ session link is
 certain), `-n` for the name, `--resume` to pick one up, and `--permission-mode plan` on new ones.
+Both kinds start with `CLAUDE_CODE_ENABLE_TODO_TOOLS=1` in their environment, set on the command
+line the terminal is handed — `env` in front of `claude` on macOS and Linux, `$env:` before it on
+Windows.
 
 The ChangeLog and the What's New page run Claude Code a second way: `claude -p` on the skill that
 writes them, with the facts on standard input and no terminal at all. Those are the only times k0
@@ -1546,6 +1554,12 @@ Field notes the code takes for granted.
   of the two flags changes nothing — the session starts in `bypassPermissions` and there is no
   trace of a plan. It looks like it works, which is what makes it a trap. The only way to really
   start inside a plan is `--allow-dangerously-skip-permissions`.
+- **On a newer model Claude Code starts with no task tools.** It offers `TaskCreate`, `TaskUpdate`
+  and the rest only to a list of older models, or when `CLAUDE_CODE_ENABLE_TODO_TOOLS=1` is in the
+  environment, and Opus 5 is not on the list. Nothing says so up front: the model calls
+  `TaskCreate`, is told it is disabled for the session, and carries on without. The variable is
+  read once, when the process starts, so a session opened before k0 set it gets the tools only by
+  being resumed.
 - **While a dialog is open, the call that caused it is not yet in the transcript.** A plan to
   approve and a question are told apart by the `waitingFor` field of the session file:
   `permission prompt` is the plan, `input needed` is the question.

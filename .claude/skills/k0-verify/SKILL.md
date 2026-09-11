@@ -57,6 +57,15 @@ run you are about to write is **`latest_run + 1`** — `0` there means nothing h
 and this is run 1. `runs` beside it lists what each earlier run found. Do not count anything
 yourself: a run that collides with an earlier one quietly rewrites what was checked last time.
 
+**Put the whole run on tasks before looking at anything.** One task per standing decision, its
+subject the label and a few words of the sentence; then one per checklist item — or a single
+*write the checklist* when there is none — and a last one for the outcome. A decision's task goes
+`in_progress` when you start looking and `completed` when its verdict is written down, with the
+verdict and the evidence in its description. Nothing is marked completed on the strength of a
+group: the tasks exist so that a skipped decision shows up as a task still open. If `TaskCreate`
+is not among your tools, say so in one line and carry on; never call it again to see whether it
+has come back.
+
 ## 1. Every decision, one at a time
 
 Walk the decisions in the order the file has them. **Never in a group, never as a summary, never
