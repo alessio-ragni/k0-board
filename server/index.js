@@ -12,6 +12,8 @@ import {
   sessionName,
   closeTerminal,
   setWindowTitle,
+  renameDue,
+  renameLive,
   applyModeToWindows,
   relayoutWindows,
 } from './launcher.js'
@@ -51,8 +53,12 @@ function tick() {
     // put in it the name the story has today. That is how a rename made while the session was
     // running still reaches the list of sessions you can resume.
     if (story.session_id && story.session_alive && !alive) {
-      renameSession(story.project_path, story.session_id, sessionName(story.title))
+      renameSession(story, sessionName(story.title))
     }
+    // Still running under the old name, and sitting idle: the rename goes in as a `/rename`
+    // typed into its window — the first time that window is the one in front of you, since
+    // nothing is ever raised to type into it. Not awaited, for the same reason `sweepIdle` is not.
+    if (alive && renameDue(story, live.get(story.session_id))) renameNow(story)
     db.applyDerivedStatus(story.id, status, alive)
 
     // Where it is really working: with an isolated worktree that is not the repository, and a
@@ -130,6 +136,43 @@ async function sweepIdle(live) {
   } finally {
     sweeping = false
   }
+}
+
+/**
+ * Types the story's name into its live session, and says in the log what came of it. Never
+ * rejects: it runs from the watching loop with nobody awaiting it, and a rename that fails is a
+ * line in the log, not the end of the server.
+ */
+async function renameNow(story) {
+  try {
+    const res = await renameLive(story)
+    if (res.sent) console.log(`k0 — "${story.title}": its session is now called ${res.name}`)
+    return res
+  } catch (err) {
+    console.error(`k0 — could not rename the session of "${story.title}": ${String(err?.message || err)}`)
+    return { sent: false, why: String(err?.message || err) }
+  }
+}
+
+/**
+ * A story's name is the session's name: when the title changes — and only the title, the prompt
+ * has nothing to do with it — it has to change over there too. Both doors a title comes through
+ * pass here, the post-it's dialog and the skills' route.
+ *
+ * Three places, three moments. The window's title bar, at once, session running or not. The
+ * transcript, only once the session has ended — a live process would write the old name back
+ * over it — so here only if it already has; `tick` does it when a live one dies. And the live
+ * session itself, through `/rename` typed into its window, which is `tick`'s too: it happens the
+ * first time that window is in front of you and sitting idle, and not here, because you have
+ * just pressed Save on the board and the keyboard is yours. `before` is the row from before the
+ * change: that is the session the story had, and where its transcript is.
+ */
+async function followTitle(before, after) {
+  if (!before.session_id) return
+  const name = sessionName(after.title)
+  if (name === sessionName(before.title)) return
+  await setWindowTitle(before.terminal_window_id, name)
+  if (!before.session_alive) renameSession(before, name)
 }
 
 /** When somebody last looked at the board. */
@@ -845,6 +888,7 @@ async function backlogApi(req, res, url, seg) {
       // would resurrect the story where it no longer lives. It also carried a key that repository
       // has since handed to something else — see `patchStory`, which renumbers on the move.
       const after = db.getStory(id)
+      await followTitle(story, after)
       const left =
         after.project_path === story.project_path
           ? null
@@ -1381,18 +1425,7 @@ async function api(req, res, url) {
         await closeTerminal({ winId: story.terminal_window_id, pid: readLiveSessions().get(story.session_id)?.pid })
       }
       if ('completed' in b) updated = db.setCompleted(id, done)
-      // A story's name is the session's name: if the title changes — and only the title, the
-      // prompt has nothing to do with it — it has to change over there too.
-      if (story.session_id && sessionName(updated.title) !== sessionName(story.title)) {
-        const name = sessionName(updated.title)
-        // In the window's title bar it shows immediately, session running or not.
-        await setWindowTitle(story.terminal_window_id, name)
-        // In the transcript only once the session has ended: a live process would write the
-        // old name back over it. `tick` takes care of that when the session dies. The path is
-        // the one from BEFORE the change: that is where the transcript stayed, even if you
-        // changed repository in the same move.
-        if (!story.session_alive) renameSession(story.project_path, story.session_id, name)
-      }
+      await followTitle(story, updated)
       // The readable copy follows an edit made on the board exactly as it follows one made by a
       // skill: the title in the file's name is the title, and a story renamed here would otherwise
       // leave `K42-fix-api.md` sitting next to `K42-fix-the-api.md` with nothing to say which is

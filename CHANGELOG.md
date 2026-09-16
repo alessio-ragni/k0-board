@@ -231,6 +231,21 @@ is exactly the board it was.
   had, and the failure was read as "Terminal is not running" and never mentioned. k0 now asks once
   for the windows that are open, which takes about a second whatever the board has been through —
   and a pass that does fail says so in the log.
+- **Changing a story's title really does rename its session, running or not.** The field says the
+  title is also the session's name, and only the window's title bar kept the promise: a session
+  that was still running kept its old name inside Claude Code, and a session that had worked in a
+  worktree kept it for good, because the new name was written into a transcript that was not
+  there. Now a running session takes the new name the first time you look at it — with its window
+  in front of you and Claude Code sitting idle with nothing under the cursor, k0 types `/rename`
+  into it and presses Enter, and you see the command go by. It never brings the window up to do
+  that, because the keyboard is yours: a terminal jumping up while you type somewhere else took
+  your words with it, which is how the first version of this behaved on the author's Mac and why
+  it does not any more. What lands in the box is read back before Enter, and anything other than
+  the command is deleted rather than sent. A session that has ended gets the name wherever its
+  transcript is, worktree or not. On Linux and Windows the running session still waits for its
+  end, and `k0-board doctor` says so. Also fixed when the title is changed by a skill rather than
+  from the board, which used to rename nothing at all. Checked by hand on macOS on a session in a
+  Terminal window; the rest is covered by tests.
 
 ## [0.4.0]
 

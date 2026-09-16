@@ -22,8 +22,10 @@ process.env.USERPROFILE = FAKE_HOME
 // `db.js` now stops by itself if anybody tries again, but this is the right way round.
 process.env.K0_DB = path.join(os.tmpdir(), `k0-test-${process.pid}.db`)
 
-const { deriveStatus, transcriptPath, projectSlug, renameSession, busy } = await import('../server/watcher.js')
-const { sessionName } = await import('../server/launcher.js')
+const { deriveStatus, transcriptPath, projectSlug, renameSession, findTranscript, busy } =
+  await import('../server/watcher.js')
+const { sessionName, promptText, promptIsEmpty, renameDue, RENAME_RETRY_MS } = await import('../server/launcher.js')
+const { capabilities } = await import('../platform/index.js')
 const { scanSessions } = await import('../server/sessions.js')
 
 const CWD = '/tmp/k0-test-cwd'
@@ -214,7 +216,7 @@ check(
   const s = write([mode('normal')])
   const name = sessionName('rename test')
   check('the session name is what you see on the story', name, 'Rename-Test')
-  check('rename done', renameSession(CWD, s, name), true)
+  check('rename done', renameSession(story(s), name), true)
 
   const rows = fs.readFileSync(transcriptPath(CWD, s), 'utf8').trim().split('\n').slice(-2).map(JSON.parse)
   check('second to last row: custom-title', rows[0].type, 'custom-title')
@@ -230,11 +232,80 @@ check(
 // A session that was never born: there is no transcript to touch, and it must not blow up.
 check(
   'a transcript that does not exist: does nothing',
-  renameSession(CWD, '00000000-0000-4000-8000-999999999999', 'Whatever'),
+  renameSession(story('00000000-0000-4000-8000-999999999999'), 'Whatever'),
   false
 )
 
+// A session that moved into a worktree writes its transcript under the worktree's slug, and the
+// story only knows the repository. Seen: a rename lost that way, the transcript looked for under
+// the repository and never found. So it is looked for where it is.
+{
+  const WORK = `${CWD}/.claude/worktrees/fix-parser`
+  const workDir = path.join(FAKE_HOME, '.claude', 'projects', projectSlug(WORK))
+  fs.mkdirSync(workDir, { recursive: true })
+  const s = '00000000-0000-4000-8000-00000000wt01'
+  fs.writeFileSync(transcriptPath(WORK, s), JSON.stringify(mode('normal')) + '\n')
+
+  check('found from the story’s work path', findTranscript(s, WORK, CWD), transcriptPath(WORK, s))
+  check('found with no hint at all, by walking the projects', findTranscript(s), transcriptPath(WORK, s))
+  check('a hint that is not there is skipped', findTranscript(s, null, '/nowhere', WORK), transcriptPath(WORK, s))
+  check('nothing anywhere: null', findTranscript('00000000-0000-4000-8000-00000000wt99', CWD), null)
+
+  check('the rename reaches the worktree’s transcript', renameSession(story(s, { work_path: WORK }), 'Moved'), true)
+  const rows = fs.readFileSync(transcriptPath(WORK, s), 'utf8').trim().split('\n').slice(-2).map(JSON.parse)
+  check('with the name', rows[0].customTitle, 'Moved')
+  check(
+    'and so does one from a story that forgot its work path',
+    renameSession(story(s), 'Moved-Again'),
+    true
+  )
+  fs.rmSync(workDir, { recursive: true, force: true })
+}
+
 fs.rmSync(dir, { recursive: true, force: true })
+
+// ── Renaming a session that is still running ─────────────────────────────────
+section('Renaming a session that is still running')
+
+// The input box as Terminal reads it back, captured on real windows. The last `❯` is the box;
+// the ones above it are messages already sent.
+const BOX = (line) =>
+  ['❯ /rename Old-Name', '  ⎿  Session renamed to: Old-Name', '───── Old-Name ─', line, '─────', '  Opus 5 │ repo'].join(
+    '\n'
+  )
+check('an empty box', promptText(BOX('❯')), '')
+check('an empty box, with the spaces Terminal pads the line with', promptText(BOX('❯      ')), '')
+check('the hint on a box never typed in reads as text', promptText(BOX('❯ Try "how do I log an error?"')), 'Try "how do I log an error?"')
+check('a draft', promptText(BOX('❯ fix the bug')), 'fix the bug')
+check('the command, once typed', promptText(BOX('❯ /rename New-Name')), '/rename New-Name')
+check('no box at all: a dialog is open', promptText('Do you trust the files in this folder?\n  Yes\n  No'), null)
+check('no screen at all', promptText(null), null)
+
+check('free: nothing under the cursor', promptIsEmpty(BOX('❯')), true)
+check('free: only the hint', promptIsEmpty(BOX('❯ Try "how do I log an error?"')), true)
+check('not free: a draft', promptIsEmpty(BOX('❯ fix the bug')), false)
+// A menu puts its `❯` on the chosen row, and a key pressed there picks something.
+check('not free: a menu', promptIsEmpty('Security guide\n ❯ No, exit\n   Yes, I trust this folder'), false)
+check('not free: no box', promptIsEmpty(null), false)
+
+// Whether the loop should type at all. Every "no" holds on every platform; the "yes" only where
+// the adapter can type into a live session, which the test asks rather than assumes.
+{
+  const row = { session_id: 'live-1', title: 'New Name', terminal_window_id: '42' }
+  const session = (extra) => ({ sessionId: 'live-1', status: 'idle', name: 'Old-Name', ...extra })
+  check('not with the session gone', renameDue(row, undefined), false)
+  check('not while a turn is running', renameDue(row, session({ status: 'busy' })), false)
+  check('not with a dialog open', renameDue(row, session({ status: 'waiting' })), false)
+  check('not when the name is already right', renameDue(row, session({ name: 'New-Name' })), false)
+  check('not for a Claude Code that does not say its name', renameDue(row, { sessionId: 'live-1', status: 'idle' }), false)
+  check('not without a window', renameDue({ ...row, terminal_window_id: null }, session()), false)
+  check(
+    'yes, idle under the old name — where the platform can',
+    renameDue(row, session()),
+    capabilities.terminal.commands
+  )
+  check('the timeout after a try is a minute', RENAME_RETRY_MS, 60000)
+}
 
 // ── Importing sessions that already happened ─────────────────────────────────
 section('Importing sessions that already happened')

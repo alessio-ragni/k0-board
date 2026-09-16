@@ -14,6 +14,80 @@ export function sessionName(title) {
 
 export const findClaude = () => shell.findClaude()
 
+/**
+ * What is under the cursor: the text after the `❯` of the input box, as it reads on screen.
+ *
+ * The box is the last line with a `❯` on it — the sent messages above it are echoed with the
+ * same mark, but they are above it. Null when there is no such line at all: a dialog, the trust
+ * question, the interface still drawing. A menu with its `❯` on the chosen row reads as text,
+ * which is the right answer, because a key pressed there picks something.
+ */
+export function promptText(screen) {
+  if (!screen) return null
+  const lines = screen.split('\n')
+  for (let i = lines.length - 1; i >= 0; i--) {
+    const m = /^\s*❯(.*)$/.exec(lines[i])
+    if (m) return m[1].trim()
+  }
+  return null
+}
+
+/**
+ * Free to write in: nothing after the `❯`, or only the hint Claude Code prints in grey on a box
+ * that has never been typed in — `Try "how do I log an error?"` — which the next key replaces.
+ */
+export function promptIsEmpty(screen) {
+  const text = promptText(screen)
+  return text !== null && (text === '' || text.startsWith('Try "'))
+}
+
+/**
+ * How long a session is left alone after a rename was typed into it: long enough for the name
+ * in its session file to change, which is how the next round knows it took. After a refusal —
+ * the window not in front, something under the cursor — it is looked at again sooner.
+ */
+export const RENAME_RETRY_MS = 60000
+export const RENAME_REFUSED_MS = 5000
+const attempted = new Map() // session id -> { name, until }
+
+/**
+ * Whether a live session is waiting to be renamed, and can be right now.
+ *
+ * Only a session that is sitting idle — the raw status from its session file: no turn running,
+ * no dialog open — and only where the platform can type a command into it and read back what
+ * it typed. A session file without a `name` is an older Claude Code: k0 could type the command
+ * but never see whether it took, and it would go on typing it, so there the name catches up
+ * when the session ends.
+ */
+export function renameDue(story, session, now = Date.now()) {
+  if (!session || session.status !== 'idle' || !('name' in session)) return false
+  if (!story.terminal_window_id || !capabilities.terminal.commands) return false
+  const name = sessionName(story.title)
+  if (session.name === name) return false
+  const last = attempted.get(story.session_id)
+  return !(last && last.name === name && last.until > now)
+}
+
+/**
+ * Types `/rename` with the story's name into the session's window — if that window is the one in
+ * front of you. The adapter never raises it: the keyboard belongs to whatever you are doing, so
+ * the rename waits until you look at the session, and happens then.
+ */
+export async function renameLive(story) {
+  const name = sessionName(story.title)
+  const line = `/rename ${name}`
+  // Written down before the keys go in, not after: the watching loop asks again a second later,
+  // and typing takes longer than that — two rounds typing the same command into one box is a
+  // box with the command in it twice.
+  attempted.set(story.session_id, { name, until: Date.now() + RENAME_REFUSED_MS })
+  const res = await terminal.command(line, story.terminal_window_id, {
+    ready: promptIsEmpty,
+    verify: (screen) => promptText(screen) === line,
+  })
+  attempted.set(story.session_id, { name, until: Date.now() + (res.sent ? RENAME_RETRY_MS : RENAME_REFUSED_MS) })
+  return { ...res, name }
+}
+
 /** In driving mode the terminal has to be readable from across the room. */
 const DRIVING_FONT_SIZE = 22
 

@@ -238,12 +238,23 @@ export async function defaultFontSize() {
   return 12
 }
 
+/**
+ * Not yet. `send-keys` would probably do it, but it has not been seen to: whether Claude Code
+ * takes a slash command that arrives that way, or reads it as a message the way it reads the
+ * block `type` writes on macOS, is exactly the kind of thing this file does not guess at. Until
+ * somebody checks on a Linux machine, a live session keeps its name until it ends.
+ */
+export async function command() {
+  return { sent: false, why: 'Running a command inside a live session is not available with tmux yet' }
+}
+
 export const capabilities = () => ({
   windows: canPlaceWindows(),
   font: false,
   readScreen: !!TMUX(),
   pasteWithoutSending: !!TMUX(),
   title: !!TMUX(),
+  commands: false,
 })
 
 export { posixCommand as buildCommand } from './command.js'
