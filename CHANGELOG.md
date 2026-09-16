@@ -246,6 +246,9 @@ is exactly the board it was.
   end, and `k0-board doctor` says so. Also fixed when the title is changed by a skill rather than
   from the board, which used to rename nothing at all. Checked by hand on macOS on a session in a
   Terminal window; the rest is covered by tests.
+- **Notes on a post-it keep their lines.** They are written one per line, and the post-it ran them
+  together — `- OMI - Locato` for two notes — so a list did not read like one. Each note now sits
+  on its own line, and the post-it shows three of them before trimming, the same as the prompt.
 
 ## [0.4.0]
 

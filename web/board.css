@@ -650,8 +650,11 @@ body {
   font-style: italic;
   color: rgba(0, 0, 0, .56);
   margin-top: 6px;
+  /* The notes are written one per line and have to read that way: `- OMI` under `- Locato`, not
+     `- OMI - Locato` run together. Three lines, like the prompt, so two notes that wrap both show. */
+  white-space: pre-wrap;
   display: -webkit-box;
-  -webkit-line-clamp: 2;
+  -webkit-line-clamp: 3;
   -webkit-box-orient: vertical;
   overflow: hidden;
 }
