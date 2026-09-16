@@ -168,11 +168,17 @@ function epicChip(story) {
  * same rules `/k0-next` reasons over, and a second copy of them in here would be a second answer to
  * one question from the day somebody edited one of the two.
  *
- * One button per note, not a row of them. It goes first, ahead of Start and Done, because it is the
- * thing you are being told to do. It answers whether it drew anything, because that is what decides
- * how loud Start is allowed to be next to it: `null` is an answer here — a story that came through
- * its counter-check clean is waiting for a person to press Done, and filling that in with a command
- * would be inventing work.
+ * One suggestion per note, not a row of them. It goes first, ahead of Start and Done, because it is
+ * the thing you are being told to do. It answers whether it drew anything, because that is what
+ * decides how loud Start is allowed to be next to it: `null` is an answer here — a story that came
+ * through its counter-check clean is waiting for a person to press Done, and filling that in with a
+ * command would be inventing work.
+ *
+ * The one exception is `Ultracode`, drawn beside `Work` and only there. It is not a second
+ * suggestion — the server suggests one thing and this is not it — but the same suggestion taken a
+ * different way: the work of that story done by a manager with agents under it rather than by hand
+ * in one session. That is why it is a link and not a button, and why it exists nowhere else on the
+ * note: two roads out of one state are a choice, three would be a menu.
  */
 function nextStepButton(story, btn) {
   const step = story.next_step
@@ -200,6 +206,19 @@ async function doNextStep(story) {
   if (!step.command) return
   if (step.command === 'k0-work' && !(await mayStart(story))) return
   startCommand(story, step.command)
+}
+
+/** Whether this story is at the one moment where the manager is offered: the same one `Work` is. */
+const mayUltracode = (story) => story.next_step?.command === 'k0-work'
+
+/**
+ * The manager, on the story `Work` is being offered on. It asks the same question `Work` asks
+ * before it starts, because it is the same act done at a larger size: a story that waits on
+ * something unfinished is no better a thing to hand to five agents than to one.
+ */
+async function doUltracode(story) {
+  if (!(await mayStart(story))) return
+  startCommand(story, 'k0-ultracode')
 }
 
 /** What a story is still waiting for. Only what is not done: a dependency that closed is history. */
@@ -386,6 +405,11 @@ function postit(story, now) {
     // suggestion Quick Start is the button it has always been.
     const suggested = backlogOn && nextStepButton(story, btn)
     if (!suggested) btn('Quick Start', () => startStory(story))
+    // The manager, next to `Work` and only there: the same story, handed to several agents at once
+    // instead of to one session. A link rather than a button because `Work` is still the ordinary
+    // road, and this is the one you take on purpose.
+    if (suggested && mayUltracode(story))
+      btn('Ultracode', () => doUltracode(story), 'hand it to a manager with agents under it', 'link')
     // And Done beside it, once there is a backlog behind the board. A story with no session is not
     // only an idea nobody has touched: it is also the ordinary shape of one planned here and then
     // worked on in a terminal the user opened himself, or checked over by hand. `Done` is the only
@@ -1150,6 +1174,23 @@ async function startEpic(path) {
   refresh()
 }
 
+/**
+ * The other way an epic can open a terminal: one that exists, and a command told to run on the
+ * whole of it — `/k0-ultracode K7`. It is `startCommand` for something that is not a story, which
+ * is why it cannot be that function: the address is the epic's, and there is no session row at the
+ * end of it to come back with.
+ */
+async function startEpicCommand(epic, command) {
+  toast(`Opening the terminal on /${command} ${epic.key ?? ''}`.trim() + '…', 30000)
+  try {
+    launched(await api(`/api/backlog/epic/${epic.id}/start`, { method: 'POST', body: JSON.stringify({ command }) }))
+  } catch (e) {
+    toast(`Couldn't do it: ${e.message}`, 8000)
+  }
+  lastSignature = ''
+  refresh()
+}
+
 async function focusTerminal(id) {
   // The answer says `ok: false` when the window could not be brought up, and the request itself
   // can fail — a story deleted in another tab, the server restarting. Both are the same news to
@@ -1633,6 +1674,8 @@ const LIST = {
   hue: epicHue,
   flag: ICON.flag,
   next: doNextStep,
+  // The one thing the panel can start that a note cannot: a command told to run on a whole epic.
+  epicCommand: startEpicCommand,
   redraw: () => {
     lastSignature = ''
     refresh()
@@ -1722,8 +1765,10 @@ async function refresh() {
         c.blocked,
         // The label on the one button that says what to do next. It can change without anything
         // else on the row changing, and a suggestion nothing noticed would stay wrong until
-        // something else moved.
+        // something else moved. The command as well as the label, because `Ultracode` appears and
+        // disappears with the command behind it and not with the words on the button.
         c.next_step?.label ?? '',
+        c.next_step?.command ?? '',
       ]),
       // The server state belongs in here for the same reason the git state does: without it the
       // globe would keep the colour it had on the first round for the rest of the visit.

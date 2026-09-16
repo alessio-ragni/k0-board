@@ -11,7 +11,7 @@ one thing to do with it — *Discuss*, *Plan*, *Work*, or *Resume* on a terminal
 and pressing it opens a terminal with the command already sent. Beside it, **Quick Start** opens an
 empty one and leaves the typing to you: the long way round and the short way in, and nothing else.
 You work there and come back when it is done. That is the whole shape of it: the board is the menu,
-the commands are the engine, and you no longer have to know nine commands by heart to find the way
+the commands are the engine, and you no longer have to know ten commands by heart to find the way
 in.
 
 Underneath that, the board learns what the work is *about*. A post-it is now a **story** with a
@@ -139,6 +139,18 @@ is exactly the board it was.
   an empty one — "there is nothing here" and "you turned this off" read the same, and only one of
   them is worth acting on.
   k0 re-reads the file when it changes, so nothing has to be restarted.
+- **`/k0-ultracode`: a story, or a whole epic, run by a manager with agents under it.** It cuts the
+  plan into assignments, gives each one to an agent working in a copy of the repository of its own,
+  brings the work back one piece at a time, and then — on your branch, never inside a worktree —
+  runs the tests, has the result read by an agent that wrote none of it, and walks the story past
+  every decision before starting the next one. It asks two questions at the start and never asks
+  again: how much rope (*interactive*, *checkpoint* or *autonomous*) and how hard (two, three or
+  five agents at a time, one repair attempt or two). Both answers go into the Log, so a terminal
+  closed halfway through is picked up on the same terms. It never pushes, never presses **Done** —
+  the stories come back in `Review`, counter-checked — and it stops rather than grinding on: the
+  repair attempts are spent, what is still broken is said out loud, and everything that works is
+  already merged. On the board it sits beside *Work* as a second, quieter word, and on an epic it
+  is in the epic's own panel.
 
 ### Changed
 

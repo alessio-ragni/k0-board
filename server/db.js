@@ -1096,8 +1096,12 @@ const NOT_YET_STARTED = new Set(['Backlog', 'Discussed', 'Planned'])
  * story sat there with a dead session, being offered a counter-check on work that never happened.
  *
  * A session with no command at all — somebody pressed Start — is work, as it has always been.
+ *
+ * `/k0-ultracode` is here for the same reason `/k0-work` is: it discusses and plans where it has
+ * to, but what it is for is building the thing, and a story it is running on is a story being
+ * worked on.
  */
-const STARTS_THE_WORK = new Set(['k0-work'])
+const STARTS_THE_WORK = new Set(['k0-work', 'k0-ultracode'])
 
 /**
  * Writes the live status only when it changed, and records an event when it does.

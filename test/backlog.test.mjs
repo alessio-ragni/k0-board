@@ -363,7 +363,7 @@ section('The commands the interface may start')
   check('nothing at all is nothing to start', asked(null, 'K42').prompt, null)
   check('and neither is an empty line', asked('', 'K42').prompt, null)
 
-  check('there are nine of them, written out one by one', backlog.COMMANDS.length, 9)
+  check('there are ten of them, written out one by one', backlog.COMMANDS.length, 10)
 
   // The two ends have to meet: the page sends back exactly the command it was given, so a step
   // suggesting something off the list would be a refusal on the button the board itself drew.
@@ -380,6 +380,17 @@ section('The commands the interface may start')
     backlog.COMMANDS.includes('k0-verify'), true)
   check('and so is the one that cuts a story in two', backlog.COMMANDS.includes('k0-split'), true)
   check('and the one an epic is told with', backlog.COMMANDS.includes('k0-epic'), true)
+  // The tenth. It does the same work `/k0-work` does and is offered beside it on the board, but it
+  // is never what `nextStep` suggests: the suggestion is one thing to do, and this is a way of
+  // doing it. The key still has to reach the command line, because it is usually an epic's.
+  check('the manager is on the list though nothing suggests it either',
+    backlog.COMMANDS.includes('k0-ultracode'), true)
+  check('and it is started on the thing it was pressed on',
+    backlog.commandPrompt('k0-ultracode', 'K7').prompt, '/k0-ultracode K7')
+  // The epic's own start address takes the command from the request rather than having one written
+  // into it, so the guard that stands between a button and a command line is this same one.
+  check('and an epic asked to run something else is refused by name',
+    backlog.commandPrompt('k0-deploy', 'K7').error.includes('/k0-ultracode'), true)
 }
 
 // ── A repository an epic can be told in ──────────────────────────────────────

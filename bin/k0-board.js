@@ -298,6 +298,7 @@ const SKILLS = [
   ['k0-split', 'a story that will not close, cut into tasks'],
   ['k0-plan', 'plan mode, with the decisions written in as constraints'],
   ['k0-work', 'the worktree, the work, the log, the merge back'],
+  ['k0-ultracode', 'a whole epic, run by a manager with agents under it'],
   ['k0-verify', 'the counter-check, one decision at a time'],
   ['k0-next', 'what to pick up now, and why'],
   ['k0-order', 'priority and dependencies, dictated'],
