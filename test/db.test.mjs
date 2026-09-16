@@ -174,6 +174,13 @@ section('The statuses the board derives')
   store.attachSession(worked.id, 'dddd-4444', 'k0-work')
   store.applyDerivedStatus(worked.id, 'WORKING', true)
   check('and the one command that does the work still says so', store.getStory(worked.id).state, 'Working')
+
+  // The manager is the other one. It discusses and plans where it has to, but what it is for is
+  // building the thing — a story it is running on is a story being worked on.
+  const managed = store.createStory({ title: 'A whole epic at once', project_path: REPO, state: 'Planned' })
+  store.attachSession(managed.id, 'eeee-5555', 'k0-ultracode')
+  store.applyDerivedStatus(managed.id, 'WORKING', true)
+  check('and so does the one that hands it to agents', store.getStory(managed.id).state, 'Working')
 }
 
 // ── Ticking it off ───────────────────────────────────────────────────────────

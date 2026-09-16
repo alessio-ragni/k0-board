@@ -598,6 +598,12 @@ function epicPanelHtml(v) {
     <section class="block">
       <h3>Stories<small>${e.progress.done}/${e.progress.total}</small></h3>
       ${list ? `<ul class="mini">${list}</ul>` : '<p class="none">Nothing under it yet.</p>'}
+    </section>
+    <section class="block">
+      <h3>The whole thing at once</h3>
+      <p class="rule">A terminal on <code>/k0-ultracode ${esc(e.key)}</code>: one story at a time,
+        agents under it, and the tests and the counter-check before each one is called done.</p>
+      <button type="button" class="run" data-epic-run="${e.id}">Ultracode</button>
     </section>`
 }
 
@@ -939,6 +945,10 @@ panelEl.onclick = (e) => {
   if (e.target.closest('[data-shut]')) return shut()
   const check = e.target.closest('[data-check]')
   if (check) return tickCheck(check.dataset.check, check.dataset.state)
+  // The manager, on the whole epic. It is looked up in what the panel is already showing rather
+  // than composed here: the key on the command line has to be the key on the screen.
+  const run = e.target.closest('[data-epic-run]')
+  if (run && view?.epic?.id === Number(run.dataset.epicRun)) return hooks.epicCommand(view.epic, 'k0-ultracode')
   // A key in the panel — one this story waits for, one waiting for it, or one under the open
   // epic — is the same gesture as a row: it takes you to that story.
   const jump = e.target.closest('[data-story]')

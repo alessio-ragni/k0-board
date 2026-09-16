@@ -795,6 +795,24 @@ async function backlogApi(req, res, url, seg) {
     // for the whole epic once a second would re-read every story under it to draw a line of text.
     if (third === 'live' && req.method === 'GET') return send(res, 200, backlog.epicLive(id))
 
+    // A command told to run on the whole epic — `/k0-ultracode K7` — and there is no session row
+    // to hold it against, exactly as there is none for the epic that has not been told yet. It is
+    // not `POST /api/backlog/epic/start` with a key bolted on: that one is the `+` menu, it runs
+    // before the epic exists and its command is written into it. Here the epic exists, its key is
+    // the whole point of the line, and the command arrives with the request and is checked against
+    // the list like every other.
+    if (third === 'start' && req.method === 'POST') {
+      const { prompt, error } = backlog.commandPrompt(body.command, epic.key)
+      if (error) return send(res, 400, { error })
+      const standIn = { title: `${epic.key} ${epic.title}`, project_path: epic.project_path, prompt, auto_send: true }
+      try {
+        const out = await launch({ story: standIn, sessionId: crypto.randomUUID() })
+        return send(res, 200, { ...out, epic: backlog.publicEpic(epic) })
+      } catch (err) {
+        return send(res, 500, { error: String(err.message || err) })
+      }
+    }
+
     if (!third && req.method === 'PATCH') {
       const after = db.patchEpic(id, body)
       return wrote(res, backlog.publicEpic(after), mirrorEpic(id))

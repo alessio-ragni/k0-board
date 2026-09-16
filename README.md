@@ -395,7 +395,7 @@ round of questions is for, what the counter-check is really checking — it is i
 
 ### Before anything else: the commands have to be on your machine
 
-Everything below runs on nine commands you type at Claude Code, and Claude Code looks for a
+Everything below runs on ten commands you type at Claude Code, and Claude Code looks for a
 command in exactly two places: **the repository you have open**, and **your own
 `~/.claude/skills/`**. Neither of those is where npm puts k0. So a command that was not copied out
 is a command that does not exist, however carefully it was written — and every button on the board
@@ -407,7 +407,7 @@ Copying them out is **one question, asked by the installer**, right after it sta
   /k0-epic    — an epic, discussed in rounds, then a tree of stories
   /k0-story   — one story, straight onto the board
   …
-  Install 10 commands for Claude Code? (Y/n)
+  Install 11 commands for Claude Code? (Y/n)
 ```
 
 Say yes and they are there in every repository you ever open. It is worth saying plainly what
@@ -543,9 +543,9 @@ it there, onto `No epic` to take it out of one. That is the whole of it: **dragg
 state.** A state is a road the work walks, and walking it by dropping a piece of paper somewhere
 was always the wrong gesture — states move from the terminal, and from the Done button.
 
-### The nine commands
+### The ten commands
 
-Nine you type, and the installer offers ten — these nine plus
+Ten you type, and the installer offers eleven — these ten plus
 [`/k0-import`](#filling-the-board-with-what-you-have-already-done). `/k0-whatsnew` and
 `/k0-changelog` are deliberately not on that list: k0 runs those two itself, out of its own
 directory, and you never type them.
@@ -558,11 +558,12 @@ directory, and you never type them.
 | `/k0-split` | a story that will not close, cut into tasks that inherit its decisions |
 | `/k0-plan` | plan mode, with the standing decisions written into the plan as constraints |
 | `/k0-work` | the worktree, the work, the log as it goes, and the merge back |
+| `/k0-ultracode` | a whole epic, or one story, run by a manager with agents under it |
 | `/k0-verify` | the counter-check |
 | `/k0-next` | what to pick up now, and why |
 | `/k0-order` | priority and dependencies, dictated: *K51 to the top, K42 waits on K37, flag K19* |
 
-These nine are also the only nine a button on the board may start. They are written out by name in
+These ten are also the only ten a button on the board may start. They are written out by name in
 the server and checked against that list before anything reaches a command line — and it is a list
 and not a directory listing on purpose: a folder arriving in your skills directory, from a clone or
 a package or an installer, must not thereby become something a web page can ask k0 to run.
@@ -765,6 +766,30 @@ runs your repository's own hooks, and a `pre-commit` hook that runs the whole su
 does not step round it with `--no-verify` — a commit that only went through because k0 avoided your
 hooks has not been checked at all — so the hook does run, next door, with the wrong `.env` beside
 it. k0 says so when it happens rather than being quiet about it.
+
+### `/k0-ultracode`: the same work, with a manager over it
+
+On a note that is ready to be worked on, next to **Work**, there is a quieter word: **Ultracode**.
+It is the same act at a larger size. One session becomes a **manager**: it cuts the story's plan
+into **assignments**, gives each one to an **agent** working in a copy of the repository of its own,
+brings the work back one piece at a time, and only then — on your branch, where the code on the disk
+is the code that was merged — runs the tests, has the result read by an agent that wrote none of it,
+and walks the story past every decision. It is offered on an epic too, from the epic's panel, and
+that is what it is really for: story after story, each one finished before the next one starts.
+
+Before it does anything it asks you two questions and never asks again. **How much rope** —
+*interactive*, where every question an agent brings back reaches you while it is warm; *checkpoint*,
+which stops at the cut, before the merge and on a red test run; or *autonomous*, which goes to the
+end and comes back with the list of everything it decided on your behalf. And **how hard** — two,
+three or five agents at a time, one repair attempt or two, one pair of fresh eyes or three. Both
+answers go into the Log, so a terminal you closed halfway through is picked up again on the same
+terms rather than on new ones.
+
+What it does not do is the point of the shape. It never pushes. It never runs anything inside a
+worktree, for the reason above. It never presses **Done** — the stories come back sitting in
+`Review`, counter-checked, waiting for you. And it stops: the repair attempts are spent and then it
+tells you what is still broken, having merged everything that works. A run that never ends is not
+thoroughness, it is a run nobody can plan around.
 
 ### The `.k0/` folder
 
@@ -1483,6 +1508,8 @@ web/             the four pages (html, css, js served exactly as they are)
   k0-split/      a story too big to close, split into tasks that inherit its decisions
   k0-plan/       plan mode, with the standing decisions injected as constraints
   k0-work/       the worktree, the work, the Log as it goes, and the merge back
+  k0-ultracode/  the manager: a plan cut into assignments, an agent and a worktree each, and every
+                 story tested and counter-checked before the next one starts
   k0-verify/     the counter-check: every decision one by one, the checklist, the outcome
   k0-next/       what to pick up now, and why — the server decides, not the model
   k0-order/      priority and dependencies, dictated

@@ -446,16 +446,17 @@ export function nextStep(story, known = {}) {
 // ── The commands the interface may start ─────────────────────────────────────
 
 /**
- * The nine commands, written out one by one.
+ * The ten commands, written out one by one.
  *
  * By name, and never by reading `.claude/skills/`. What leaves here goes onto a command line, and
  * a directory listing is a list other people can add to: a folder arriving in that directory —
  * from a clone, a package, an installer — would become something a request could ask k0 to run.
- * Nine strings in a file cannot grow on their own, and the day there is a tenth command somebody
+ * Ten strings in a file cannot grow on their own, and the day there is an eleventh command somebody
  * has to come here and say so, which is the point.
  *
  * Every command `nextStep` hands back is on this list and has to stay on it: the button the page
- * draws sends back exactly what it was given.
+ * draws sends back exactly what it was given. The reverse is not true — `/k0-verify`, `/k0-split`
+ * and `/k0-ultracode` are never suggested and are still started from the board.
  */
 export const COMMANDS = [
   'k0-story',
@@ -464,6 +465,7 @@ export const COMMANDS = [
   'k0-split',
   'k0-plan',
   'k0-work',
+  'k0-ultracode',
   'k0-verify',
   'k0-next',
   'k0-order',
@@ -475,13 +477,13 @@ export const COMMANDS = [
  * gets the command on its own.
  *
  * The refusal is a sentence and not a throw because there is a person at the end of it: whatever
- * sent this is something somebody pressed, and a "no" is only useful when it says which nine
+ * sent this is something somebody pressed, and a "no" is only useful when it says which ten
  * words would have worked.
  */
 export function commandPrompt(raw, key = null) {
   // A leading slash is how these are written everywhere else — in the README, in the skills, in
-  // the user's own mouth — so it is taken and dropped rather than left to become a tenth spelling
-  // of nine commands that would then be refused.
+  // the user's own mouth — so it is taken and dropped rather than left to become an eleventh
+  // spelling of ten commands that would then be refused.
   const name = String(raw ?? '').trim().replace(/^\/+/, '')
   if (!COMMANDS.includes(name)) {
     const list = COMMANDS.map((c) => `/${c}`).join(', ')

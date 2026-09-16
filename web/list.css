@@ -491,6 +491,19 @@
 }
 #panel .mini button:hover { background: none; border: 0; }
 #panel .mini button:hover span { text-decoration: underline; }
+/* The one thing this panel starts. It looks like the suggestion on a row rather than like the
+   quiet buttons around it: it opens a terminal, and that is not a thing to press by accident. */
+#panel .run {
+  margin-top: 10px;
+  padding: 6px 14px;
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  background: var(--paper);
+  font: inherit;
+  font-size: .84rem;
+  cursor: pointer;
+}
+#panel .run:hover { border-color: var(--calm); color: var(--calm); }
 #panel .mini b { font: 600 .78rem var(--mono); }
 #panel .mini span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 

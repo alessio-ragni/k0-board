@@ -38,6 +38,7 @@
     ".claude/skills/k0-story",
     ".claude/skills/k0-plan",
     ".claude/skills/k0-work",
+    ".claude/skills/k0-ultracode",
     ".claude/skills/k0-discuss",
     ".claude/skills/k0-split",
     ".claude/skills/k0-order",
