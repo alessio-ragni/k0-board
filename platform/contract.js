@@ -25,6 +25,7 @@
  * @property {boolean} terminal.readScreen           can read back what is on screen
  * @property {boolean} terminal.pasteWithoutSending  can leave a prompt sitting unsent
  * @property {boolean} terminal.title                can rename a window from outside
+ * @property {boolean} terminal.commands             can run a slash command inside a live session
  * @property {object} power
  * @property {boolean} power.keepAwake               can stop idle sleep
  * @property {boolean} power.keepDisplayAwake        can stop the display sleeping
@@ -49,7 +50,14 @@
  * so a capability added here later defaults to "no" everywhere instead of crashing.
  */
 export const NO_CAPABILITIES = {
-  terminal: { windows: false, font: false, readScreen: false, pasteWithoutSending: false, title: false },
+  terminal: {
+    windows: false,
+    font: false,
+    readScreen: false,
+    pasteWithoutSending: false,
+    title: false,
+    commands: false,
+  },
   power: { keepAwake: false, keepDisplayAwake: false, lidSleep: false, battery: false },
   metrics: { pressure: false, swap: false },
   servers: { run: false, ports: false, adopt: false },
@@ -89,6 +97,16 @@ export const NO_CAPABILITIES = {
  *   Puts `text` in front of the user WITHOUT submitting it.
  * @property {(text: string, handle: string) => Promise<{written: boolean, error?: string}>} type
  *   Writes `text` and submits it. The fallback when `paste` is unavailable.
+ * @property {(text: string, handle: string, opts: {ready: (screen: string|null) => boolean,
+ *   verify: (screen: string|null) => boolean}) => Promise<{sent: boolean, why?: string}>} command
+ *   Runs a slash command — `/rename Foo` — inside the session in that window. The keys go in
+ *   one by one, which is the only way Claude Code takes a command from outside: written as one
+ *   block, the way `type` does it, the same line reaches it as a message. Only when the window
+ *   already has the keyboard, never by taking it: raising a window under somebody's hands puts
+ *   what they were typing into it. `ready` looks at the screen before the first key and says
+ *   whether the input box is free to write in; `verify` looks after the last one and says whether
+ *   exactly that line is under the cursor — only then is Enter pressed, and a line that came out
+ *   wrong is deleted instead.
  * @property {() => Promise<number>} defaultFontSize
  */
 

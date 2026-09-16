@@ -27,6 +27,33 @@ export function transcriptPath(cwd, sessionId) {
 }
 
 /**
+ * Where the transcript of a session really is.
+ *
+ * Usually under the slug of the directory the session was started in — but a session that moved
+ * into a worktree writes under the worktree's slug from then on, and the story only knows the
+ * repository. So the hints are tried first, cheaply, and when none of them has the file the whole
+ * projects directory is read once: one `readdir` per rename, never on the per-second scan.
+ */
+export function findTranscript(sessionId, ...cwds) {
+  for (const cwd of cwds) {
+    if (!cwd) continue
+    const file = transcriptPath(cwd, sessionId)
+    if (fs.existsSync(file)) return file
+  }
+  let dirs
+  try {
+    dirs = fs.readdirSync(PROJECTS_DIR)
+  } catch {
+    return null
+  }
+  for (const d of dirs) {
+    const file = path.join(PROJECTS_DIR, d, `${sessionId}.jsonl`)
+    if (fs.existsSync(file)) return file
+  }
+  return null
+}
+
+/**
  * Changes the name of a session that has already ended, so that renaming a story makes the new
  * name show up in the list of sessions you can resume.
  *
@@ -34,11 +61,15 @@ export function transcriptPath(cwd, sessionId) {
  * turn, and the last one wins: all this does is write another copy.
  *
  * Only on a closed session: if the process is alive it holds the file open for appending and
- * would put the old name back on the next turn. There, the `-n` of Resume takes care of it.
+ * would put the old name back on the next turn. There, `/rename` typed into its window takes care
+ * of it — `renameLive` in launcher.js — and the `-n` of Resume does the rest.
+ *
+ * `story` is the flat row: the session's id, and the two places its transcript is likeliest to be.
  */
-export function renameSession(cwd, sessionId, name) {
-  const file = transcriptPath(cwd, sessionId)
-  if (!fs.existsSync(file)) return false
+export function renameSession(story, name) {
+  const sessionId = story.session_id
+  const file = findTranscript(sessionId, story.work_path, story.project_path)
+  if (!file) return false
   const line = (o) => JSON.stringify({ ...o, sessionId }) + '\n'
   fs.appendFileSync(
     file,

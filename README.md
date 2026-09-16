@@ -112,6 +112,7 @@ only browsers are obliged to know that `.localhost` means this computer — k0 o
 | Open a terminal and run Claude Code in it | ✅ | ✅ tmux | ✅ |
 | Read the terminal to know when it is ready | ✅ | ✅ | ❌ waits a fixed moment instead |
 | Leave your prompt in place, unsent | ✅ needs Accessibility | ✅ | ✅ |
+| Rename a running session when its title changes | ✅ needs Accessibility | ❌ when it ends | ❌ when it ends |
 | Place, resize and raise windows | ✅ | ✅ X11 only | ✅ |
 | Large text in terminals for driving mode | ✅ | ❌ | ❌ |
 | Keep the machine awake | ✅ | ✅ | ✅ |
@@ -187,10 +188,17 @@ socket is opened, ever. Everything else stays as it was: no fonts fetched, no te
   itself does nothing. On a story that is already finished, where there is nothing left to edit,
   the **bin** takes its place.
 
-  Changing the title — only the title; the prompt has nothing to do with it — **immediately**
-  rewrites the name in the window's title bar, even while the session is running. Inside Claude
-  Code the real name catches up when the session ends: while the process is alive the transcript
-  already has an owner, and it would write the old name back over ours.
+  Changing the title — only the title; the prompt has nothing to do with it — renames the session
+  too, in three places at three moments. The window's title bar, **immediately**, session running
+  or not. The session itself, if it is still running, **the first time you look at it**: when that
+  window is the one in front of you and Claude Code is sitting idle with nothing under the cursor,
+  k0 types `/rename` with the new name into it and presses Enter — you will see the command go by.
+  It never brings the window up to do that: the keyboard is yours, and a terminal jumping up while
+  you type somewhere else would take your next words. And the list of sessions you can resume,
+  **when the session ends** — while the process is alive the transcript already has an owner, and
+  it would write the old name back over ours. On Linux and Windows the second of the three is
+  missing, and `k0-board doctor` says so: there the name catches up when the session ends. The
+  same happens when a skill changes the title through the API.
 
 - **Start** — opens a new terminal window, runs `claude` in the right repository under the story's
   name, and puts the prompt in it. You press Enter.
@@ -1567,10 +1575,17 @@ Field notes the code takes for granted.
   replaced by `-`, truncated at 200 characters with a hash on the end. That is lossy: `my_project`
   and `my-project` become the same name, so the working directory is always read from inside the
   transcript, never by reversing the directory name.
-- **A session's name lives in two places** — the session file, rewritten by the live process, and
-  the end of the transcript, in `custom-title` and `agent-name` lines that Claude Code rewrites
-  every turn. **The last one wins.** So renaming a closed session means appending another copy; a
-  live one would have the old name written back over it.
+- **A session's name lives in three places** — the process's own memory, the session file it
+  rewrites (`name`, with `nameSource: "user"` when `-n` or `/rename` set it), and the end of the
+  transcript, in `custom-title` and `agent-name` lines that Claude Code rewrites every turn.
+  **The last one wins.** So renaming a closed session means appending another copy; a live one
+  would have the old name written back over it, and the only way into a live one is its own
+  `/rename` command — typed at the keyboard. Written into the terminal as one block (Terminal's
+  `do script`, a paste) the same line reaches it as a message, and the model answers that it
+  cannot rename the session. The session file is how k0 knows the command took.
+- **The transcript is not always under the repository's slug.** A session that moves into a
+  worktree writes under the worktree's slug from then on, and a story only knows the repository —
+  so a rename looks in the work path, then the repository, then walks the projects directory.
 - **The session file appears before the interface is ready to receive.** Writing at that moment
   loses the first characters and swallows the Enter. So k0 waits until it can see the input box —
   and where a platform cannot read a terminal's screen, it waits a fixed moment and says so.

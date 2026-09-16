@@ -40,6 +40,7 @@ const unsupported = {
     readScreen: async () => null,
     paste: async () => ({ pasted: false }),
     type: async () => ({ written: false }),
+    command: async () => ({ sent: false, why: `Not supported on ${process.platform}` }),
     defaultFontSize: async () => 12,
   },
   power: {

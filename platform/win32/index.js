@@ -38,6 +38,9 @@ export const notes = {
   'terminal.title':
     'Windows Terminal owns its tab titles, so renaming a story does not rename a window that ' +
     'is already open. The new name shows up next time the session starts.',
+  'terminal.commands':
+    'Renaming a story renames its Claude Code session only once the session has ended: k0 ' +
+    'cannot read what is on a terminal’s screen here, so it will not type /rename into one blind.',
   'terminal.font':
     'Font size lives in your terminal’s own profile, which k0 will not rewrite, so driving ' +
     'mode enlarges the board but not the terminals.',

@@ -402,12 +402,97 @@ export async function type(text, handle) {
   }
 }
 
+/** Who has the keyboard right now: the frontmost process, and Terminal's front window if it is Terminal. */
+async function keyboard() {
+  let app = ''
+  try {
+    app = String(
+      await run(OSASCRIPT(), [
+        '-e',
+        'tell application "System Events" to get name of first application process whose frontmost is true',
+      ])
+    ).trim()
+  } catch {
+    /* System Events not answering: nobody, as far as we can tell */
+  }
+  let window = null
+  if (app === 'Terminal') {
+    try {
+      window = Number(await run(OSASCRIPT(), ['-e', 'tell application "Terminal" to get id of front window'])) || null
+    } catch {
+      /* no window in front */
+    }
+  }
+  return { app, window }
+}
+
+/**
+ * Runs a slash command inside the session: `/rename Foo`.
+ *
+ * Only keystrokes will do. `do script` — what `type` uses — writes the line in one block, and
+ * Claude Code takes a block as a message: `/rename Foo` typed that way was answered by the
+ * model explaining that it cannot rename the session. Typed key by key through System Events it
+ * runs. That needs the Accessibility permission, the same one `paste` needs, so without it the
+ * answer is an honest no.
+ *
+ * Never by raising the window. Keystrokes go to whatever is in front, and this was first written
+ * to bring the window up, type, and hand the keyboard back — and while it did, what the person at
+ * the keyboard was typing into another window landed in the box in front of the command. So the
+ * command is typed only when that window already has the keyboard, which is to say when you are
+ * looking at it; the caller comes back later otherwise.
+ *
+ * Verified before Enter, never blindly. Claude Code talks to the terminal now and then, and a
+ * key that lands in the middle of that exchange comes out as junk in front of the slash —
+ * `ltr/rename Foo`, seen — which Claude Code then reads as a message. So after the keys the line
+ * under the cursor is read back, and Enter is pressed only if it is exactly the command; anything
+ * else is deleted, a keystroke per character, and the caller is told.
+ */
+export async function command(text, handle, { ready, verify }) {
+  const id = Number(handle)
+  if (!id) return { sent: false, why: 'This story has no terminal window of its own' }
+  const now = await keyboard()
+  if (now.app !== 'Terminal' || now.window !== id) return { sent: false, why: 'The window is not in front' }
+  if (!ready(await readScreen(id))) return { sent: false, why: 'The input box is not free' }
+  // Takes away whatever is under the cursor. Generous on purpose: the box is empty once there is
+  // nothing left, and a Backspace on an empty box does nothing.
+  const clear = () =>
+    run(OSASCRIPT(), [
+      '-e',
+      `tell application "System Events"\n  repeat ${text.length + 16} times\n    key code 51\n  end repeat\nend tell`,
+    ])
+  try {
+    let why = 'The keys did not land clean'
+    // Twice at most: the junk is a matter of timing, and the second go usually lands.
+    for (let attempt = 0; attempt < 2; attempt++) {
+      await run(OSASCRIPT(), ['-e', `tell application "System Events" to keystroke "${asq(text)}"`])
+      await new Promise((r) => setTimeout(r, 400))
+      if (verify(await readScreen(id))) {
+        // Enter, and proof that it went in: a key event is posted, not delivered, and one can
+        // miss — seen, with the command left sitting in the box.
+        for (let enter = 0; enter < 2; enter++) {
+          await run(OSASCRIPT(), ['-e', 'tell application "System Events" to key code 36'])
+          await new Promise((r) => setTimeout(r, 400))
+          if (!verify(await readScreen(id))) return { sent: true }
+        }
+        why = 'Enter did not go in'
+      }
+      // Wrong line under the cursor, or the right one that will not go: take it away rather than
+      // leave it — a box with a stray command in it is one nobody can type into.
+      await clear()
+    }
+    return { sent: false, why }
+  } catch (err) {
+    return { sent: false, why: String(err.stderr || err.message).trim() }
+  }
+}
+
 export const capabilities = {
   windows: true,
   font: true,
   readScreen: true,
   pasteWithoutSending: true,
   title: true,
+  commands: true,
 }
 
 export { posixCommand as buildCommand } from '../shared/command.js'

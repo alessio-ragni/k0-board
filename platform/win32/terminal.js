@@ -204,12 +204,22 @@ export async function close({ handle, pid }) {
   return { closed: !!res?.ok }
 }
 
+/**
+ * Not here: a command is only worth typing into a live session once the screen says the input
+ * box is free and, afterwards, that the line came out right — and Windows gives no way to read
+ * the screen (see the top of this file). A live session keeps its name until it ends.
+ */
+export async function command() {
+  return { sent: false, why: 'k0 cannot read a terminal on Windows, so it will not type into one blind' }
+}
+
 export const capabilities = () => ({
   windows: !!POWERSHELL_BIN(),
   font: false,
   readScreen: false,
   pasteWithoutSending: !!POWERSHELL_BIN(),
   title: false,
+  commands: false,
 })
 
 export { powershellCommand as buildCommand } from '../shared/command.js'

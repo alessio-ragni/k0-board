@@ -464,6 +464,7 @@ async function doctor() {
     ['place and raise windows', capabilities.terminal.windows],
     ['read a terminal to know when Claude Code is ready', capabilities.terminal.readScreen],
     ['leave a prompt unsent', capabilities.terminal.pasteWithoutSending],
+    ['rename a running session when its title changes', capabilities.terminal.commands],
     ['resize the terminal font for driving mode', capabilities.terminal.font],
     ['keep the machine awake', capabilities.power.keepAwake],
     ['keep the screen awake', capabilities.power.keepDisplayAwake],

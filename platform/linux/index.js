@@ -52,6 +52,9 @@ export const notes = {
     'Font size belongs to your terminal emulator and every one of them spells it differently, ' +
     'so driving mode enlarges the board but not the terminals. Set a bigger font in your ' +
     'emulator’s own preferences if you want both.',
+  'terminal.commands':
+    'Renaming a story renames its Claude Code session only once the session has ended: k0 has ' +
+    'not yet been seen to run /rename inside a live session through tmux, so it does not try.',
   ...(capabilities.tray
     ? {}
     : { tray: 'python3 with PyGObject is needed for a tray icon. The board works without it.' }),
