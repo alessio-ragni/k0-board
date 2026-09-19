@@ -603,9 +603,26 @@ body {
 .postit.BACKLOG { background: var(--BACKLOG); }
 .postit.COMPLETED { background: var(--COMPLETED); opacity: .6; }
 .postit.COMPLETED .title { text-decoration: line-through; }
-/* Grinding away: the faintest breath, no blinking dots. */
-.postit.WORKING, .postit.PLANNING { animation: breathe 2.6s ease-in-out infinite; }
-@keyframes breathe { 50% { box-shadow: 2px 3px 8px rgba(0, 0, 0, .17), 0 0 0 3px rgba(59, 130, 246, .22); } }
+/* Grinding away: the faintest breath, no blinking dots.
+   The breath is a ring on a layer of its own, and the only thing moving is that layer's opacity,
+   which the browser composites without redrawing anything. It used to animate `box-shadow` on the
+   post-it itself — a blurred shadow, recomputed and repainted sixty times a second, for every
+   working post-it, in every open tab, for as long as the board was on screen. On a machine already
+   under pressure that was the most expensive thing k0 did, and none of it was in k0's own process:
+   the bill arrived under the browser's name. The ring sits just inside the edge rather than just
+   outside it, because the post-it clips what overflows it. */
+.postit.WORKING::after, .postit.PLANNING::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  box-shadow: inset 0 0 0 3px rgba(59, 130, 246, .22);
+  pointer-events: none;
+  opacity: 0;
+  will-change: opacity;
+  animation: breathe 2.6s ease-in-out infinite;
+}
+@keyframes breathe { 50% { opacity: 1; } }
 
 /* The repository's name and, beside it, how it is doing: the two read together. */
 .postit .head {

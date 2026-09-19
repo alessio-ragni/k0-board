@@ -113,6 +113,11 @@ final class ImagePaste {
         try? FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
         clearOld()
         Timer.scheduledTimer(withTimeInterval: 0.3, repeats: true) { _ in self.tick() }
+        // And again every ten minutes, which is the whole fix. Swept only here, `clearOld` tidied
+        // away the images of the session before this one and then never ran again: this app starts
+        // at login and stays up for weeks, so the folder simply grew — to 907 MB across 414
+        // screenshots, none of which anybody could still paste.
+        Timer.scheduledTimer(withTimeInterval: 600, repeats: true) { _ in self.clearOld() }
         NSLog("k0: image pasting active (no permission required)")
     }
 
@@ -154,15 +159,40 @@ final class ImagePaste {
         return rep.representation(using: .png, properties: [:])
     }
 
-    /// Yesterday's images are of no use to anybody.
+    /// How long an image is worth keeping, and how much of it there may be at once.
+    ///
+    /// Age alone was never a bound. One screenshot off a large display is ten megabytes, so an
+    /// afternoon of them can outgrow the disk long before anything is a day old — which is exactly
+    /// what happened. Past the ceiling the oldest go first, so what is left is what you might still
+    /// be about to paste.
+    private static let keepFor: TimeInterval = 86400
+    private static let keepUnder = 200 * 1024 * 1024
+
+    /// Yesterday's images are of no use to anybody, and neither is a gigabyte of today's.
     private func clearOld() {
-        let cutoff = Date().addingTimeInterval(-86400)
         let f = FileManager.default
-        guard let files = try? f.contentsOfDirectory(at: folder, includingPropertiesForKeys: [.contentModificationDateKey])
+        let keys: [URLResourceKey] = [.contentModificationDateKey, .fileSizeKey]
+        guard let files = try? f.contentsOfDirectory(at: folder, includingPropertiesForKeys: keys)
         else { return }
+
+        let cutoff = Date().addingTimeInterval(-Self.keepFor)
+        var kept: [(url: URL, at: Date, size: Int)] = []
         for u in files {
-            let date = (try? u.resourceValues(forKeys: [.contentModificationDateKey]))?.contentModificationDate
-            if let date, date < cutoff { try? f.removeItem(at: u) }
+            let values = try? u.resourceValues(forKeys: Set(keys))
+            let at = values?.contentModificationDate ?? Date.distantPast
+            if at < cutoff {
+                try? f.removeItem(at: u)
+                continue
+            }
+            kept.append((u, at, values?.fileSize ?? 0))
+        }
+
+        var total = kept.reduce(0) { $0 + $1.size }
+        guard total > Self.keepUnder else { return }
+        for one in kept.sorted(by: { $0.at < $1.at }) {
+            if total <= Self.keepUnder { break }
+            try? f.removeItem(at: one.url)
+            total -= one.size
         }
     }
 }

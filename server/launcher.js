@@ -51,6 +51,15 @@ export const RENAME_REFUSED_MS = 5000
 const attempted = new Map() // session id -> { name, until }
 
 /**
+ * The same clearing out `forgetDeadSessions` does in watcher.js, for the same reason: a rename
+ * attempted against a session that has since ended is a note about nobody, and nothing was ever
+ * removing it.
+ */
+export function forgetRenameAttempts(alive) {
+  for (const sessionId of attempted.keys()) if (!alive.has(sessionId)) attempted.delete(sessionId)
+}
+
+/**
  * Whether a live session is waiting to be renamed, and can be right now.
  *
  * Only a session that is sitting idle — the raw status from its session file: no turn running,

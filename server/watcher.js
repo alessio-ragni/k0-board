@@ -194,6 +194,22 @@ export function forgetSession(sessionId) {
 }
 
 /**
+ * Lets go of every session that is not running any more.
+ *
+ * `forgetSession` above is the deliberate goodbye — a story deleted, a terminal closed by hand —
+ * and a session that simply ends is none of those, so nothing ever said goodbye to it. One entry
+ * stayed behind per session this server had ever watched, each holding the tail of a transcript
+ * and the tools it was waiting on; on a board that has seen a few hundred of them, that was most
+ * of what the process was holding on to at rest. It had grown to 479 against 11 really alive.
+ *
+ * Losing the offset of a session that comes back is not a loss: the next scan reads the file from
+ * the top, which is what the first scan of any session does anyway.
+ */
+export function forgetDeadSessions(alive) {
+  for (const sessionId of scans.keys()) if (!alive.has(sessionId)) scans.delete(sessionId)
+}
+
+/**
  * Something is really running behind this status. It is the one question two different places
  * ask: whether a status that survives the death of a process would be a lie, and whether a
  * session may be closed from the board — a session that is grinding away is not.

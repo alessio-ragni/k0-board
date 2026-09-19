@@ -154,6 +154,12 @@ is exactly the board it was.
 
 ### Changed
 
+- **The machine chip says what k0 itself costs.** It measured the sessions and it measured Chrome,
+  and never the thing doing the measuring — which for a server that runs under launchd for weeks is
+  the one thing it should be least able to hide. Hovering it now also gives k0's own weight and CPU,
+  how many times a minute it asks git anything, how many queries it is holding, and how hard the
+  watching loop is currently running.
+
 - **A card is now a story, everywhere.** The word changed on the board, in the commands k0 ships
   and in what k0 stores. Your board comes back exactly as you left it — same post-its, same
   colours, same ages, same order — but what a post-it stands for now has room for what the work
@@ -197,6 +203,40 @@ is exactly the board it was.
   no post-it line of its own for k0 to have been aiming at.
 
 ### Fixed
+
+- **k0 stops costing anything on a machine nobody is using.** The watching loop went round once a
+  second for ever — awake or asleep, looked at or not — and every round asked the database about
+  every story twice over and every repository on the board about its git state. On a real board
+  that was a couple of dozen git processes every five seconds, dead ones piling up faster than they
+  could be buried, and about five per cent of a processor core burnt around the clock, a third of
+  it inside SQLite's parser compiling the same queries again. Now the loop goes round every two
+  seconds while a session is running or you are in front of the board, and once a minute when there
+  is neither, waking at once on anything you press; the queries are compiled once and kept; git is
+  asked at most every half minute, and away from the board only about the repositories a session is
+  actually working in. Nothing you can see on the board changed.
+- **A board left open in a background tab stops asking.** Every tab polled the server once a second
+  whether or not anybody could see it, and because asking is how the server learns somebody is
+  watching, a single forgotten tab kept it walking the whole process table and questioning git
+  indefinitely. Both the board and the file viewer now pause while their tab is hidden, and take a
+  fresh reading the moment you come back — so the first look is never stale. The file viewer's git
+  polling stops with it.
+- **The breath on a working post-it no longer costs a repaint.** The faint pulse was an animated
+  blurred shadow, which a browser cannot compose and has to redraw sixty times a second, for every
+  working post-it, in every open tab. It is now drawn on a layer of its own with only its opacity
+  moving. It looks the same, except that the ring sits just inside the post-it's edge rather than
+  just outside it.
+- **Sessions that end are forgotten.** k0 kept a note of every session it had ever watched, holding
+  the tail of its transcript, and only ever let go of one when a story was deleted or a terminal
+  closed by hand — which is not how most sessions end. On a board that had seen a few hundred, that
+  was most of what the server was holding at rest.
+- **Clipboard images are swept while k0 is running, not only when it starts.** The sweep was called
+  once, at launch, on an app that starts at login and stays up for weeks, so it only ever tidied
+  away the session before. A folder of pasted screenshots had grown to 907 MB. It now runs every ten
+  minutes, and there is a ceiling on the whole folder as well as on the age of what is in it: one
+  screenshot off a large display is ten megabytes, so age alone was never a bound.
+- **A dev server k0 lost track of is not remembered as running.** Rows pointing at processes that
+  died while k0 was not running are cleared on the way up. A pid is a number the operating system
+  hands out again, and a stale row is one that eventually names somebody else's process.
 
 - **Sessions opened by k0 have Claude Code's task list again.** On a newer model such as Opus 5,
   Claude Code starts without its task tools unless it is told otherwise, so a session asked to keep

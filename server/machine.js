@@ -156,6 +156,15 @@ export function loadOf(pid) {
 }
 
 /**
+ * What k0 itself weighs, measured the same way as everything else on the board.
+ *
+ * The chip has always said what the sessions cost and what Chrome costs, and never what the thing
+ * doing the measuring costs. That is the one number nobody could see, and for a server that runs
+ * under launchd for weeks it is the one that should be hardest to hide from.
+ */
+export const self = () => loadOf(process.pid)
+
+/**
  * How the machine is doing, and what is taking it up that is not a k0 session. `others` exists
  * so k0 does not take blame that belongs to Chrome: with swap full, the sessions on their own
  * often explain nothing.

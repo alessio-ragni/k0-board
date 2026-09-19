@@ -311,6 +311,39 @@ allocateMissingKeys()
 // hand anyway — the database is also opened by other tools, and by the user with `sqlite3`.
 db.exec('PRAGMA foreign_keys = ON')
 
+/**
+ * A prepared statement, kept rather than compiled a second time.
+ *
+ * `node:sqlite` puts the SQL text through the parser on every `prepare`, and the watching loop
+ * asks the same dozen questions of the same database several times a second: a third of this
+ * process's CPU was going into parsing SQL rather than into answering anything with it. The text
+ * is the key, so the handful of shapes `storyQuery` builds are each kept apart from the others,
+ * and that set is closed — nothing here builds a query out of a value.
+ *
+ * Deliberately below every migration. Those run once and move the schema out from under a
+ * statement, so they go on preparing their own and throwing them away.
+ */
+const statements = new Map()
+let compiled = 0
+const q = (sql) => {
+  const kept = statements.get(sql)
+  if (kept) return kept
+  const made = db.prepare(sql)
+  statements.set(sql, made)
+  compiled++
+  return made
+}
+
+/**
+ * What the database is costing, for the chip that says what k0 costs.
+ *
+ * `compiled` is the number that matters, and it is the proof: it climbs while the server warms up
+ * and then stops, because the set of questions k0 asks is closed. A number still climbing hours
+ * later would mean a query is being built out of a value somewhere and the cache above is a leak
+ * wearing a cache's clothes.
+ */
+export const sqlCost = () => ({ kept: statements.size, compiled })
+
 function addColumns(table, columns) {
   if (!tableExists(table)) return
   for (const [col, decl] of columns) if (!has(table, col)) db.exec(`ALTER TABLE ${table} ADD COLUMN ${col} ${decl}`)
@@ -633,7 +666,7 @@ const STORY_COLUMNS = `
   v.id AS session_row_id, v.session_id, COALESCE(v.alive, 0) AS session_alive,
   v.status AS session_status, v.terminal_window_id, v.work_path, v.head_at_start,
   COALESCE(v.auto_send, 0) AS auto_send, COALESCE(v.auto_closed, 0) AS auto_closed,
-  v.started_at AS session_started_at, v.ended_at AS session_ended_at,
+  v.started_at AS session_started_at, v.ended_at AS session_ended_at, v.opened_with,
   CASE
     WHEN s.completed_at IS NOT NULL THEN 'COMPLETED'
     WHEN v.session_id IS NULL OR v.session_id = '' THEN 'BACKLOG'
@@ -713,29 +746,29 @@ const storyQuery = (where = '', order = 'ORDER BY x.sort_hint, x.id') => `
 `
 
 export function listStories() {
-  return db.prepare(storyQuery()).all()
+  return q(storyQuery()).all()
 }
 
 export function getStory(id) {
-  return db.prepare(storyQuery('WHERE s.id = ?')).get(id)
+  return q(storyQuery('WHERE s.id = ?')).get(id)
 }
 
 /** The stable name of a story inside its repository: `K42`, and it never changes. */
 export function getStoryByKey(projectPath, keyNum) {
-  return db.prepare(storyQuery('WHERE s.project_path = ? AND s.key_num = ?')).get(projectPath, Number(keyNum))
+  return q(storyQuery('WHERE s.project_path = ? AND s.key_num = ?')).get(projectPath, Number(keyNum))
 }
 
 export function storiesOfProject(projectPath) {
-  return db.prepare(storyQuery('WHERE s.project_path = ?')).all(projectPath)
+  return q(storyQuery('WHERE s.project_path = ?')).all(projectPath)
 }
 
 export function storiesOfEpic(epicId) {
-  return db.prepare(storyQuery('WHERE s.epic_id = ?')).all(epicId)
+  return q(storyQuery('WHERE s.epic_id = ?')).all(epicId)
 }
 
 /** The tasks a story was split into, in the order they are to be done. */
 export function childStories(storyId) {
-  return db.prepare(storyQuery('WHERE s.parent_story_id = ?')).all(storyId)
+  return q(storyQuery('WHERE s.parent_story_id = ?')).all(storyId)
 }
 
 /**
@@ -744,7 +777,7 @@ export function childStories(storyId) {
  * freshest signal k0 has about where you are actually working.
  */
 export function projectRecency() {
-  return db.prepare('SELECT project_path, MAX(updated_at) AS at FROM story GROUP BY project_path').all()
+  return q('SELECT project_path, MAX(updated_at) AS at FROM story GROUP BY project_path').all()
 }
 
 export function createStory({
@@ -764,7 +797,7 @@ export function createStory({
 }) {
   const t = now()
   const key = key_num == null ? allocateKey(project_path) : reserveKey(project_path, key_num)
-  const { lastInsertRowid } = db.prepare(`
+  const { lastInsertRowid } = q(`
     INSERT INTO story (key_num, title, description, project_path, epic_id, parent_story_id, prompt, body,
                        color, lang, state, sort_hint, created_at, updated_at)
     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
@@ -778,8 +811,7 @@ export function createStory({
 
 /** Session ids a story already claims: they keep the same session from being imported twice. */
 export function sessionIds() {
-  return db
-    .prepare(`SELECT session_id FROM session WHERE session_id IS NOT NULL AND session_id <> ''`)
+  return q(`SELECT session_id FROM session WHERE session_id IS NOT NULL AND session_id <> ''`)
     .all()
     .map((r) => r.session_id)
 }
@@ -797,12 +829,12 @@ export function importStory({ title, description = '', project_path, session_id,
   const t = now()
   const born = Number(started_at) || t
   const last = Number(ended_at) || born
-  const { lastInsertRowid } = db.prepare(`
+  const { lastInsertRowid } = q(`
     INSERT INTO story (key_num, title, description, project_path, prompt, state, imported_at, created_at, updated_at)
     VALUES (?, ?, ?, ?, '', 'Working', ?, ?, ?)
   `).run(allocateKey(project_path), title, description || '', project_path, t, born, last)
   const id = Number(lastInsertRowid)
-  db.prepare(`
+  q(`
     INSERT INTO session (story_id, session_id, alive, status, started_at, ended_at) VALUES (?, ?, 0, 'IDLE', ?, ?)
   `).run(id, session_id, born, last)
   recordEvent(id, 'state', 'Working', last)
@@ -822,7 +854,7 @@ function wouldCycle(id, parentId) {
     if (at === Number(id)) return true
     if (seen.has(at)) return true
     seen.add(at)
-    at = Number(db.prepare('SELECT parent_story_id FROM story WHERE id = ?').get(at)?.parent_story_id ?? 0)
+    at = Number(q('SELECT parent_story_id FROM story WHERE id = ?').get(at)?.parent_story_id ?? 0)
   }
   return false
 }
@@ -831,12 +863,12 @@ export function patchStory(id, fields) {
   const wanted = { ...fields }
   if (wanted.parent_story_id != null && wouldCycle(id, wanted.parent_story_id)) delete wanted.parent_story_id
 
-  const wasIn = db.prepare('SELECT project_path FROM story WHERE id = ?').get(id)?.project_path ?? null
+  const wasIn = q('SELECT project_path FROM story WHERE id = ?').get(id)?.project_path ?? null
 
   const entries = Object.entries(wanted).filter(([k]) => PATCHABLE.includes(k))
   if (entries.length) {
     const set = entries.map(([k]) => `${k} = ?`).join(', ')
-    db.prepare(`UPDATE story SET ${set}, updated_at = ? WHERE id = ?`)
+    q(`UPDATE story SET ${set}, updated_at = ? WHERE id = ?`)
       .run(...entries.map(([, v]) => (typeof v === 'boolean' ? Number(v) : v)), now(), id)
   }
 
@@ -845,9 +877,9 @@ export function patchStory(id, fields) {
   // answer with whichever sorts first, while every skill that resolves a key addresses the wrong
   // story and `wt-K3` collides on the branch. It is given the next number where it now lives; the
   // one it left behind is not handed out again, because `allocateKey` only ever counts forwards.
-  const nowIn = db.prepare('SELECT project_path FROM story WHERE id = ?').get(id)?.project_path ?? null
+  const nowIn = q('SELECT project_path FROM story WHERE id = ?').get(id)?.project_path ?? null
   if (nowIn && nowIn !== wasIn) {
-    db.prepare('UPDATE story SET key_num = ? WHERE id = ?').run(allocateKey(nowIn, id), id)
+    q('UPDATE story SET key_num = ? WHERE id = ?').run(allocateKey(nowIn, id), id)
   }
 
   // Two fields that are not columns of `story` any more, and must not silently go nowhere:
@@ -869,7 +901,7 @@ export function setState(id, state) {
   const story = getStory(id)
   if (!story || story.state === state) return story
   const done = state === 'Done'
-  db.prepare('UPDATE story SET state = ?, completed_at = ?, updated_at = ? WHERE id = ?')
+  q('UPDATE story SET state = ?, completed_at = ?, updated_at = ? WHERE id = ?')
     .run(state, done ? story.completed_at || now() : null, now(), id)
   recordEvent(id, 'state', state)
   return getStory(id)
@@ -904,39 +936,38 @@ export function deleteStory(id, seen = new Set()) {
   // A task cannot outlive the story it was split out of: it carries none of the context that
   // made it a task. The declared cascade would do this too — but only where foreign keys are on,
   // and this has to be true on every build k0 runs on.
-  for (const child of db.prepare('SELECT id FROM story WHERE parent_story_id = ?').all(id)) {
+  for (const child of q('SELECT id FROM story WHERE parent_story_id = ?').all(id)) {
     deleteStory(child.id, seen)
   }
   // Both ways round: a verdict this story wrote about an inherited decision belongs to this story
   // and goes with it, and so does one about a decision of its own.
-  db.prepare('DELETE FROM decision_check WHERE story_id = ?').run(id)
-  db.prepare('DELETE FROM decision_check WHERE decision_id IN (SELECT id FROM decision WHERE story_id = ?)').run(id)
-  db.prepare('DELETE FROM decision WHERE story_id = ?').run(id)
-  db.prepare('DELETE FROM check_item WHERE story_id = ?').run(id)
-  db.prepare('DELETE FROM round WHERE story_id = ?').run(id)
-  db.prepare('DELETE FROM story_log WHERE story_id = ?').run(id)
-  db.prepare('DELETE FROM dependency WHERE story_id = ? OR depends_on = ?').run(id, id)
-  db.prepare('DELETE FROM session WHERE story_id = ?').run(id)
-  db.prepare('DELETE FROM session_event WHERE story_id = ?').run(id)
-  db.prepare('DELETE FROM story WHERE id = ?').run(id)
+  q('DELETE FROM decision_check WHERE story_id = ?').run(id)
+  q('DELETE FROM decision_check WHERE decision_id IN (SELECT id FROM decision WHERE story_id = ?)').run(id)
+  q('DELETE FROM decision WHERE story_id = ?').run(id)
+  q('DELETE FROM check_item WHERE story_id = ?').run(id)
+  q('DELETE FROM round WHERE story_id = ?').run(id)
+  q('DELETE FROM story_log WHERE story_id = ?').run(id)
+  q('DELETE FROM dependency WHERE story_id = ? OR depends_on = ?').run(id, id)
+  q('DELETE FROM session WHERE story_id = ?').run(id)
+  q('DELETE FROM session_event WHERE story_id = ?').run(id)
+  q('DELETE FROM story WHERE id = ?').run(id)
 }
 
 // ── The session a story is living through ────────────────────────────────────
 
 export function currentSession(storyId) {
-  return db
-    .prepare('SELECT * FROM session WHERE story_id = ? ORDER BY started_at DESC, id DESC LIMIT 1')
+  return q('SELECT * FROM session WHERE story_id = ? ORDER BY started_at DESC, id DESC LIMIT 1')
     .get(storyId) ?? null
 }
 
 /** Every session this story has had, oldest first: the story's own history of attempts. */
 export function listSessions(storyId) {
-  return db.prepare('SELECT * FROM session WHERE story_id = ? ORDER BY started_at, id').all(storyId)
+  return q('SELECT * FROM session WHERE story_id = ? ORDER BY started_at, id').all(storyId)
 }
 
 /** From Claude Code's session id back to the row: the worktree endpoints arrive holding one. */
 export function getSessionByClaudeId(sessionId) {
-  return db.prepare('SELECT * FROM session WHERE session_id = ? ORDER BY started_at DESC, id DESC LIMIT 1')
+  return q('SELECT * FROM session WHERE session_id = ? ORDER BY started_at DESC, id DESC LIMIT 1')
     .get(sessionId) ?? null
 }
 
@@ -948,9 +979,9 @@ export function getSessionByClaudeId(sessionId) {
 function sessionSlot(storyId) {
   const cur = currentSession(storyId)
   if (cur) return cur
-  const { lastInsertRowid } = db.prepare('INSERT INTO session (story_id, started_at) VALUES (?, ?)')
+  const { lastInsertRowid } = q('INSERT INTO session (story_id, started_at) VALUES (?, ?)')
     .run(storyId, now())
-  return db.prepare('SELECT * FROM session WHERE id = ?').get(Number(lastInsertRowid))
+  return q('SELECT * FROM session WHERE id = ?').get(Number(lastInsertRowid))
 }
 
 /**
@@ -968,17 +999,17 @@ export function attachSession(storyId, sessionId, openedWith = null) {
   if (slot.session_id) {
     // The story is starting a new conversation: the old one is closed off rather than written
     // over, so the story keeps the history of what has been tried on it.
-    db.prepare('UPDATE session SET alive = 0, ended_at = COALESCE(ended_at, ?) WHERE id = ?').run(now(), slot.id)
-    db.prepare(`
+    q('UPDATE session SET alive = 0, ended_at = COALESCE(ended_at, ?) WHERE id = ?').run(now(), slot.id)
+    q(`
       INSERT INTO session (story_id, session_id, alive, status, auto_send, opened_with, started_at)
       VALUES (?, ?, 1, 'IDLE', ?, ?, ?)
     `).run(storyId, sessionId, slot.auto_send, openedWith, now())
   } else {
-    db.prepare(`
+    q(`
       UPDATE session SET session_id = ?, alive = 1, ended_at = NULL, opened_with = ?, started_at = ? WHERE id = ?
     `).run(sessionId, openedWith, now(), slot.id)
   }
-  db.prepare('UPDATE story SET updated_at = ? WHERE id = ?').run(now(), storyId)
+  q('UPDATE story SET updated_at = ? WHERE id = ?').run(now(), storyId)
   return getStory(storyId)
 }
 
@@ -991,28 +1022,28 @@ export function detachSession(storyId, previousSessionId = null) {
   const cur = currentSession(storyId)
   if (cur) {
     const earlier = previousSessionId
-      ? db.prepare('SELECT * FROM session WHERE story_id = ? AND session_id = ? AND id <> ? ORDER BY id DESC LIMIT 1')
+      ? q('SELECT * FROM session WHERE story_id = ? AND session_id = ? AND id <> ? ORDER BY id DESC LIMIT 1')
           .get(storyId, previousSessionId, cur.id)
       : null
     if (earlier) {
-      db.prepare('DELETE FROM session WHERE id = ?').run(cur.id)
-      db.prepare(`UPDATE session SET alive = 0, ended_at = NULL, status = 'IDLE' WHERE id = ?`).run(earlier.id)
+      q('DELETE FROM session WHERE id = ?').run(cur.id)
+      q(`UPDATE session SET alive = 0, ended_at = NULL, status = 'IDLE' WHERE id = ?`).run(earlier.id)
     } else if (previousSessionId) {
       // There is no earlier row to go back to because the session that was there was written
       // over rather than replaced. It is put back where it was, which is what was asked.
-      db.prepare(`
+      q(`
         UPDATE session SET session_id = ?, alive = 0, status = 'IDLE', ended_at = NULL WHERE id = ?
       `).run(previousSessionId, cur.id)
     } else {
       // Nothing to go back to: the row is emptied rather than deleted, because it is also where
       // `auto_send` is kept and that was set before any of this and is still true.
-      db.prepare(`
+      q(`
         UPDATE session SET session_id = NULL, alive = 0, status = 'IDLE', head_at_start = NULL,
                            terminal_window_id = NULL, ended_at = NULL WHERE id = ?
       `).run(cur.id)
     }
   }
-  db.prepare('UPDATE story SET updated_at = ? WHERE id = ?').run(now(), storyId)
+  q('UPDATE story SET updated_at = ? WHERE id = ?').run(now(), storyId)
   return getStory(storyId)
 }
 
@@ -1022,7 +1053,7 @@ export function setAutoSend(storyId, on) {
   // Switching it off on a story that has never been started is already true: no empty session
   // row is made just to write the default into it.
   if (!cur && !on) return getStory(storyId)
-  db.prepare('UPDATE session SET auto_send = ? WHERE id = ?').run(on ? 1 : 0, (cur ?? sessionSlot(storyId)).id)
+  q('UPDATE session SET auto_send = ? WHERE id = ?').run(on ? 1 : 0, (cur ?? sessionSlot(storyId)).id)
   return getStory(storyId)
 }
 
@@ -1036,7 +1067,7 @@ export function setAutoSend(storyId, on) {
  */
 function setSessionColumn(storyId, column, value) {
   const cur = currentSession(storyId)
-  if (cur) db.prepare(`UPDATE session SET ${column} = ? WHERE id = ?`).run(value, cur.id)
+  if (cur) q(`UPDATE session SET ${column} = ? WHERE id = ?`).run(value, cur.id)
   return getStory(storyId)
 }
 
@@ -1075,10 +1106,10 @@ export function patchSession(sessionRowId, fields) {
   const entries = Object.entries(fields).filter(([k]) => SESSION_PATCHABLE.includes(k))
   if (entries.length) {
     const set = entries.map(([k]) => `${k} = ?`).join(', ')
-    db.prepare(`UPDATE session SET ${set} WHERE id = ?`)
+    q(`UPDATE session SET ${set} WHERE id = ?`)
       .run(...entries.map(([, v]) => (typeof v === 'boolean' ? Number(v) : v)), sessionRowId)
   }
-  return db.prepare('SELECT * FROM session WHERE id = ?').get(sessionRowId) ?? null
+  return q('SELECT * FROM session WHERE id = ?').get(sessionRowId) ?? null
 }
 
 // The states a live session takes a story out of. Review and Done are not among them on purpose:
@@ -1104,21 +1135,43 @@ const NOT_YET_STARTED = new Set(['Backlog', 'Discussed', 'Planned'])
 const STARTS_THE_WORK = new Set(['k0-work', 'k0-ultracode'])
 
 /**
+ * The current session, read back out of a flat story row instead of out of the database.
+ *
+ * `listStories` already joins it in — see `CURRENT_SESSION` — under names of its own, and these
+ * five columns are every one `applyDerivedStatus` looks at. A row with no session joined gives
+ * back null, exactly as the query would.
+ */
+const sessionOf = (row) =>
+  row.session_row_id == null
+    ? null
+    : {
+        id: row.session_row_id,
+        status: row.session_status,
+        alive: row.session_alive,
+        ended_at: row.session_ended_at,
+        opened_with: row.opened_with,
+      }
+
+/**
  * Writes the live status only when it changed, and records an event when it does.
  *
  * This is the one write that moves the story's `updated_at` without anybody typing anything, and
  * it has to keep doing so: the idle sweep takes the newest of several clocks before it closes a
  * terminal, and the board folds away the repositories nothing has happened in. Take this away
  * and a terminal you are working in looks abandoned to both of them.
+ *
+ * `known` is the flat row the caller is already holding. Handed over, it saves a query per story
+ * per round of the watching loop — on a board of a few hundred stories that one line was most of
+ * the SQL k0 ran in a day. Left out, the question is asked of the database as before.
  */
-export function applyDerivedStatus(storyId, status, alive) {
-  const cur = currentSession(storyId)
+export function applyDerivedStatus(storyId, status, alive, known = null) {
+  const cur = known ? sessionOf(known) : currentSession(storyId)
   if (!cur) return
   const aliveInt = alive ? 1 : 0
   if (cur.status !== status || cur.alive !== aliveInt) {
-    db.prepare('UPDATE session SET status = ?, alive = ?, ended_at = ? WHERE id = ?')
+    q('UPDATE session SET status = ?, alive = ?, ended_at = ? WHERE id = ?')
       .run(status, aliveInt, aliveInt ? null : cur.ended_at ?? now(), cur.id)
-    db.prepare('UPDATE story SET updated_at = ? WHERE id = ?').run(now(), storyId)
+    q('UPDATE story SET updated_at = ? WHERE id = ?').run(now(), storyId)
     if (cur.status !== status) recordEvent(storyId, 'session', status)
   }
   // A session that is really running says the story is being worked on, and says it without being
@@ -1132,14 +1185,14 @@ export function applyDerivedStatus(storyId, status, alive) {
   // One column and not `getStory`: this now runs on every live session on every round of the
   // watching loop, and the flat row costs three subqueries to build. The state is all it asks for.
   if (aliveInt && (!cur.opened_with || STARTS_THE_WORK.has(cur.opened_with))) {
-    const state = db.prepare('SELECT state FROM story WHERE id = ?').get(storyId)?.state
+    const state = known ? known.state : q('SELECT state FROM story WHERE id = ?').get(storyId)?.state
     if (state && NOT_YET_STARTED.has(state)) setState(storyId, 'Working')
   }
 }
 
 /** `at` is only passed when importing: there the event belongs to when it happened, not now. */
 function recordEvent(storyId, kind, status, at = now()) {
-  db.prepare('INSERT INTO session_event (story_id, kind, status, at) VALUES (?, ?, ?, ?)')
+  q('INSERT INTO session_event (story_id, kind, status, at) VALUES (?, ?, ?, ?)')
     .run(storyId, kind, status, at)
 }
 
@@ -1155,7 +1208,7 @@ function recordEvent(storyId, kind, status, at = now()) {
  * finished on Tuesday belongs to Tuesday even if it was reopened on Friday.
  */
 export function eventsBetween(from, to) {
-  return db.prepare(`
+  return q(`
     SELECT s.id, s.title, s.description, s.project_path, s.state, s.completed_at,
            CASE
              WHEN s.completed_at IS NOT NULL THEN 'COMPLETED'
@@ -1182,22 +1235,22 @@ const epicRow = `SELECT id, key_num, 'K' || key_num AS "key", project_path, titl
 
 export function listEpics(projectPath = null) {
   return projectPath
-    ? db.prepare(`${epicRow} WHERE project_path = ? ORDER BY sort_hint, id`).all(projectPath)
-    : db.prepare(`${epicRow} ORDER BY project_path, sort_hint, id`).all()
+    ? q(`${epicRow} WHERE project_path = ? ORDER BY sort_hint, id`).all(projectPath)
+    : q(`${epicRow} ORDER BY project_path, sort_hint, id`).all()
 }
 
 export function getEpic(id) {
-  return db.prepare(`${epicRow} WHERE id = ?`).get(id)
+  return q(`${epicRow} WHERE id = ?`).get(id)
 }
 
 export function getEpicByKey(projectPath, keyNum) {
-  return db.prepare(`${epicRow} WHERE project_path = ? AND key_num = ?`).get(projectPath, Number(keyNum))
+  return q(`${epicRow} WHERE project_path = ? AND key_num = ?`).get(projectPath, Number(keyNum))
 }
 
 export function createEpic({ project_path, title, body = '', lang = '', sort_hint = 0, key_num = null }) {
   const t = now()
   const key = key_num == null ? allocateKey(project_path) : reserveKey(project_path, key_num)
-  const { lastInsertRowid } = db.prepare(`
+  const { lastInsertRowid } = q(`
     INSERT INTO epic (key_num, project_path, title, body, lang, sort_hint, created_at, updated_at)
     VALUES (?, ?, ?, ?, ?, ?, ?, ?)
   `).run(key, project_path, title, body, lang, sort_hint, t, t)
@@ -1215,7 +1268,7 @@ export function patchEpic(id, fields) {
   const entries = Object.entries(wanted).filter(([k]) => EPIC_PATCHABLE.includes(k))
   if (entries.length) {
     const set = entries.map(([k]) => `${k} = ?`).join(', ')
-    db.prepare(`UPDATE epic SET ${set}, updated_at = ? WHERE id = ?`)
+    q(`UPDATE epic SET ${set}, updated_at = ? WHERE id = ?`)
       .run(...entries.map(([, v]) => (typeof v === 'boolean' ? Number(v) : v)), now(), id)
   }
   return getEpic(id)
@@ -1229,11 +1282,11 @@ export function patchEpic(id, fields) {
  * a rule nobody can read any more is worse than no verdict.
  */
 export function deleteEpic(id) {
-  db.prepare('DELETE FROM decision_check WHERE decision_id IN (SELECT id FROM decision WHERE epic_id = ?)').run(id)
-  db.prepare('DELETE FROM decision WHERE epic_id = ?').run(id)
-  db.prepare('DELETE FROM round WHERE epic_id = ?').run(id)
-  db.prepare('UPDATE story SET epic_id = NULL, updated_at = ? WHERE epic_id = ?').run(now(), id)
-  db.prepare('DELETE FROM epic WHERE id = ?').run(id)
+  q('DELETE FROM decision_check WHERE decision_id IN (SELECT id FROM decision WHERE epic_id = ?)').run(id)
+  q('DELETE FROM decision WHERE epic_id = ?').run(id)
+  q('DELETE FROM round WHERE epic_id = ?').run(id)
+  q('UPDATE story SET epic_id = NULL, updated_at = ? WHERE epic_id = ?').run(now(), id)
+  q('DELETE FROM epic WHERE id = ?').run(id)
 }
 
 // ── The clocks a rebuild has to put back ─────────────────────────────────────
@@ -1260,7 +1313,7 @@ export function restoreTimes(kind, id, { created_at = null, updated_at = null, c
     .concat(table === 'story' ? [['completed_at', completed_at]] : [])
     .filter(([, v]) => Number.isFinite(v) && v > 0)
   if (!set.length) return
-  db.prepare(`UPDATE ${table} SET ${set.map(([k]) => `${k} = ?`).join(', ')} WHERE id = ?`)
+  q(`UPDATE ${table} SET ${set.map(([k]) => `${k} = ?`).join(', ')} WHERE id = ?`)
     .run(...set.map(([, v]) => v), id)
 }
 
@@ -1274,11 +1327,11 @@ export function restoreTimes(kind, id, { created_at = null, updated_at = null, c
 // number on them.
 
 export function listDecisions(storyId) {
-  return db.prepare('SELECT * FROM decision WHERE story_id = ? ORDER BY n').all(storyId)
+  return q('SELECT * FROM decision WHERE story_id = ? ORDER BY n').all(storyId)
 }
 
 export function listEpicDecisions(epicId) {
-  return db.prepare('SELECT * FROM decision WHERE epic_id = ? ORDER BY n').all(epicId)
+  return q('SELECT * FROM decision WHERE epic_id = ? ORDER BY n').all(epicId)
 }
 
 /**
@@ -1323,8 +1376,7 @@ export function effectiveDecisions(storyId) {
  */
 export function decidedStories() {
   return new Set(
-    db
-      .prepare(`
+    q(`
         SELECT s.id FROM story s WHERE EXISTS (
           SELECT 1 FROM decision d
           WHERE d.superseded_by IS NULL AND (d.story_id = s.id OR d.epic_id = s.epic_id)
@@ -1336,11 +1388,11 @@ export function decidedStories() {
 }
 
 export function getDecision(id) {
-  return db.prepare('SELECT * FROM decision WHERE id = ?').get(id)
+  return q('SELECT * FROM decision WHERE id = ?').get(id)
 }
 
 const nextDecisionNumber = (column, ownerId) =>
-  db.prepare(`SELECT COALESCE(MAX(n), 0) + 1 AS n FROM decision WHERE ${column} = ?`).get(ownerId).n
+  q(`SELECT COALESCE(MAX(n), 0) + 1 AS n FROM decision WHERE ${column} = ?`).get(ownerId).n
 
 /**
  * `n` is normally the next one, and is only ever passed in from outside when a `.k0/` file is
@@ -1351,7 +1403,7 @@ const nextDecisionNumber = (column, ownerId) =>
 function insertDecision(column, ownerId, { text, source = 'discussion', at = null, n = null }) {
   const given = Number(n)
   const number = Number.isInteger(given) && given > 0 ? given : nextDecisionNumber(column, ownerId)
-  const { lastInsertRowid } = db.prepare(`
+  const { lastInsertRowid } = q(`
     INSERT INTO decision (${column}, n, text, source, at) VALUES (?, ?, ?, ?, ?)
   `).run(ownerId, number, text, source, Number(at) || now())
   return getDecision(Number(lastInsertRowid))
@@ -1388,12 +1440,12 @@ export function supersedeDecision(id, bySomeDecisionId) {
   const decision = getDecision(id)
   if (!decision) return null
   if (bySomeDecisionId == null || bySomeDecisionId === '') {
-    db.prepare('UPDATE decision SET superseded_by = NULL WHERE id = ?').run(id)
+    q('UPDATE decision SET superseded_by = NULL WHERE id = ?').run(id)
     return getDecision(id)
   }
   const by = getDecision(Number(bySomeDecisionId))
   if (!by || by.id === decision.id || !sameOwner(decision, by)) return decision
-  db.prepare('UPDATE decision SET superseded_by = ? WHERE id = ?').run(by.id, id)
+  q('UPDATE decision SET superseded_by = ? WHERE id = ?').run(by.id, id)
   return getDecision(id)
 }
 
@@ -1411,7 +1463,7 @@ const VERDICTS = new Set(['kept', 'violated', 'na'])
 
 /** The runs there have been on this story, newest number first. */
 export function latestRun(storyId) {
-  return db.prepare('SELECT COALESCE(MAX(run), 0) AS run FROM decision_check WHERE story_id = ?').get(storyId).run
+  return q('SELECT COALESCE(MAX(run), 0) AS run FROM decision_check WHERE story_id = ?').get(storyId).run
 }
 
 /**
@@ -1457,7 +1509,7 @@ export function recordRunChecks(storyId, run, results) {
     if (!decision) continue
     const verdict = verdictOf(r)
     if (!VERDICTS.has(verdict)) continue
-    db.prepare(`
+    q(`
       INSERT INTO decision_check (story_id, decision_id, run, verdict, evidence, at) VALUES (?, ?, ?, ?, ?, ?)
     `).run(storyId, decision.id, Number(run), verdict, String(r.evidence || ''), t)
     written++
@@ -1493,8 +1545,7 @@ export function listDecisionChecks(storyId, run = null) {
   const where = run == null ? '' : 'AND c.run = ?'
   const args = run == null ? [storyId] : [storyId, Number(run)]
   const labels = new Map(effectiveDecisions(storyId).map((d) => [d.id, d.label]))
-  return db
-    .prepare(`
+  return q(`
       SELECT c.*, d.n AS decision_n, d.text AS decision_text, d.epic_id AS decision_epic_id
       FROM decision_check c JOIN decision d ON d.id = c.decision_id
       WHERE c.story_id = ? ${where}
@@ -1534,18 +1585,18 @@ export function openViolations(storyId) {
 // ── The checklist ────────────────────────────────────────────────────────────
 
 export function listCheckItems(storyId) {
-  return db.prepare('SELECT * FROM check_item WHERE story_id = ? ORDER BY n').all(storyId)
+  return q('SELECT * FROM check_item WHERE story_id = ? ORDER BY n').all(storyId)
 }
 
 /** The checklist is replaced whole, never merged: half an old list and half a new one is neither. */
 export function setCheckItems(storyId, items) {
-  db.prepare('DELETE FROM check_item WHERE story_id = ?').run(storyId)
+  q('DELETE FROM check_item WHERE story_id = ?').run(storyId)
   const t = now()
   let n = 0
   for (const item of items || []) {
     const text = String(item?.text ?? '').trim()
     if (!text) continue
-    db.prepare('INSERT INTO check_item (story_id, n, text, state, evidence, by, at) VALUES (?, ?, ?, ?, ?, ?, ?)')
+    q('INSERT INTO check_item (story_id, n, text, state, evidence, by, at) VALUES (?, ?, ?, ?, ?, ?, ?)')
       .run(storyId, ++n, text, item.state || 'todo', item.evidence || '', item.by || 'claude', t)
   }
   return listCheckItems(storyId)
@@ -1557,17 +1608,17 @@ export function patchCheckItem(id, fields) {
   const entries = Object.entries(fields).filter(([k]) => CHECK_PATCHABLE.includes(k))
   if (entries.length) {
     const set = entries.map(([k]) => `${k} = ?`).join(', ')
-    db.prepare(`UPDATE check_item SET ${set}, at = ? WHERE id = ?`)
+    q(`UPDATE check_item SET ${set}, at = ? WHERE id = ?`)
       .run(...entries.map(([, v]) => v), now(), id)
   }
-  return db.prepare('SELECT * FROM check_item WHERE id = ?').get(id)
+  return q('SELECT * FROM check_item WHERE id = ?').get(id)
 }
 
 // ── What waits on what ───────────────────────────────────────────────────────
 
 /** The stories this one is waiting for, with enough of each to say so on the post-it. */
 export function dependenciesOf(storyId) {
-  return db.prepare(`
+  return q(`
     SELECT s.id, s.key_num, 'K' || s.key_num AS "key", s.title, s.state
     FROM dependency d JOIN story s ON s.id = d.depends_on
     WHERE d.story_id = ? ORDER BY s.sort_hint, s.id
@@ -1576,7 +1627,7 @@ export function dependenciesOf(storyId) {
 
 /** And the ones waiting for it, which is what makes finishing this one worth doing first. */
 export function dependentsOf(storyId) {
-  return db.prepare(`
+  return q(`
     SELECT s.id, s.key_num, 'K' || s.key_num AS "key", s.title, s.state
     FROM dependency d JOIN story s ON s.id = d.story_id
     WHERE d.depends_on = ? ORDER BY s.sort_hint, s.id
@@ -1586,12 +1637,12 @@ export function dependentsOf(storyId) {
 export function addDependency(storyId, dependsOn) {
   // A story that waits for itself would be blocked for ever, and nothing would say why.
   if (Number(storyId) === Number(dependsOn)) return false
-  db.prepare('INSERT OR IGNORE INTO dependency (story_id, depends_on) VALUES (?, ?)').run(storyId, dependsOn)
+  q('INSERT OR IGNORE INTO dependency (story_id, depends_on) VALUES (?, ?)').run(storyId, dependsOn)
   return true
 }
 
 export function removeDependency(storyId, dependsOn) {
-  db.prepare('DELETE FROM dependency WHERE story_id = ? AND depends_on = ?').run(storyId, dependsOn)
+  q('DELETE FROM dependency WHERE story_id = ? AND depends_on = ?').run(storyId, dependsOn)
 }
 
 // ── The rounds of a discussion ───────────────────────────────────────────────
@@ -1602,7 +1653,7 @@ export function removeDependency(storyId, dependsOn) {
 export function listRounds({ storyId = null, epicId = null } = {}) {
   const [column, id] = storyId ? ['story_id', storyId] : ['epic_id', epicId]
   if (!id) return []
-  return db.prepare(`SELECT * FROM round WHERE ${column} = ? ORDER BY n`).all(id)
+  return q(`SELECT * FROM round WHERE ${column} = ? ORDER BY n`).all(id)
 }
 
 /**
@@ -1611,11 +1662,11 @@ export function listRounds({ storyId = null, epicId = null } = {}) {
  * goes down when it is asked and the answer when it arrives, and that is one round, not two.
  */
 function putRound(column, ownerId, { n, estimated_total = 0, question = '', answer = '' }) {
-  db.prepare(`DELETE FROM round WHERE ${column} = ? AND n = ?`).run(ownerId, Number(n))
-  db.prepare(`
+  q(`DELETE FROM round WHERE ${column} = ? AND n = ?`).run(ownerId, Number(n))
+  q(`
     INSERT INTO round (${column}, n, estimated_total, question, answer, at) VALUES (?, ?, ?, ?, ?, ?)
   `).run(ownerId, Number(n), Number(estimated_total) || 0, question, answer, now())
-  return db.prepare(`SELECT * FROM round WHERE ${column} = ? AND n = ?`).get(ownerId, Number(n))
+  return q(`SELECT * FROM round WHERE ${column} = ? AND n = ?`).get(ownerId, Number(n))
 }
 
 export function addRound(storyId, round) {
@@ -1629,17 +1680,17 @@ export function addEpicRound(epicId, round) {
 // ── The plan and the log ─────────────────────────────────────────────────────
 
 export function setPlan(storyId, text) {
-  db.prepare('UPDATE story SET plan = ?, updated_at = ? WHERE id = ?').run(String(text ?? ''), now(), storyId)
+  q('UPDATE story SET plan = ?, updated_at = ? WHERE id = ?').run(String(text ?? ''), now(), storyId)
   return getStory(storyId)
 }
 
 export function listLog(storyId) {
-  return db.prepare('SELECT * FROM story_log WHERE story_id = ? ORDER BY at, id').all(storyId)
+  return q('SELECT * FROM story_log WHERE story_id = ? ORDER BY at, id').all(storyId)
 }
 
 /** `at` is only passed when reading `.k0/` back: a log entry belongs to the day it was written. */
 export function addLogEntry(storyId, { text, session_id = null, at = null }) {
-  db.prepare('INSERT INTO story_log (story_id, session_id, text, at) VALUES (?, ?, ?, ?)')
+  q('INSERT INTO story_log (story_id, session_id, text, at) VALUES (?, ?, ?, ?)')
     .run(storyId, session_id, String(text ?? ''), Number(at) || now())
   return listLog(storyId)
 }
@@ -1647,12 +1698,12 @@ export function addLogEntry(storyId, { text, session_id = null, at = null }) {
 // ── The switches that remember ───────────────────────────────────────────────
 /** The caller decides what a missing row means: this returns `fallback`. */
 export function getPref(key, fallback = null) {
-  const r = db.prepare('SELECT "value" FROM pref WHERE "key" = ?').get(key)
+  const r = q('SELECT "value" FROM pref WHERE "key" = ?').get(key)
   return r ? r.value : fallback
 }
 
 export function setPref(key, value) {
-  db.prepare(`
+  q(`
     INSERT INTO pref ("key", "value") VALUES (?, ?)
     ON CONFLICT("key") DO UPDATE SET "value" = excluded."value"
   `).run(key, String(value))
@@ -1660,23 +1711,23 @@ export function setPref(key, value) {
 
 /** For migrations: a key that no longer means anything gets retired. */
 export function dropPref(key) {
-  db.prepare('DELETE FROM pref WHERE "key" = ?').run(key)
+  q('DELETE FROM pref WHERE "key" = ?').run(key)
 }
 
 // ── The dev servers k0 started ───────────────────────────────────────────────
 // See the comment on the table: a row is intent, not observation.
 
 export function listDevServers() {
-  return db.prepare('SELECT project_path, pid, command, started_at FROM dev_server').all()
+  return q('SELECT project_path, pid, command, started_at FROM dev_server').all()
 }
 
 export function getDevServer(projectPath) {
-  return db.prepare('SELECT project_path, pid, command, started_at FROM dev_server WHERE project_path = ?')
+  return q('SELECT project_path, pid, command, started_at FROM dev_server WHERE project_path = ?')
     .get(projectPath) ?? null
 }
 
 export function setDevServer(projectPath, { pid, command, startedAt }) {
-  db.prepare(`
+  q(`
     INSERT INTO dev_server (project_path, pid, command, started_at) VALUES (?, ?, ?, ?)
     ON CONFLICT(project_path) DO UPDATE SET
       pid = excluded.pid, command = excluded.command, started_at = excluded.started_at
@@ -1684,7 +1735,7 @@ export function setDevServer(projectPath, { pid, command, startedAt }) {
 }
 
 export function clearDevServer(projectPath) {
-  db.prepare('DELETE FROM dev_server WHERE project_path = ?').run(projectPath)
+  q('DELETE FROM dev_server WHERE project_path = ?').run(projectPath)
 }
 
 /**

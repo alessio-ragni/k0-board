@@ -5,7 +5,7 @@ import crypto from 'node:crypto'
 import * as db from './db.js'
 import { allowed } from './guard.js'
 import { ROOT } from './paths.js'
-import { readLiveSessions, deriveStatus, forgetSession, renameSession, busy } from './watcher.js'
+import { readLiveSessions, deriveStatus, forgetSession, forgetDeadSessions, renameSession, busy } from './watcher.js'
 import {
   launch,
   focusWindow,
@@ -16,6 +16,7 @@ import {
   renameLive,
   applyModeToWindows,
   relayoutWindows,
+  forgetRenameAttempts,
 } from './launcher.js'
 import * as mode from './mode.js'
 import * as settings from './settings.js'
@@ -42,11 +43,14 @@ const WEB = path.join(ROOT, 'web')
 const PORT = Number(process.env.K0_PORT || 4319)
 
 // ── The watching loop ────────────────────────────────────────────────────────
-// Runs with the tab closed too, so the history of statuses has no holes.
-let rounds = 0
+// Runs with the tab closed too, so the history of statuses has no holes — but at the pace the
+// work in front of it deserves rather than always flat out. See `schedule`, below.
 function tick() {
   const live = readLiveSessions()
   const dirs = new Set()
+  // The directories of the sessions actually running, which is the shorter list git falls back to
+  // when nobody is looking at the board. See the call to `git.watch` below.
+  const working = new Set()
   for (const story of db.listStories()) {
     const { status, alive } = deriveStatus(story, live)
     // The session has just gone out: now that nobody is rewriting the transcript any more, we
@@ -59,7 +63,9 @@ function tick() {
     // typed into its window — the first time that window is the one in front of you, since
     // nothing is ever raised to type into it. Not awaited, for the same reason `sweepIdle` is not.
     if (alive && renameDue(story, live.get(story.session_id))) renameNow(story)
-    db.applyDerivedStatus(story.id, status, alive)
+    // The row goes with it: it already carries the current session's columns, so this round asks
+    // the database nothing extra for the stories where nothing has changed — which is most of them.
+    db.applyDerivedStatus(story.id, status, alive, story)
 
     // Where it is really working: with an isolated worktree that is not the repository, and a
     // worktree has a working tree of its own. Claude Code's session file tells us, the same
@@ -80,23 +86,67 @@ function tick() {
     }
     dirs.add(story.project_path)
     dirs.add(cwd || story.work_path)
+    if (alive) working.add(cwd || story.work_path || story.project_path)
   }
-  // The last column lists every repository with its git mark. They are only looked at while
-  // the board is open, and slowly: see `watch` in git.js.
-  git.watch([...dirs], Date.now() - lastBoard < 15000 ? listProjects().map((p) => p.path) : [])
+  // The git marks, and the one place k0 was spending most of its day.
+  //
+  // Every story's repository was being asked `status` and `rev-list` every five seconds, awake or
+  // not, looked at or not: on a board covering a couple of dozen repositories that is nine git
+  // processes a second, for ever, and the dead ones piled up faster than they could be buried.
+  //
+  // So the same rule `machine.js` and `servers.js` have always followed applies here too: the full
+  // list only while somebody is in front of the board. Away from it, the only repositories worth
+  // asking about are the ones a session is working in — their mark is on a post-it that is moving.
+  // With neither, nothing is asked at all.
+  const watched = Date.now() - lastBoard < ATTENTION
+  git.watch(watched ? [...dirs] : [...working], watched ? listProjects().map((p) => p.path) : [])
 
   // The power levers are checked once a minute rather than every round: reading the power
   // state costs processes, and the things it has to follow — the mains plugged in or out, the
   // battery going down — do not change from one second to the next.
-  if (rounds % 60 === 0) mode.guard()
+  if (due('power', MINUTE)) mode.guard()
   // The forgotten terminals, on the same cadence but half a minute off it, so the two jobs that
-  // only run once a minute never land in the same second as each other.
-  if (rounds % 60 === 30) sweepIdle(live)
+  // only run once a minute never land in the same round as each other.
+  if (due('sweep', MINUTE)) sweepIdle(live)
   // The one request k0 makes. Once an hour is how often it is OFFERED: `check` asks npm at most
   // once a day and answers out of what it already knows the rest of the time, and it never
   // rejects — a laptop with no network simply leaves the board saying nothing about updates.
-  if (rounds % 3600 === 45) update.check()
-  rounds++
+  if (due('update', HOUR)) update.check()
+
+  // What the sessions that have ended left behind. Nothing else ever cleared it: a session only
+  // gets a goodbye when a story is deleted or a terminal is closed on purpose, and most of them
+  // simply end.
+  forgetDeadSessions(live)
+  forgetRenameAttempts(live)
+
+  // Handed back so the pace of the next round can follow what is actually running.
+  return live
+}
+
+const MINUTE = 60_000
+const HOUR = 3_600_000
+
+/**
+ * The jobs that ride inside the loop without being the loop's business, each on a clock of its own.
+ *
+ * They used to count rounds, and a round used to be a second, so counting rounds and reading the
+ * clock were the same thing. They stopped being the same thing the moment the loop learnt to slow
+ * down: at a round a minute, `rounds % 3600` would come round once every two and a half days. The
+ * clock is what these three always meant.
+ *
+ * Seeded so they keep the spacing they were written with: the power levers on the first round, the
+ * idle sweep half a minute behind them so the two never land together, and the update offered
+ * three quarters of a minute in.
+ */
+const lastRun = new Map([
+  ['sweep', Date.now() - MINUTE / 2],
+  ['update', Date.now() - HOUR + 45_000],
+])
+function due(job, every) {
+  const at = Date.now()
+  if (at - (lastRun.get(job) ?? 0) < every) return false
+  lastRun.set(job, at)
+  return true
 }
 
 /**
@@ -177,7 +227,67 @@ async function followTitle(before, after) {
 
 /** When somebody last looked at the board. */
 let lastBoard = 0
-setInterval(tick, 1000)
+
+// ── The pace of the loop ─────────────────────────────────────────────────────
+/**
+ * How long until the next round, and why it is not always the same.
+ *
+ * The loop is here to watch live sessions: while one is running, the post-it has to change colour
+ * as soon as the model stops and turns to you, and the menu bar's notification rides on that same
+ * round. So with a session open, or with somebody in front of the board, it runs flat out.
+ *
+ * With neither, there is nothing it could possibly see change. A story only ever starts through
+ * the API, and that wakes the loop by hand — so at rest it drops to a round a minute, and k0 stops
+ * costing anything at all on a machine nobody is using. It used to run the whole round, git and
+ * all, once a second for ever, through the night.
+ *
+ * Two seconds rather than one even when busy: nothing on a board moves fast enough for the
+ * difference to be visible, and it halves everything a round does.
+ *
+ * `unref` for the reason `machine.js` and `servers.js` have it — this timer must never be the
+ * thing keeping the process alive.
+ */
+const BUSY = 2000
+const RESTING = MINUTE
+const ATTENTION = 15_000
+
+let timer = null
+let nextAt = 0
+/** The gap the loop last chose for itself, which the machine chip shows as it is. */
+let pace = BUSY
+function schedule(ms) {
+  if (timer) clearTimeout(timer)
+  nextAt = Date.now() + ms
+  timer = setTimeout(round, ms)
+  timer.unref()
+}
+
+function round() {
+  let live = null
+  try {
+    live = tick()
+  } catch (err) {
+    // A round that throws must not be the last one: the loop is unattended, and the next round is
+    // the retry. Anything else here would leave k0 alive but blind.
+    console.error(`k0 — the watching loop stumbled: ${String(err?.message || err)}`)
+  } finally {
+    pace = live?.size || Date.now() - lastBoard < ATTENTION ? BUSY : RESTING
+    schedule(pace)
+  }
+}
+
+/**
+ * Something the loop could not have seen coming — a session started, resumed or closed, or the
+ * board was just asked for.
+ *
+ * It only ever brings the next round forward, never pushes it back. `/api/board` calls it several
+ * times a second while somebody is watching, and a wake that reset the timer each time would be a
+ * round on every request: worse than the once a second this was written to get rid of.
+ */
+function wake(within = BUSY) {
+  if (nextAt - Date.now() <= within) return
+  schedule(within)
+}
 
 // ── API ──────────────────────────────────────────────────────────────────────
 const MIME = {
@@ -267,6 +377,9 @@ function board() {
   // process table costs, and with the tab closed nobody would be looking. See machine.js.
   machine.touch()
   lastBoard = Date.now()
+  // Somebody is in front of the board: the loop goes back to its working pace if it had gone to
+  // sleep, so the first look after a quiet night is not a minute out of date.
+  wake()
   const live = readLiveSessions()
 
   // With the backlog switched off the board is the board it has always been: not a story here
@@ -319,6 +432,10 @@ function board() {
       .filter((p) => p.known)
       .map((p) => ({ ...p, git: publicGit(git.stateOf(p.path)) })),
     machine: { ...machine.overview([...live.values()].map((s) => s.pid)), alive: live.size, outside },
+    // What k0 costs to run, which until now was the one thing the chip never said. The three
+    // numbers beside the weight are the three that were wrong: how often git is asked, how many
+    // queries had to be compiled rather than reused, and how hard the loop is currently running.
+    k0: { ...(machine.self() ?? {}), pace, git: git.recent(), sql: db.sqlCost() },
     // What colour the icon in the tab should be: the same thing /api/status tells the icon in
     // the menu bar.
     urgent: attention(stories).urgent,
@@ -1552,13 +1669,25 @@ http
       serveStatic(res, url.pathname)
     } catch (err) {
       send(res, 500, { error: String(err.message || err) })
+    } finally {
+      // Anything that was not a read may have changed what the loop is watching: a session
+      // started, resumed or closed, a story deleted. Afterwards, not before — the round has to
+      // see the new state, not the one the request was about to replace. One line here instead
+      // of a call at the end of every route that starts or stops something.
+      if (req.method !== 'GET' && url.pathname.startsWith('/api/')) wake(0)
     }
   })
   .listen(PORT, '127.0.0.1', () => {
     // The settings file, written out with everything in it the first time k0 runs: it is the only
     // list of what can be changed, so it has to exist before anybody goes looking for it.
     settings.ensure()
-    tick()
+    // The dev servers k0 started and then lost track of: the rows pointing at processes that died
+    // while k0 was not running go now, before anything reads them. See `reconcile`.
+    servers.reconcile()
+    // The first round, and the one that sets the loop going: `round` is `tick` plus the decision
+    // of when to come back. Deliberately here and not at import time — the first round reads the
+    // settings file, which the line above has only just made sure of.
+    round()
     // The mode is remembered, and at startup it puts the machine back as it was: the sleep
     // levers and, where needed, the size of the text and of the terminals left open. The server
     // restarts often — just working on k0's own code is enough — and the windows from before do

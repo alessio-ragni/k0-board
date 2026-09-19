@@ -27,7 +27,13 @@ const available = () => !!gitPath()
 
 const OPTS = { timeout: 4000, maxBuffer: 1 << 20 }
 
-const TTL = 5000 // how long a reading is worth before it is taken again
+// How long a reading is worth before it is taken again. Five seconds was a guess about how fast a
+// repository changes, and the answer is: far slower than that. Nothing here moves except when you
+// commit, and a mark half a minute old has never been wrong about whether there is work in the
+// tree. At five seconds the loop was spawning a couple of git processes per repository per round,
+// which on a real board was the single biggest thing k0 did all day — see the call in `index.js`,
+// which now also stops asking at all when nobody is looking.
+const TTL = 30000
 // The last column of the board lists every repository, which is dozens of them and none of
 // them working: those are looked at rarely and a few at a time. At five seconds it would be
 // eighty git processes every round, on a machine that is already struggling.
@@ -110,10 +116,23 @@ async function read(dir) {
 }
 
 // ── Cache ─────────────────────────────────────────────────────────────────────
+// When each reading was taken, kept for a minute. Every reading is two git processes — three the
+// first time, before `hasRemote` knows — and this number, which used to be in the hundreds, is the
+// one worth putting where somebody can see it.
+const taken = []
+
+/** Readings started in the last minute. */
+export function recent() {
+  const since = Date.now() - 60000
+  while (taken.length && taken[0] < since) taken.shift()
+  return taken.length
+}
+
 function schedule(dir) {
   const e = cache.get(dir) ?? { at: 0, running: false, value: null }
   e.running = true
   cache.set(dir, e)
+  taken.push(Date.now())
   read(dir)
     .then(
       (value) => (e.value = value),

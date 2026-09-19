@@ -5,6 +5,7 @@ import { setFavicon } from '/favicon.js'
 import { split } from '/recency.js'
 import { drawList, leaveList } from '/list.js'
 import { search as fuzzy } from '/fuzzy.js'
+import { whileVisible } from '/awake.js'
 
 // ── Statuses ───────────────────────────────────────────────────────
 // The order is the attention priority inside a column: first whoever is waiting for you,
@@ -106,6 +107,7 @@ let allEpics = []
 // The weight of each session: on to begin with, switched off from the gauge at the top.
 let showLoad = localStorage.getItem('k0-load') !== '0'
 let machine = null // how the computer is doing right now
+let k0 = null // and what k0 itself is costing it
 let heaviest = null // the story eating the most, so only that one gets tinted
 
 // ── Render ─────────────────────────────────────────────────────────
@@ -1076,6 +1078,15 @@ function renderMachine(m, stories, idleHours = 0) {
   if (top?.load) lines.push(`heaviest: ${top.title} — ${weight(top.load.rss)}`)
   // What is heavy and is not k0: without it, the board would take blame that belongs to Chrome.
   if (m.others?.length) lines.push(`outside k0: ${m.others.map((o) => `${o.name} ${gb(o.rss)}`).join(' · ')}`)
+  // And k0 itself, which this chip measured everybody but. The three numbers after the weight are
+  // the ones that were wrong for a long time without anybody being able to see them.
+  if (k0?.rss) {
+    const cpu = k0.cpu === null || k0.cpu === undefined ? '—' : `${Math.round(k0.cpu * 100)}%`
+    lines.push(
+      `k0 itself: ${weight(k0.rss)} · CPU ${cpu} · git ${k0.git}/min · ` +
+        `${k0.sql.kept} queries kept · looking every ${Math.round(k0.pace / 1000)}s`
+    )
+  }
   // The chip has room for three words; the sentence that explains them goes here, and it is also
   // the only place that can say the closing is switched off — the chip says that by staying quiet.
   lines.push(
@@ -1703,6 +1714,7 @@ async function refresh() {
     // says there is a backlog, whether or not anything on the board changed with it.
     renderColumnsSwitch()
     machine = data.machine ?? null
+    k0 = data.k0 ?? null
     // What is eating most right now: it is what tints that one red and nobody else.
     heaviest =
       data.stories.filter((c) => c.load).sort((a, b) => b.load.rss - a.load.rss)[0]?.id ?? null
@@ -2016,7 +2028,9 @@ async function boot() {
   }
 
   refresh()
-  setInterval(refresh, 1000)
+  // Only while the tab is in front of you: see `whileVisible`. A board nobody is looking at asked
+  // the server for everything it knows once a second, and by asking kept the server awake too.
+  whileVisible(refresh, 1000)
 
   // A direct link: k0 opened with the new story already in front of you.
   if (location.hash === '#new' || location.hash === '#nuovo') openEditor(null)
