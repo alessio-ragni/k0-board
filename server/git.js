@@ -94,6 +94,12 @@ async function read(dir) {
   // destroyed. Costs nothing and saves launching git for nothing every five seconds.
   if (!fs.existsSync(path.join(dir, '.git'))) return null
 
+  // Counted here and not where the reading was scheduled: most of a board's directories are
+  // worktrees that no longer exist, and those turn back on the line above without ever reaching
+  // git. A number that counted them too would put three figures in front of somebody on a machine
+  // running almost no git at all.
+  taken.push(Date.now())
+
   // The three in parallel: two processes in a queue would double the wait for nothing. After
   // the first round `hasRemote` answers from memory and it is back to two processes.
   const [st, list, remote] = await Promise.all([
@@ -132,7 +138,6 @@ function schedule(dir) {
   const e = cache.get(dir) ?? { at: 0, running: false, value: null }
   e.running = true
   cache.set(dir, e)
-  taken.push(Date.now())
   read(dir)
     .then(
       (value) => (e.value = value),
