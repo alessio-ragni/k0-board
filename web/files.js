@@ -6,6 +6,7 @@ import { mentions, countIn } from '/mentions.js'
 import { resolveRel, index as refIndexOf, resolve as resolveRef, candidates, worth, trim, TOKEN_SRC } from '/refs.js'
 import { bytes } from '/units.js'
 import { setFavicon } from '/favicon.js'
+import { whileVisible } from '/awake.js'
 
 // ── The viewer ────────────────────────────────────────────────────────
 // k0's second tab: the files on the left, what they say on the right. It opens from the mark on
@@ -1272,9 +1273,11 @@ async function boot() {
   // When it is the server printing us, the page has nothing to do but show itself: interrogating
   // git every three seconds while a sheet is being waited for is of no use to anybody.
   if (HEADLESS) return
-  setInterval(poll, 3000)
+  // And only while the tab is in front of you: both of these run git, and a viewer left open in a
+  // window you are not in has nothing to show anybody. See `whileVisible`.
+  whileVisible(poll, 3000)
   // The full listing ages slowly, but the dates do not: half a minute is enough.
-  setInterval(() => loadAll().catch(() => {}), 30000)
+  whileVisible(() => loadAll().catch(() => {}), 30000)
 }
 
 boot()

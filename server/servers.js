@@ -335,6 +335,27 @@ async function read() {
   }
 }
 
+/**
+ * Throws away the rows whose process is long gone, once, on the way up.
+ *
+ * A dev server is started detached and on purpose outlives k0 — see the note at the top of this
+ * file — so a row surviving a restart is normal and wanted. What is not wanted is a row surviving
+ * the *process*: the board had four of them, three pointing at pids that had died days earlier
+ * while the dev servers themselves were still running under new ones. k0 had lost them, and the
+ * only thing that kept finding them was the sighting on the port, which happens only while
+ * somebody is looking at the board.
+ *
+ * A pid is also a number the operating system hands out again. A row left pointing at a dead one
+ * is a row that will eventually point at somebody else's process, and `stop` acts on what the row
+ * says: this is what keeps that from being k0's problem.
+ */
+export function reconcile() {
+  for (const row of db.listDevServers()) {
+    if (row.pid && alive(row.pid)) continue
+    db.clearDevServer(row.project_path)
+  }
+}
+
 /** A reading, but only while somebody is looking. See machine.js, which lives by the same rule. */
 async function cycle() {
   if (Date.now() - watching > ATTENTION) return

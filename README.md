@@ -1121,6 +1121,23 @@ Reading the process table costs little on a calm machine and a lot on a struggli
 exactly when you look at it. So it is sampled every three seconds, and **only while the board is
 open**.
 
+### And what k0 costs
+
+The chip measured everybody but itself, which is the one thing a program running under launchd for
+weeks should be least able to hide. Hover it and the last line is **k0's own weight, its CPU, how
+often it asks git anything, how many queries it is holding, and how hard the watching loop is
+currently running**.
+
+That loop is the whole of k0's cost, and it now runs at the pace the work deserves. With a session
+open — or with you in front of the board — it goes round every two seconds. With neither, there is
+nothing it could see change, so it drops to **once a minute** and k0 stops costing anything on a
+machine nobody is using. Pressing anything wakes it at once, so nothing ever waits on it.
+
+The git marks follow the same rule. Every repository on the board used to be asked `status` and
+`rev-list` every five seconds, all night; now the full list is only asked while you are looking,
+away from the board only the repositories a session is actually working in, and a reading is good
+for half a minute. Nothing in a repository changes faster than that unless you make it.
+
 ### And the ones you forget, k0 closes for you
 
 The paragraph above assumes you noticed. Most of the time nobody does: the window that is costing
@@ -1437,7 +1454,9 @@ platform/
   shared/        what more than one of them needs: tmux, running commands, reading a process
                  table, and reading who is holding which port
 server/
-  index.js       the http server, the API, and the watching loop that runs every second
+  index.js       the http server, the API, and the watching loop — every two seconds while a
+                 session is running or somebody is at the board, once a minute when neither, and
+                 awake at once on anything you press
   guard.js       who is allowed to talk to this server at all: the Host and the Origin
   db.js          SQLite (node:sqlite): the only file that talks to it. epic, story, session,
                  decision, round, check_item, dependency, session_event and the rest —
@@ -1475,7 +1494,9 @@ server/
   sessions.js    digs already-lived sessions out of the transcripts, to import as stories
   files.js       the only one that reads the projects' disk — and the only one that writes back
                  into it: what is there, what changed, what it says, and the one small write
-  machine.js     the only one that looks at processes and memory: what it all costs, and who is costing it
+  machine.js     the only one that looks at processes and memory: what it all costs, and who is
+                 costing it — k0's own process included, which is the only honest way to publish
+                 a number like that
   pdf.js         the document on paper, printed by a headless browser
 web/             the four pages (html, css, js served exactly as they are)
   index.html     the board — board.js, board.css, view.js. A note is never taller than it is
@@ -1491,6 +1512,10 @@ web/             the four pages (html, css, js served exactly as they are)
   whatsnew.html  what changed in k0 between the version you had and this one — whatsnew.js,
                  whatsnew.css. Reached from the mark next to k0, and never opened by itself
   base.css       colours, fonts and scale: the house variables, shared by all of them
+  awake.js       the one place that repeats anything: a job that runs only while its tab is in
+                 front of you, and takes a fresh reading the moment you come back to it. A page
+                 nobody can see must not be asking the server anything — asking is also how the
+                 server learns somebody is watching
   md.js          markdown laid out, written by hand because nothing here is compiled
   recency.js     which repositories are still warm, and which fold away into `Old`
   fuzzy.js       searching the names: the letters you type, in the order you type them — the
