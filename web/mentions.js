@@ -8,6 +8,10 @@
 // is why it costs nothing and never goes near the server: the file listing is already in the
 // browser.
 //
+// The listing is not quite everything there is, though, so what it could not place it hands back
+// under `unknown` rather than swallowing it. Asking the disk about those names is somebody
+// else's job; this module stays a pure function of a text and a list.
+//
 // What is written out in full and what is merely guessed at stay separate, because they are
 // two different degrees of certainty: mixing them would make a word that is only a hunch look
 // like a fact.
@@ -59,13 +63,17 @@ function index(files) {
   return { byName, byStem, byDir, dirTail, exts, stems: [...byStem.keys()] }
 }
 
-/** The pieces of text worth trying, lower case and in the order they appear. */
+/**
+ * The pieces of text worth trying, in the order they appear: each one lower case for the
+ * matching, and as it was written for whoever has to go and look on a disk — there are file
+ * systems where `Report.pdf` and `report.pdf` are two different files.
+ */
 function tokens(text) {
   const out = []
   for (const m of String(text ?? '').matchAll(TOKEN)) {
     // Punctuation stuck on the end is not part of the name: "…it is in from-the-call.md."
-    const t = low(m[0]).replace(/[._/-]+$/, '')
-    if (t) out.push(t)
+    const raw = m[0].replace(/[._/-]+$/, '')
+    if (raw) out.push([low(raw), raw])
   }
   return out
 }
@@ -110,6 +118,12 @@ function dirFor(token, ix) {
  *   ("summary"), or the whole beginning of a name ("survey" for `survey-round-two.md`).
  * - `missing` — names written with a dot that do not exist in here. Only those with an
  *   extension the repository actually uses, otherwise `example.com` would look like a lost file.
+ * - `unknown` — the same names, all of them, before that judgement is made. The listing is not
+ *   everything there is: a generated directory gives it only its finished documents, an ignored
+ *   one gives it nothing, and `out/report.html` is in neither while being written out in full
+ *   right there in the text. Whoever calls this can go and ask the disk about them; existence is
+ *   a better answer than a guess about extensions, and it is the one thing this module cannot
+ *   reach by itself.
  *
  * Every entry is `{ token, file, more }` for a file — `file` is the most recently touched one
  * when a name points at several, `more` are the rest — or `{ token, dir, files }` for a
@@ -123,6 +137,7 @@ export function mentions(text, files) {
   const named = []
   const maybe = []
   const missing = []
+  const unknown = []
   const missed = new Set()
 
   /** Drops the ones already listed and puts the most recent first. */
@@ -133,13 +148,16 @@ export function mentions(text, files) {
   }
 
   // First pass: what is written out in full.
-  for (const t of toks) {
+  for (const [t, raw] of toks) {
     if (EXT.test(t)) {
       const hits = filesFor(t, ix)
       if (!hits) {
-        if (ix.exts.has(EXT.exec(t)[1]) && !missed.has(t)) {
+        if (!missed.has(t)) {
           missed.add(t)
-          missing.push(t)
+          unknown.push(raw)
+          // The listing knows this extension and still has no such file: that is a name worth
+          // saying out loud. Otherwise silence — `example.com` is not a lost document.
+          if (ix.exts.has(EXT.exec(t)[1])) missing.push(t)
         }
         continue
       }
@@ -159,7 +177,7 @@ export function mentions(text, files) {
 
   // File names first: the whole name without the dot, failing that the whole beginning of a
   // name cut at a dash — "survey" for `survey-round-two.md`.
-  for (const t of toks) {
+  for (const [t] of toks) {
     if (!guess(t)) continue
     const hits =
       ix.byStem.get(t) ||
@@ -172,14 +190,14 @@ export function mentions(text, files) {
   // clue there is: "onboarding" in a text about onboarding is an ordinary word, and if it came
   // first it would carry off `interviews/onboarding/summary.md`, leaving "summary" to show the
   // summary of something else entirely.
-  for (const t of toks) {
+  for (const [t] of toks) {
     if (!guess(t)) continue
     const d = dirFor(t, ix)
     const f = d ? fresh(ix.byDir.get(d)) : []
     if (f.length) keep(maybe, { token: t, dir: d, files: f }, f)
   }
 
-  return { named, maybe, missing }
+  return { named, maybe, missing, unknown }
 }
 
 /** How many files a group of entries opens: a directory counts for what is inside it. */

@@ -938,6 +938,13 @@ a real repository code is 95% of the files, and among two thousand `.tsx` files 
 were after cannot be found. This closes nothing off: a code file reached by a link inside a
 document still opens, and so do images — and the configuration is one switch away, below.
 
+A **generated directory** — `out/`, `dist/`, `build/` — gives up only what came out of it
+**finished**: the PDFs and the Word files, the things you print and hand to somebody. The two
+megabyte `report.html` the PDF was printed from stays out, and so does everything else the build
+left lying there. In a code repository that leaves the listing exactly as it was; in a folder of
+documents it is the difference between seeing your PDFs and seeing none of them. Directories that
+hold nothing anybody reads — `node_modules` and its like — are not walked into at all.
+
 At the top come the **folders**, then the files, in three groups:
 
 - **Changed** — what this session has touched: files still hanging in the working tree plus the
@@ -1038,9 +1045,14 @@ the summary in the chat says what it touched and **names the files already**. Cl
 the top, paste that piece of conversation, press **Find the files**, and the list on the left
 narrows to the files that text names.
 
-It looks **only for the names written down**, not for the subject: no index, no server, no
-waiting — the file listing is already in the browser. The price is stated: a file the chat talks
-about without ever naming does not come out, and for that there is the search above.
+It looks **only for the names written down**, not for the subject: no index and no waiting — the
+file listing is already in the browser. The price is stated: a file the chat talks about without
+ever naming does not come out, and for that there is the search above.
+
+One question does go out, and only one: when the text writes a name **in full** and the listing has
+no such file, the disk is asked about those names and no others. That is how `out/report.html`
+comes out of a paste — the listing takes only the finished documents from a generated directory,
+but a text naming a file names it whole.
 
 The results come in two groups, because they are two different degrees of certainty:
 
@@ -1071,10 +1083,11 @@ The hard part is not finding the names, it is choosing **which**. In a repositor
 directory up, and so on to the top. If it is still ambiguous, **it does not become a link**:
 better nothing than sending you to the wrong README.
 
-Files the listing does **not** show open too. `out/`, `dist/`, `node_modules/` stay out of the
-listing — in a code repository they are generated — but in a directory of documents `out/` holds
-the real PDFs. When it is a document naming them, that file counts. Hidden directories really do
-stay out: `.claude/` is configuration, not something to read.
+Files the listing does **not** show open too. Out of `out/` the listing takes the finished
+documents and nothing else, and where git rules an ignored directory gives it nothing at all — so
+`out/report.html`, the page a PDF was printed from, is in neither. Named inside a document it
+still counts: the document said so, not the directory. Hidden directories really do stay out:
+`.claude/` is configuration, not something to read.
 
 ### On paper
 

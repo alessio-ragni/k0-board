@@ -8,8 +8,9 @@ import { exist } from '../server/files.js'
 // ── The references inside a document ─────────────────────────────────────────
 section('The references inside a document')
 // The fixture is the same research repository the mentions tests use, cut down to what matters
-// here: four `README.md` files in four directories, three `summary.md` files, and the PDFs
-// inside `out/` — which the viewer's listing skips and which therefore are **not here**, just
+// here: four `README.md` files in four directories, three `summary.md` files, and whatever sits
+// inside `out/` — which the listing does not carry, either because the directory was ignored or
+// because only the finished documents came out of it, and which is therefore **not here**, just
 // as in real life.
 
 const f = (p) => ({ p, m: 1, s: 100 })
@@ -106,9 +107,14 @@ section('What the listing does not have')
 {
   const doc = 'billing/invoices/README.md'
   check(
-    'a PDF inside out/ is not in the listing, so the server is asked',
+    'a document inside out/ is not in the listing, so the server is asked',
     at('out/report.pdf', doc),
     'ask: billing/invoices/out/report.pdf | out/report.pdf'
+  )
+  check(
+    'the page beside it is the same question',
+    at('out/report.html', doc),
+    'ask: billing/invoices/out/report.html | out/report.html'
   )
   check('a code file is not even asked about', at('src/config.mjs', doc), 'nothing')
   check('and neither is a hidden directory', at('.claude/skills/x/SKILL.md', 'README.md'), 'nothing')
@@ -150,18 +156,25 @@ section('The check on disk, on the server side')
   fs.mkdirSync(path.join(root, 'out'), { recursive: true })
   fs.mkdirSync(path.join(root, '.claude'), { recursive: true })
   fs.writeFileSync(path.join(root, 'out', 'report.pdf'), '%PDF-')
+  fs.writeFileSync(path.join(root, 'out', 'report.html'), '<h1>what printed it</h1>')
   fs.writeFileSync(path.join(root, 'out', 'build.mjs'), 'no')
   fs.writeFileSync(path.join(root, '.claude', 'SKILL.md'), 'no')
   fs.writeFileSync(path.join(root, 'real.md'), '# yes')
 
-  check('a document inside out/ exists and is confirmed', exist(root, ['out/report.pdf']).join(), 'out/report.pdf')
+  // It answers with rows, not bare names: whoever asked is about to draw them beside the files of
+  // the listing, and a row with no date on it would be the one that looked wrong.
+  const names = (rows) => rows.map((f) => f.p).join()
+
+  check('a document inside out/ exists and is confirmed', names(exist(root, ['out/report.pdf'])), 'out/report.pdf')
+  check('and it comes back with a date and a size', exist(root, ['out/report.pdf'])[0].m > 0, true)
+  check('the page beside it is confirmed too, since a text named it', names(exist(root, ['out/report.html'])), 'out/report.html')
   check('one that is not there is not confirmed', exist(root, ['out/absent.pdf']).length, 0)
   check('code is not confirmed even when it exists', exist(root, ['out/build.mjs']).length, 0)
   check('nor is anything hidden', exist(root, ['.claude/SKILL.md']).length, 0)
   check('there is no getting out of the repository', exist(root, ['../../../etc/passwd.md']).length, 0)
   check('and none sideways either', exist(root, ['out/../../outside.md']).length, 0)
   check('a directory is not a file', exist(root, ['out']).length, 0)
-  check('several paths at once return only the real ones', exist(root, ['real.md', 'fake.md']).join(), 'real.md')
+  check('several paths at once return only the real ones', names(exist(root, ['real.md', 'fake.md'])), 'real.md')
   check('a malformed question breaks nothing', exist(root, null).length, 0)
 
   after(() => fs.rmSync(root, { recursive: true, force: true }))

@@ -154,6 +154,22 @@ is exactly the board it was.
 
 ### Changed
 
+- **Your PDFs are in the file viewer.** A folder of documents keeps the things it prints in
+  `out/`, and k0 skipped that directory whole because in a code repository it is generated — so a
+  folder with twenty-one PDFs in it showed none of them, in the listing, in the search by name, or
+  in the files a pasted chat names. `out/`, `dist/` and `build/` now give up what came out of them
+  **finished**: PDFs, Word files, the things you hand to somebody. The two megabyte `report.html`
+  the PDF was printed from stays out, along with everything else the build left there, so a code
+  repository's listing is exactly the listing it was. It reads the same whether or not the folder
+  is a git repository: an ignored `out/` no longer takes the PDFs down with it.
+
+- **A pasted chat finds a file it names even when the listing has not got it.** Writing
+  `out/report.html` in full used to come to nothing at all — not found, not counted, not even
+  reported as missing, because no file of that kind was in the listing to compare it with. Now the
+  names written out in full that the listing cannot place are checked against the disk, in one
+  question, and the ones that are really there come out in the results like any other file, in the
+  order the text names them.
+
 - **The machine chip says what k0 itself costs.** It measured the sessions and it measured Chrome,
   and never the thing doing the measuring — which for a server that runs under launchd for weeks is
   the one thing it should be least able to hide. Hovering it now also gives k0's own weight and CPU,
