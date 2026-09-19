@@ -5,7 +5,7 @@ import path from 'node:path'
 import { spawnSync } from 'node:child_process'
 import {
   safePath, parseChanged, kindOf, mimeOf, isPage, attachment, list, read, write, changed, isDoc, isConfig,
-  isListed, isEditable, hasDocs, grep, plain,
+  isListed, isEditable, isFinished, inGenerated, hasDocs, grep, plain,
 } from '../server/files.js'
 import { score, search, positions, runs } from '../web/fuzzy.js'
 import { render, esc, matter, titleOf } from '../web/md.js'
@@ -42,6 +42,13 @@ fs.writeFileSync(path.join(REPO, 'binary.bin'), Buffer.from([0, 1, 2, 3, 0, 255]
 // document but is one of the things you go looking for by hand.
 fs.writeFileSync(path.join(REPO, '.env'), 'TOKEN=abc\n')
 fs.writeFileSync(path.join(REPO, 'docs', 'settings.json'), '{"a":1}\n')
+// The generated directory: in a folder of documents it is where the finished PDFs are, and it is
+// also full of what made them. The PDF belongs in the listing; the page it was printed from and
+// the numbers left behind do not.
+fs.mkdirSync(path.join(REPO, 'out'), { recursive: true })
+fs.writeFileSync(path.join(REPO, 'out', 'report.pdf'), '%PDF-1.4\n')
+fs.writeFileSync(path.join(REPO, 'out', 'report.html'), '<h1>what printed it</h1>\n')
+fs.writeFileSync(path.join(REPO, 'out', 'sizes.json'), '{"pages":7}\n')
 
 // ── The path guard ───────────────────────────────────────────────────────────
 section('The path guard')
@@ -160,7 +167,7 @@ section('The walk over a repository with no git')
   check(
     'every document is there, and the configuration with it',
     names.join(','),
-    '.env,README.md,docs/audit-report.md,docs/backlog/note.txt,docs/settings.json'
+    '.env,README.md,docs/audit-report.md,docs/backlog/note.txt,docs/settings.json,out/report.pdf'
   )
   // The mark is what lets the page hide the configuration without asking a second time.
   check(
@@ -181,6 +188,23 @@ section('The walk over a repository with no git')
   check(
     'node_modules stays out',
     names.some((n) => n.includes('node_modules')),
+    false
+  )
+  // The whole point of this: a folder of documents keeps its PDFs in `out/`, and a listing that
+  // skipped the directory whole was a listing with no PDFs in it at all.
+  check(
+    'the finished PDF inside a generated directory is listed',
+    names.includes('out/report.pdf'),
+    true
+  )
+  check(
+    'the page it was printed from is not: it is the means, not the document',
+    names.some((n) => n.endsWith('report.html')),
+    false
+  )
+  check(
+    'and neither is configuration left behind down there',
+    names.some((n) => n === 'out/sizes.json'),
     false
   )
   check(
@@ -308,8 +332,23 @@ section('The stories of a directory that is gone')
   fs.writeFileSync(path.join(shallow, 'a', 'y.md'), '# near the surface')
   check('but at the surface it does', hasDocs(shallow), true)
 
+  // A folder whose only documents are the PDFs it produced is still a folder of documents: it is
+  // the one somebody opens k0 on to print them again.
+  const printed = fs.mkdtempSync(path.join(os.tmpdir(), 'k0-printed-'))
+  fs.mkdirSync(path.join(printed, 'out'), { recursive: true })
+  fs.writeFileSync(path.join(printed, 'out', 'report.pdf'), '%PDF-1.4\n')
+  check('a folder whose documents are all finished PDFs counts', hasDocs(printed), true)
+
+  // Whereas a site that was built into `dist/` is a build, not a bookshelf.
+  const built = fs.mkdtempSync(path.join(os.tmpdir(), 'k0-built-'))
+  fs.mkdirSync(path.join(built, 'dist'), { recursive: true })
+  fs.writeFileSync(path.join(built, 'dist', 'index.html'), '<h1>built</h1>\n')
+  check('a folder holding only built pages does not', hasDocs(built), false)
+
   fs.rmSync(deep, { recursive: true, force: true })
   fs.rmSync(shallow, { recursive: true, force: true })
+  fs.rmSync(printed, { recursive: true, force: true })
+  fs.rmSync(built, { recursive: true, force: true })
 }
 
 // ── Documents only ───────────────────────────────────────────────────────────
@@ -325,6 +364,28 @@ check('a component is not', isDoc('src/pages/Faq.tsx'), false)
 check('a json is not', isDoc('src/config/settings.json'), false)
 check('an image is not: it is not a document you read', isDoc('images/x.png'), false)
 check('and the extension does not care about case', isDoc('READMEFIRST.MD'), true)
+
+// ── Out of a generated directory, only what is finished ──────────────────────
+section('Out of a generated directory, only what is finished')
+// `out/`, `dist/` and `build/` are generated, and in a code repository that is the end of it. In a
+// folder of documents it is the opposite: that is where the things you print live. So the rule is
+// not about the directory but about what came out of it — a PDF is finished, the page it was
+// printed from is machinery.
+check('a path under out/ is in a generated directory', inGenerated('out/report.pdf'), true)
+check('so is one under dist/ and build/', `${inGenerated('dist/a.pdf')} ${inGenerated('build/b.pdf')}`, 'true true')
+check('deeper down too', inGenerated('docs/manual/out/report.pdf'), true)
+check('a file merely called out is not', inGenerated('notes/out.md'), false)
+check('nor is an ordinary path', inGenerated('docs/plan.md'), false)
+
+check('a PDF is finished', isFinished('report.pdf'), true)
+check('so is a Word file', isFinished('Contract.docx'), true)
+check('an html is not: something built it', isFinished('report.html'), false)
+check('nor is a markdown', isFinished('notes.md'), false)
+
+check('so the PDF down there is listed', isListed('out/report.pdf'), true)
+check('and the page beside it is not', isListed('out/report.html'), false)
+check('while the same page elsewhere still is', isListed('site/report.html'), true)
+check('configuration down there is not listed either', isListed('out/sizes.json'), false)
 
 // ── Configuration ────────────────────────────────────────────────────────────
 section('Configuration')
@@ -448,23 +509,30 @@ section('Writing a file back')
   check('a directory cannot be written as a file', notAFile?.message, 'Not a file')
 }
 
-// ── Configuration that git is told to ignore ─────────────────────────────────
-section('Configuration that git is told to ignore')
+// ── What git is told to ignore ───────────────────────────────────────────────
+section('What git is told to ignore')
 // The whole reason the disk is walked a second time. `ls-files -co --exclude-standard` will never
 // name an `.env`: it is ignored by definition, and it is the file people come here looking for.
+// An ignored `out/` is the same story with a different file at the end of it — the PDFs — and a
+// repository of documents has to read the same whether or not anybody ran `git init` in it.
 {
   const GITREPO = fs.mkdtempSync(path.join(os.tmpdir(), 'k0-git-'))
   const ok = spawnSync('git', ['init', '-q', GITREPO], { stdio: 'ignore' }).status === 0
   if (ok) {
-    fs.writeFileSync(path.join(GITREPO, '.gitignore'), '.env\n')
+    fs.writeFileSync(path.join(GITREPO, '.gitignore'), '.env\nout/\n')
     fs.writeFileSync(path.join(GITREPO, '.env'), 'TOKEN=abc\n')
     fs.writeFileSync(path.join(GITREPO, 'README.md'), '# hi\n')
     fs.writeFileSync(path.join(GITREPO, 'package.json'), '{"name":"x"}\n')
+    fs.mkdirSync(path.join(GITREPO, 'out'), { recursive: true })
+    fs.writeFileSync(path.join(GITREPO, 'out', 'report.pdf'), '%PDF-1.4\n')
+    fs.writeFileSync(path.join(GITREPO, 'out', 'report.html'), '<h1>what printed it</h1>\n')
     const found = await list(GITREPO)
     const names = found.files.map((f) => f.p).sort()
     check('git is what provides the listing', found.git, true)
     check('an ignored .env is listed all the same', names.includes('.env'), true)
-    check('together with what git did name', names.join(','), '.env,README.md,package.json')
+    check('and so is a PDF under an ignored out/', names.includes('out/report.pdf'), true)
+    check('the page it was printed from stays out', names.some((n) => n.endsWith('report.html')), false)
+    check('together with what git did name', names.join(','), '.env,README.md,out/report.pdf,package.json')
     check(
       'and nothing is listed twice',
       names.length,

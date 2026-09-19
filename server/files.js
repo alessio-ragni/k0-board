@@ -19,11 +19,22 @@ const MAX_FILES = 20000 // past that, the listing is cut and says so
 const MAX_DEPTH = 12
 const MAX_TEXT = 2 << 20 // 2 MB: above that it is no longer a document to read
 
-// Directories that are nobody's work. Only needed where git is not: in a repository the
-// listing comes from git, which already knows the .gitignore.
-const SKIP = new Set([
-  'node_modules', 'dist', 'build', 'out', 'coverage', 'vendor', 'target', 'Pods', '__pycache__', 'venv',
-])
+// Directories that are nobody's work and hold nothing anybody reads. They are never even
+// entered: `node_modules` alone is tens of thousands of directories, and this walk is redone
+// every few seconds.
+const SKIP = new Set(['node_modules', 'coverage', 'vendor', 'target', 'Pods', '__pycache__', 'venv'])
+
+// Generated too — but generated is not the same as worthless. In a directory of documents this
+// is where the real PDFs are: the ones you print and hand to somebody. So these are walked into,
+// and only what is finished is taken out of them.
+const GENERATED = new Set(['out', 'dist', 'build'])
+
+// What counts inside a generated directory: a document that is done, not the thing that made it.
+// Beside `report.pdf` sits `report.html`, two megabytes of it, which exists only because the PDF
+// was printed from it — listing it would put the means next to the end and double the rows.
+// Named in a piece of text it is still found, through `exist` below: that is a different
+// question, and it has its own answer.
+const FINISHED = new Set(['.pdf', '.docx', '.doc', '.odt', '.pages', '.rtf'])
 
 // Only documents go in the listing: things you read and print. In a real repository code is
 // 95% of the files, and among 2,499 `.tsx` files the document you were after is gone. This
@@ -35,6 +46,12 @@ const DOC_EXT = new Set([
 ])
 
 export const isDoc = (p) => DOC_EXT.has(path.extname(p).toLowerCase())
+
+/** A document nothing else had to be built to make: what a generated directory is listed for. */
+export const isFinished = (p) => FINISHED.has(path.extname(p).toLowerCase())
+
+/** Is one of the directories above this file a generated one? The file itself does not count. */
+export const inGenerated = (p) => p.split('/').slice(0, -1).some((s) => GENERATED.has(s))
 
 // The other half of what is worth listing: the files that say how a project is set up. They are
 // not documents — nobody prints an `.env` — but they are the ones you go looking for by hand, and
@@ -49,8 +66,12 @@ const ENV_NAME = /^\.env(\..+)?$/
 export const isConfig = (p) =>
   CONFIG_EXT.has(path.extname(p).toLowerCase()) || ENV_NAME.test(path.basename(p))
 
-/** Everything the listing carries: documents to read, configuration to check. */
-export const isListed = (p) => isDoc(p) || isConfig(p)
+/**
+ * Everything the listing carries: documents to read, configuration to check — and, from a
+ * generated directory, only what came out finished. It reads the whole path, not the name, because
+ * the directory a file is in is half the answer.
+ */
+export const isListed = (p) => (inGenerated(p) ? isFinished(p) : isDoc(p) || isConfig(p))
 
 // What can be written back from the page. Configuration, and the notes kept next to it — never
 // code: k0 is not an editor, and a `.js` changed in a browser tab with no undo and no syntax
@@ -191,16 +212,19 @@ export function safePath(root, rel) {
 }
 
 /**
- * Which of these paths really exist and are things the viewer can show.
+ * Which of these paths really exist and are things the viewer can show, as listing rows.
  *
- * It exists for one thing: documents name files that are not in the listing. The `SKIP`
- * directories are there so the listing is not full of generated things, but in a directory of
- * documents `out/` holds the real PDFs, the ones you print. When it is a document naming them,
- * that file counts: the document said so, not the directory.
+ * It exists for one thing: a text names files the listing does not carry. Out of a generated
+ * directory the listing takes only what is finished, so `out/report.html` — the two megabytes the
+ * PDF was printed from — is not in it; and where git rules, an ignored directory is not in it
+ * either. Written down by name, both count: the text said so, not the directory.
  *
  * It is not a shortcut for reading the disk: `safePath` keeps everything inside the
  * repository, `isDoc` keeps code out, and hidden paths do not pass — `.claude/` and friends
  * are configuration, not things to read.
+ *
+ * It answers with rows, not names, because whoever asked is going to draw them next to the
+ * others, and a row without its date would be the one that looked wrong.
  */
 export function exist(root, paths) {
   const out = []
@@ -210,7 +234,8 @@ export function exist(root, paths) {
     const abs = safePath(root, rel)
     if (!abs) continue
     try {
-      if (fs.statSync(abs).isFile()) out.push(rel)
+      const s = fs.statSync(abs)
+      if (s.isFile()) out.push(entry(rel, s))
     } catch {
       /* not there: it simply does not come back */
     }
@@ -238,13 +263,15 @@ async function scan(root) {
   const names = hasGit() && fs.existsSync(path.join(root, '.git')) ? await tracked(root) : null
   if (!names) return { git: false, ...walk(root, isListed) }
 
-  // git's listing is missing exactly the file all this was built for: an `.env` is ignored by
-  // definition, so `ls-files -co --exclude-standard` will never name it. So the disk is walked a
-  // second time for configuration alone — a handful of names, under the same bounds as the other
-  // walk — and what git already gave is kept as it is.
+  // git's listing is missing exactly the files all this was built for. An `.env` is ignored by
+  // definition, so `ls-files -co --exclude-standard` will never name it, and an `out/` in the
+  // `.gitignore` takes the finished PDFs down with it. Both are the file you went there for. So
+  // the disk is walked a second time for those two alone — a handful of names, under the same
+  // bounds as the other walk — and what git already gave is kept as it is. A repository of
+  // documents then reads the same whether or not anybody ran `git init` in it.
   const fromGit = withStats(root, names)
   const seen = new Set(fromGit.files.map((f) => f.p))
-  const extra = walk(root, isConfig)
+  const extra = walk(root, (p) => (inGenerated(p) ? isFinished(p) : isConfig(p)))
   for (const f of extra.files) if (!seen.has(f.p)) fromGit.files.push(f)
   return { git: true, files: fromGit.files, truncated: fromGit.truncated || extra.truncated }
 }
@@ -284,7 +311,10 @@ const entry = (p, s) => {
   return row
 }
 
-/** Everything under `root` that `pick` accepts. */
+/**
+ * Everything under `root` that `pick` accepts — which is asked with the **path**, not the name,
+ * because whether a file counts depends on the directory it sits in as much as on its extension.
+ */
 function walk(root, pick) {
   const files = []
   let truncated = false
@@ -312,7 +342,7 @@ function walk(root, pick) {
         continue
       }
       // No symbolic links: a loop would send the walk round forever.
-      if (!e.isFile() || !pick(e.name)) continue
+      if (!e.isFile() || !pick(childRel)) continue
       try {
         const s = fs.statSync(child)
         files.push(entry(childRel, s))
@@ -363,12 +393,14 @@ const probed = new Map() // path → { at, value }
 export function hasDocs(dir) {
   const e = probed.get(dir)
   if (e && Date.now() - e.at < PROBE_TTL) return e.value
-  const value = look(dir, 0, { seen: 0 })
+  const value = look(dir, 0, { seen: 0 }, false)
   probed.set(dir, { at: Date.now(), value })
   return value
 }
 
-function look(dir, depth, budget) {
+// `generated` says we are already inside an `out/`: down there the same rule as the listing
+// applies, or a folder of built pages would call itself a folder of documents.
+function look(dir, depth, budget, generated) {
   let entries
   try {
     entries = fs.readdirSync(dir, { withFileTypes: true })
@@ -380,11 +412,13 @@ function look(dir, depth, budget) {
     if (++budget.seen > PROBE_MAX) return false
     if (e.name.startsWith('.') || SKIP.has(e.name)) continue
     if (e.isFile()) {
-      if (isDoc(e.name)) return true
+      if (generated ? isFinished(e.name) : isDoc(e.name)) return true
     } else if (e.isDirectory() && depth < PROBE_DEPTH) sub.push(e.name)
   }
   // Files before directories: a document at the surface settles the question immediately.
-  for (const name of sub) if (look(path.join(dir, name), depth + 1, budget)) return true
+  for (const name of sub) {
+    if (look(path.join(dir, name), depth + 1, budget, generated || GENERATED.has(name))) return true
+  }
   return false
 }
 

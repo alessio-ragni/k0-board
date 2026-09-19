@@ -1406,15 +1406,19 @@ async function api(req, res, url) {
   // been touched. Which is why `only=changed` exists: that is what the page asks for every
   // three seconds, while it re-reads the complete listing rarely.
   //
-  // Which of the names written inside a document are real files. It is only reached for the
-  // ones the listing does not already have — most of the time it does not run at all — and it
-  // is needed because a directory the listing skips, like `out/`, can hold the very documents
-  // that text is naming.
+  // Which of the names written down in a text are real files. Both the links inside a document
+  // and the pasted chat come here, and only for the ones the listing does not already have — most
+  // of the time it does not run at all. It is needed because a generated directory gives the
+  // listing only what is finished, and an ignored one gives it nothing, while a text naming a
+  // file names it whole.
   if (resource === 'files' && idRaw === 'exist' && req.method === 'POST') {
     const b = await readBody(req)
     const root = rootOf(b.repo)
     if (!root) return send(res, 400, { error: 'Unknown repository' })
-    return send(res, 200, { paths: files.exist(root, b.paths) })
+    // Two shapes of one answer, from one source: the links inside a document only need the
+    // names, the paste window draws the rows.
+    const found = files.exist(root, b.paths)
+    return send(res, 200, { paths: found.map((f) => f.p), files: found })
   }
 
   if (resource === 'files' && req.method === 'GET') {

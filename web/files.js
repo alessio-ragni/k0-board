@@ -212,10 +212,32 @@ function hiddenByTheSwitch(q) {
  */
 let memo = { text: null, from: null, out: null }
 function mentioned() {
-  if (memo.text !== scope.text || memo.from !== all) {
-    memo = { text: scope.text, from: all, out: mentions(scope.text, all) }
+  const from = searchable()
+  if (memo.text !== scope.text || memo.from !== from) {
+    memo = { text: scope.text, from, out: mentions(scope.text, from) }
   }
   return memo.out
+}
+
+/**
+ * The files the pasted text is read against: the listing, plus the ones the disk confirmed when
+ * the text named something the listing does not carry — an HTML beside its PDF, anything under an
+ * ignored directory. They are handed over as ordinary files on purpose: order, the "7 more" fold,
+ * the count in the chip and the first one opening by itself all go on working without knowing
+ * where a row came from. `listed()` is untouched, so the listing on the left does not grow with
+ * what was merely named.
+ */
+let found = []
+let searchMemo = { from: null, with: null, out: null }
+function searchable() {
+  if (!found.length) return all
+  if (searchMemo.from !== all || searchMemo.with !== found) {
+    // Rebuilt only when one of the two changes: `paint()` runs every three seconds, and a fresh
+    // array each round would throw the memo above away every time.
+    const have = new Set(all.map((f) => f.p))
+    searchMemo = { from: all, with: found, out: all.concat(found.filter((f) => !have.has(f.p))) }
+  }
+  return searchMemo.out
 }
 
 /** How many files the text touches, open or closed: the number must not jump about. */
@@ -502,10 +524,15 @@ function openPaste(text) {
  * Takes the text and narrows the listing to what it names. If it names nothing the dialog does
  * **not** close and the listing is not thrown away: it says what happened, so the text can be
  * corrected where it is instead of being pasted again.
+ *
+ * Almost always it finishes without asking anybody anything. The one question goes out when the
+ * text writes a document's name in full and the listing has no such file — then the disk is asked,
+ * once, about those names and no others.
  */
-function applyPaste(text) {
+async function applyPaste(text) {
   const t = String(text ?? '').trim()
-  const out = mentions(t, all)
+  found = await confirmed(mentions(t, all).unknown)
+  const out = mentions(t, searchable())
   if (!howMany(out)) {
     const note = $('#p-note')
     note.hidden = false
@@ -515,7 +542,7 @@ function applyPaste(text) {
     return
   }
   scope = { kind: 'text', text: t }
-  memo = { text: t, from: all, out }
+  memo = { text: t, from: searchable(), out }
   opened = new Set()
   active = -1
   $('#q').value = ''
@@ -529,11 +556,26 @@ function applyPaste(text) {
 }
 
 /**
- * Back to the whole listing. The file open on the right stays where it is.
+ * The names the listing does not have, handed to the disk and given back as rows.
  *
- * A directory is also in the address, because it is a page that can be reloaded and sent: on the
- * way out it has to be taken off, otherwise a reload would put you back inside.
+ * Only the ones that look like a document are worth a question: `example.com` is a website and
+ * `v1.5` is a number. The same rules as the server's, written a second time on purpose — the
+ * server checks them again anyway, this only keeps the question short. Change one, change the
+ * other.
  */
+const DOC_EXT = /\.(md|markdown|mdx|html?|txt|rtf|pdf|docx?|odt|pages)$/i
+async function confirmed(unknown) {
+  const paths = (unknown || []).filter((t) => DOC_EXT.test(t)).slice(0, MAX_ASK)
+  if (!paths.length) return []
+  try {
+    const r = await api('/api/files/exist', { method: 'POST', body: JSON.stringify({ repo: REPO, paths }) })
+    return r.files || []
+  } catch {
+    // The server is not answering: what is left is what the listing could answer on its own.
+    return []
+  }
+}
+
 /**
  * Into a folder. The file open on the right stays open: you go looking for the next one without
  * losing the one you were reading.
@@ -552,9 +594,17 @@ function enterDir(d) {
   history.replaceState(null, '', open ? `?${qs({ dir: d, f: open.path })}` : dirUrl(d))
 }
 
+/**
+ * Back to the whole listing. The file open on the right stays where it is.
+ *
+ * A directory is also in the address, because it is a page that can be reloaded and sent: on the
+ * way out it has to be taken off, otherwise a reload would put you back inside.
+ */
 function clearScope() {
   const wasDir = scope?.kind === 'dir'
   scope = null
+  // What the disk confirmed belonged to that text and to no other: it goes out with it.
+  found = []
   opened = new Set()
   active = -1
   paint()
@@ -582,8 +632,8 @@ const dirUrl = (d) => `?${qs({ dir: d })}`
 /**
  * What this document names that can really be opened: from a written name to an address. Almost
  * always it finishes without asking anybody anything, because the file listing is already here;
- * the server is only reached for the names the listing does not have, which are the documents
- * inside the directories the listing skips.
+ * the server is only reached for the names the listing does not have — the page beside a finished
+ * PDF, anything under a directory git was told to ignore.
  */
 async function refsIn(docPath, text) {
   const ix = refIndex()

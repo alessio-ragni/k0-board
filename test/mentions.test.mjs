@@ -174,6 +174,33 @@ section('What is not here')
   check('the same name is not reported twice', missing.length, 1)
 }
 
+// ── The names to go and ask the disk about ───────────────────────────────────
+section('The names to go and ask the disk about')
+// The listing is not everything there is. A generated directory gives it only its finished
+// documents and an ignored one gives it nothing, so a text can write a real file's name out in
+// full and find nobody here. Those names are handed back rather than swallowed: whoever called
+// can go and look, and existence settles it better than any guess about extensions could.
+{
+  const { named, missing, unknown } = mentions('it is all in out/report.pdf now', REPO)
+  check('a PDF no listing of markdown could hold is not found', named.length, 0)
+  check('and it is not accused of being missing either', missing.length, 0)
+  check('but it does come back to be asked about', unknown.join(), 'out/report.pdf')
+}
+{
+  const { unknown } = mentions('the page is out/report.html and the notes are plan-2025.md', REPO)
+  check('everything written out in full and not found is in there', unknown.join(), 'out/report.html,plan-2025.md')
+}
+{
+  // Whatever a disk is asked, it is asked in the letters the text used: there are file systems
+  // where `Report.pdf` and `report.pdf` are two different files.
+  const { unknown } = mentions('see out/Report.PDF', REPO)
+  check('the name keeps the case it was written in', unknown.join(), 'out/Report.PDF')
+}
+{
+  const { unknown } = mentions('it is at example.com and at k0.localhost', REPO)
+  check('an address is handed over too: the disk will say no', unknown.join(), 'example.com')
+}
+
 // ── The empty cases ──────────────────────────────────────────────────────────
 section('The empty cases')
 {
