@@ -98,8 +98,11 @@ function tick() {
   // list only while somebody is in front of the board. Away from it, the only repositories worth
   // asking about are the ones a session is working in — their mark is on a post-it that is moving.
   // With neither, nothing is asked at all.
+  // What is kept is always the full list, so a glance at the board is answered out of what is
+  // already known rather than by reading two dozen repositories from cold. What is asked about is
+  // the narrow one: see `watch`.
   const watched = Date.now() - lastBoard < ATTENTION
-  git.watch(watched ? [...dirs] : [...working], watched ? listProjects().map((p) => p.path) : [])
+  git.watch([...dirs], watched ? listProjects().map((p) => p.path) : [], watched ? [...dirs] : [...working])
 
   // The power levers are checked once a minute rather than every round: reading the power
   // state costs processes, and the things it has to follow — the mains plugged in or out, the

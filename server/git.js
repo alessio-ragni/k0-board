@@ -148,15 +148,21 @@ function schedule(dir) {
  * The directories that matter right now. Refreshes the stale ones and forgets the ones no
  * longer needed — a destroyed worktree disappears by itself. Waits for nothing: whoever asks
  * for the state gets what is there, and the board never stalls on git.
+ *
+ * `eager` is which of them to actually ask about, and it is a separate question from which to
+ * keep: away from the board only the repositories a session is working in are worth asking, but
+ * dropping the rest out of the cache would mean re-reading every one of them the moment you looked
+ * again — a burst of a couple of hundred readings for a glance. What is kept and what is refreshed
+ * are two lists, and only the second one shrinks.
  */
-export function watch(dirs, slow = []) {
+export function watch(dirs, slow = [], eager = dirs) {
   if (!available()) return
   const hot = new Set(dirs.filter(Boolean))
   const cold = new Set(slow.filter(Boolean).filter((d) => !hot.has(d)))
   const wanted = new Set([...hot, ...cold])
   for (const dir of [...cache.keys()]) if (!wanted.has(dir)) cache.delete(dir)
 
-  for (const dir of hot) due(dir, TTL)
+  for (const dir of new Set(eager.filter(Boolean))) if (hot.has(dir)) due(dir, TTL)
   // The repositories that are only in the list: a few per round, so within ten seconds they
   // are all done and then it stays quiet for a minute.
   let budget = SLOW_BATCH
