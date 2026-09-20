@@ -938,12 +938,17 @@ a real repository code is 95% of the files, and among two thousand `.tsx` files 
 were after cannot be found. This closes nothing off: a code file reached by a link inside a
 document still opens, and so do images — and the configuration is one switch away, below.
 
-A **generated directory** — `out/`, `dist/`, `build/` — gives up only what came out of it
-**finished**: the PDFs and the Word files, the things you print and hand to somebody. The two
-megabyte `report.html` the PDF was printed from stays out, and so does everything else the build
-left lying there. In a code repository that leaves the listing exactly as it was; in a folder of
-documents it is the difference between seeing your PDFs and seeing none of them. Directories that
-hold nothing anybody reads — `node_modules` and its like — are not walked into at all.
+A **generated directory** — `out/`, `dist/`, `build/` — is walked into like any other, and the
+documents in it are listed like any others: the PDFs, and the pages you open with a double click.
+A document is a document wherever it was made, and it has to be findable by name. What stays out
+is the configuration a build leaves lying there, and the directories that hold nothing anybody
+reads — `node_modules` and its like — which are not walked into at all.
+
+There is **one exception, and only one**: where git is in charge, git decides. k0 reads a
+directory your `.gitignore` names only to go and fetch the finished documents from it — the PDFs,
+the Word files — never the pages, because a real site's ignored `dist/` is four thousand pages and
+not one of them is the file you went looking for. Where git names the directory itself, everything
+in it comes through, pages included.
 
 At the top come the **folders**, then the files, in three groups:
 
@@ -1050,9 +1055,9 @@ file listing is already in the browser. The price is stated: a file the chat tal
 ever naming does not come out, and for that there is the search above.
 
 One question does go out, and only one: when the text writes a name **in full** and the listing has
-no such file, the disk is asked about those names and no others. That is how `out/report.html`
-comes out of a paste — the listing takes only the finished documents from a generated directory,
-but a text naming a file names it whole.
+no such file, the disk is asked about those names and no others. That is how a document under an
+ignored directory comes out of a paste — the listing never saw it, but a text naming a file names
+it whole.
 
 The results come in two groups, because they are two different degrees of certainty:
 
@@ -1083,11 +1088,10 @@ The hard part is not finding the names, it is choosing **which**. In a repositor
 directory up, and so on to the top. If it is still ambiguous, **it does not become a link**:
 better nothing than sending you to the wrong README.
 
-Files the listing does **not** show open too. Out of `out/` the listing takes the finished
-documents and nothing else, and where git rules an ignored directory gives it nothing at all — so
-`out/report.html`, the page a PDF was printed from, is in neither. Named inside a document it
-still counts: the document said so, not the directory. Hidden directories really do stay out:
-`.claude/` is configuration, not something to read.
+Files the listing does **not** show open too. Where git rules, a directory your `.gitignore` names
+gives the listing only its finished documents — so a page under an ignored `dist/` is not in it.
+Named inside a document it still counts: the document said so, not the directory. Hidden
+directories really do stay out: `.claude/` is configuration, not something to read.
 
 ### On paper
 

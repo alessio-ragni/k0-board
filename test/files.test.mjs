@@ -42,9 +42,9 @@ fs.writeFileSync(path.join(REPO, 'binary.bin'), Buffer.from([0, 1, 2, 3, 0, 255]
 // document but is one of the things you go looking for by hand.
 fs.writeFileSync(path.join(REPO, '.env'), 'TOKEN=abc\n')
 fs.writeFileSync(path.join(REPO, 'docs', 'settings.json'), '{"a":1}\n')
-// The generated directory: in a folder of documents it is where the finished PDFs are, and it is
-// also full of what made them. The PDF belongs in the listing; the page it was printed from and
-// the numbers left behind do not.
+// The generated directory: in a folder of documents it is where the work comes out. The PDF and
+// the page belong in the listing — a page you open with a double click is a document like any
+// other — while the numbers a build leaves behind do not.
 fs.mkdirSync(path.join(REPO, 'out'), { recursive: true })
 fs.writeFileSync(path.join(REPO, 'out', 'report.pdf'), '%PDF-1.4\n')
 fs.writeFileSync(path.join(REPO, 'out', 'report.html'), '<h1>what printed it</h1>\n')
@@ -167,7 +167,7 @@ section('The walk over a repository with no git')
   check(
     'every document is there, and the configuration with it',
     names.join(','),
-    '.env,README.md,docs/audit-report.md,docs/backlog/note.txt,docs/settings.json,out/report.pdf'
+    '.env,README.md,docs/audit-report.md,docs/backlog/note.txt,docs/settings.json,out/report.html,out/report.pdf'
   )
   // The mark is what lets the page hide the configuration without asking a second time.
   check(
@@ -190,20 +190,20 @@ section('The walk over a repository with no git')
     names.some((n) => n.includes('node_modules')),
     false
   )
-  // The whole point of this: a folder of documents keeps its PDFs in `out/`, and a listing that
-  // skipped the directory whole was a listing with no PDFs in it at all.
+  // The whole point of this: a folder of documents keeps what it prints in `out/`, and a listing
+  // that skipped the directory whole was a listing with no PDFs in it at all.
   check(
-    'the finished PDF inside a generated directory is listed',
+    'the PDF inside a generated directory is listed',
     names.includes('out/report.pdf'),
     true
   )
   check(
-    'the page it was printed from is not: it is the means, not the document',
-    names.some((n) => n.endsWith('report.html')),
-    false
+    'and so is the page beside it, which is a document you can look for by name',
+    names.includes('out/report.html'),
+    true
   )
   check(
-    'and neither is configuration left behind down there',
+    'what a build leaves behind is not: nobody reads it',
     names.some((n) => n === 'out/sizes.json'),
     false
   )
@@ -339,11 +339,12 @@ section('The stories of a directory that is gone')
   fs.writeFileSync(path.join(printed, 'out', 'report.pdf'), '%PDF-1.4\n')
   check('a folder whose documents are all finished PDFs counts', hasDocs(printed), true)
 
-  // Whereas a site that was built into `dist/` is a build, not a bookshelf.
+  // And a page is a document wherever it was made: the same rule as the listing, or a folder
+  // would refuse to be opened on files it would then have shown.
   const built = fs.mkdtempSync(path.join(os.tmpdir(), 'k0-built-'))
   fs.mkdirSync(path.join(built, 'dist'), { recursive: true })
-  fs.writeFileSync(path.join(built, 'dist', 'index.html'), '<h1>built</h1>\n')
-  check('a folder holding only built pages does not', hasDocs(built), false)
+  fs.writeFileSync(path.join(built, 'dist', 'index.html'), '<h1>a page</h1>\n')
+  check('so does one whose only document is a page down there', hasDocs(built), true)
 
   fs.rmSync(deep, { recursive: true, force: true })
   fs.rmSync(shallow, { recursive: true, force: true })
@@ -383,9 +384,10 @@ check('an html is not: something built it', isFinished('report.html'), false)
 check('nor is a markdown', isFinished('notes.md'), false)
 
 check('so the PDF down there is listed', isListed('out/report.pdf'), true)
-check('and the page beside it is not', isListed('out/report.html'), false)
-check('while the same page elsewhere still is', isListed('site/report.html'), true)
-check('configuration down there is not listed either', isListed('out/sizes.json'), false)
+check('and the page beside it as well', isListed('out/report.html'), true)
+check('as is the same page elsewhere', isListed('site/report.html'), true)
+check('configuration down there is not listed', isListed('out/sizes.json'), false)
+check('while elsewhere configuration still is', isListed('docs/settings.json'), true)
 
 // ── Configuration ────────────────────────────────────────────────────────────
 section('Configuration')
@@ -526,13 +528,25 @@ section('What git is told to ignore')
     fs.mkdirSync(path.join(GITREPO, 'out'), { recursive: true })
     fs.writeFileSync(path.join(GITREPO, 'out', 'report.pdf'), '%PDF-1.4\n')
     fs.writeFileSync(path.join(GITREPO, 'out', 'report.html'), '<h1>what printed it</h1>\n')
+    // A generated directory git was *not* told to ignore: git names what is in it, so the page
+    // comes through like anything else.
+    fs.mkdirSync(path.join(GITREPO, 'build'), { recursive: true })
+    fs.writeFileSync(path.join(GITREPO, 'build', 'manual.html'), '<h1>a page</h1>\n')
     const found = await list(GITREPO)
     const names = found.files.map((f) => f.p).sort()
     check('git is what provides the listing', found.git, true)
     check('an ignored .env is listed all the same', names.includes('.env'), true)
     check('and so is a PDF under an ignored out/', names.includes('out/report.pdf'), true)
-    check('the page it was printed from stays out', names.some((n) => n.endsWith('report.html')), false)
-    check('together with what git did name', names.join(','), '.env,README.md,out/report.pdf,package.json')
+    // The one place a repository with git reads differently from a folder without: behind an
+    // explicit `.gitignore` k0 goes looking for a PDF, which somebody went there for, and not for
+    // a page, because a real site's ignored `dist/` is four thousand of them.
+    check('a page under an ignored out/ does not', names.some((n) => n.endsWith('report.html')), false)
+    check('but one git does name comes through', names.includes('build/manual.html'), true)
+    check(
+      'together with what git did name',
+      names.join(','),
+      '.env,README.md,build/manual.html,out/report.pdf,package.json'
+    )
     check(
       'and nothing is listed twice',
       names.length,

@@ -24,16 +24,16 @@ const MAX_TEXT = 2 << 20 // 2 MB: above that it is no longer a document to read
 // every few seconds.
 const SKIP = new Set(['node_modules', 'coverage', 'vendor', 'target', 'Pods', '__pycache__', 'venv'])
 
-// Generated too — but generated is not the same as worthless. In a directory of documents this
-// is where the real PDFs are: the ones you print and hand to somebody. So these are walked into,
-// and only what is finished is taken out of them.
+// Generated too — but generated is not the same as worthless. In a directory of documents this is
+// where the work comes out: the PDFs you print, and the pages you open with a double click. So
+// these are walked into, and the documents in them are listed like any others.
 const GENERATED = new Set(['out', 'dist', 'build'])
 
-// What counts inside a generated directory: a document that is done, not the thing that made it.
-// Beside `report.pdf` sits `report.html`, two megabytes of it, which exists only because the PDF
-// was printed from it — listing it would put the means next to the end and double the rows.
-// Named in a piece of text it is still found, through `exist` below: that is a different
-// question, and it has its own answer.
+// A document that is done — the kind of thing a build produces on purpose and a person then
+// prints. It is the narrower half of `DOC_EXT`, and it exists for one case only: a generated
+// directory that git was explicitly told to ignore. There k0 goes behind git's back for the file
+// you went there for, and a PDF is that file; a page is not, because one real site's `dist/` is
+// four thousand of them and none is what you were looking for.
 const FINISHED = new Set(['.pdf', '.docx', '.doc', '.odt', '.pages', '.rtf'])
 
 // Only documents go in the listing: things you read and print. In a real repository code is
@@ -47,7 +47,7 @@ const DOC_EXT = new Set([
 
 export const isDoc = (p) => DOC_EXT.has(path.extname(p).toLowerCase())
 
-/** A document nothing else had to be built to make: what a generated directory is listed for. */
+/** A document that was produced to be kept, not a step on the way to one. */
 export const isFinished = (p) => FINISHED.has(path.extname(p).toLowerCase())
 
 /** Is one of the directories above this file a generated one? The file itself does not count. */
@@ -67,11 +67,15 @@ export const isConfig = (p) =>
   CONFIG_EXT.has(path.extname(p).toLowerCase()) || ENV_NAME.test(path.basename(p))
 
 /**
- * Everything the listing carries: documents to read, configuration to check — and, from a
- * generated directory, only what came out finished. It reads the whole path, not the name, because
- * the directory a file is in is half the answer.
+ * Everything the listing carries: documents to read, configuration to check. It reads the whole
+ * path, not the name, because the directory a file is in is half the answer.
+ *
+ * Out of a generated directory come the documents and nothing else. A document is a document
+ * wherever it was made — the page you open with a double click is not worth less than the PDF
+ * beside it, and it has to be findable by name like everything else. What stays behind is the
+ * configuration a build leaves lying about, which in `out/` is nobody's reading.
  */
-export const isListed = (p) => (inGenerated(p) ? isFinished(p) : isDoc(p) || isConfig(p))
+export const isListed = (p) => (inGenerated(p) ? isDoc(p) : isDoc(p) || isConfig(p))
 
 // What can be written back from the page. Configuration, and the notes kept next to it — never
 // code: k0 is not an editor, and a `.js` changed in a browser tab with no undo and no syntax
@@ -267,8 +271,13 @@ async function scan(root) {
   // definition, so `ls-files -co --exclude-standard` will never name it, and an `out/` in the
   // `.gitignore` takes the finished PDFs down with it. Both are the file you went there for. So
   // the disk is walked a second time for those two alone — a handful of names, under the same
-  // bounds as the other walk — and what git already gave is kept as it is. A repository of
-  // documents then reads the same whether or not anybody ran `git init` in it.
+  // bounds as the other walk — and what git already gave is kept as it is.
+  //
+  // Only the finished ones, though, and this is the single place where a repository with git
+  // reads differently from a folder without. Where git is in charge, git decides: k0 goes behind
+  // its back for a PDF, which is a thing somebody went looking for, and not for a page, because a
+  // real site's ignored `dist/` is four thousand pages and not one of them is the answer. Where
+  // git names the directory itself, everything in it is listed, pages included.
   const fromGit = withStats(root, names)
   const seen = new Set(fromGit.files.map((f) => f.p))
   const extra = walk(root, (p) => (inGenerated(p) ? isFinished(p) : isConfig(p)))
@@ -393,14 +402,12 @@ const probed = new Map() // path → { at, value }
 export function hasDocs(dir) {
   const e = probed.get(dir)
   if (e && Date.now() - e.at < PROBE_TTL) return e.value
-  const value = look(dir, 0, { seen: 0 }, false)
+  const value = look(dir, 0, { seen: 0 })
   probed.set(dir, { at: Date.now(), value })
   return value
 }
 
-// `generated` says we are already inside an `out/`: down there the same rule as the listing
-// applies, or a folder of built pages would call itself a folder of documents.
-function look(dir, depth, budget, generated) {
+function look(dir, depth, budget) {
   let entries
   try {
     entries = fs.readdirSync(dir, { withFileTypes: true })
@@ -412,13 +419,11 @@ function look(dir, depth, budget, generated) {
     if (++budget.seen > PROBE_MAX) return false
     if (e.name.startsWith('.') || SKIP.has(e.name)) continue
     if (e.isFile()) {
-      if (generated ? isFinished(e.name) : isDoc(e.name)) return true
+      if (isDoc(e.name)) return true
     } else if (e.isDirectory() && depth < PROBE_DEPTH) sub.push(e.name)
   }
   // Files before directories: a document at the surface settles the question immediately.
-  for (const name of sub) {
-    if (look(path.join(dir, name), depth + 1, budget, generated || GENERATED.has(name))) return true
-  }
+  for (const name of sub) if (look(path.join(dir, name), depth + 1, budget)) return true
   return false
 }
 

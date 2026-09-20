@@ -154,14 +154,15 @@ is exactly the board it was.
 
 ### Changed
 
-- **Your PDFs are in the file viewer.** A folder of documents keeps the things it prints in
+- **The documents in `out/` are in the file viewer.** A folder of documents keeps what it makes in
   `out/`, and k0 skipped that directory whole because in a code repository it is generated — so a
-  folder with twenty-one PDFs in it showed none of them, in the listing, in the search by name, or
-  in the files a pasted chat names. `out/`, `dist/` and `build/` now give up what came out of them
-  **finished**: PDFs, Word files, the things you hand to somebody. The two megabyte `report.html`
-  the PDF was printed from stays out, along with everything else the build left there, so a code
-  repository's listing is exactly the listing it was. It reads the same whether or not the folder
-  is a git repository: an ignored `out/` no longer takes the PDFs down with it.
+  folder with twenty-one PDFs and a quiz page in it showed none of them, in the listing, in the
+  search by name, or in the files a pasted chat names. `out/`, `dist/` and `build/` are now walked
+  into like anywhere else, and the documents in them are listed like any others: the PDFs, the Word
+  files, and the pages you open with a double click. Only what a build leaves lying about stays
+  out. Where git is in charge git still decides — a directory your `.gitignore` names gives up its
+  finished documents and not its pages, because one real site's ignored `dist/` is four thousand
+  pages and none of them is the file you went looking for.
 
 - **A pasted chat finds a file it names even when the listing has not got it.** Writing
   `out/report.html` in full used to come to nothing at all — not found, not counted, not even
