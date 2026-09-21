@@ -256,6 +256,94 @@ db.exec(`
     command      TEXT NOT NULL,
     started_at   INTEGER NOT NULL
   );
+
+  -- ── What the sessions consumed (server/usage.js) ──────────────────────────
+  -- All of it is read out of files Claude Code and the statusline already write, and all of it
+  -- could be thrown away and read again from them: nothing here is the only copy of anything.
+
+  -- How far each transcript has been read, so a restart picks up where it was instead of
+  -- reading a gigabyte of history again. recent is the last request ids counted, as JSON:
+  -- Claude Code writes one line per block of a reply, every one with the same usage, and a
+  -- request is counted once.
+  CREATE TABLE IF NOT EXISTS usage_file (
+    path       TEXT PRIMARY KEY,
+    "offset"   INTEGER NOT NULL DEFAULT 0,
+    size       INTEGER NOT NULL DEFAULT 0,
+    session_id TEXT,
+    agent      TEXT NOT NULL DEFAULT 'main',
+    recent     TEXT NOT NULL DEFAULT '[]'
+  );
+
+  -- One row per Claude Code session, subagents and workflow agents folded into the one that
+  -- started them.
+  CREATE TABLE IF NOT EXISTS usage_session (
+    session_id   TEXT PRIMARY KEY,
+    project_path TEXT,
+    cwd          TEXT,
+    title        TEXT,
+    first_at     INTEGER,
+    last_at      INTEGER
+  );
+
+  -- The tokens, added up by the hour. One row per request would be millions of rows for a year
+  -- of work; by the hour it is tens of thousands, and a week chart needs nothing finer.
+  -- cost is dollars at the API price list, NULL when the model is not on it.
+  CREATE TABLE IF NOT EXISTS usage_hour (
+    session_id   TEXT NOT NULL,
+    hour         INTEGER NOT NULL,
+    model        TEXT NOT NULL,
+    effort       TEXT NOT NULL DEFAULT '',
+    speed        TEXT NOT NULL DEFAULT 'standard',
+    agent        TEXT NOT NULL DEFAULT 'main',
+    account_uuid TEXT NOT NULL DEFAULT '',
+    requests     INTEGER NOT NULL DEFAULT 0,
+    input        INTEGER NOT NULL DEFAULT 0,
+    output       INTEGER NOT NULL DEFAULT 0,
+    thinking     INTEGER NOT NULL DEFAULT 0,
+    cache_read   INTEGER NOT NULL DEFAULT 0,
+    write_5m     INTEGER NOT NULL DEFAULT 0,
+    write_1h     INTEGER NOT NULL DEFAULT 0,
+    web_search   INTEGER NOT NULL DEFAULT 0,
+    cost         REAL,
+    PRIMARY KEY (session_id, hour, model, effort, speed, agent, account_uuid)
+  );
+
+  -- Moments in a session: work is a turn and how long Claude spent on it, limit is a
+  -- reply that never came because a usage limit had been reached.
+  CREATE TABLE IF NOT EXISTS usage_event (
+    session_id TEXT NOT NULL,
+    at         INTEGER NOT NULL,
+    kind       TEXT NOT NULL,
+    ms         INTEGER NOT NULL DEFAULT 0,
+    PRIMARY KEY (session_id, at, kind)
+  );
+
+  CREATE TABLE IF NOT EXISTS usage_account (
+    uuid       TEXT PRIMARY KEY,
+    email      TEXT,
+    org_type   TEXT,
+    tier       TEXT,
+    first_seen INTEGER NOT NULL,
+    last_seen  INTEGER NOT NULL
+  );
+
+  -- Which account was signed in, and how much of its limits was used, at a moment. The
+  -- statusline's rows carry the session and the percentages; a row k0 wrote itself on seeing
+  -- the account change has neither — it only says who was signed in from then on.
+  CREATE TABLE IF NOT EXISTS usage_limit (
+    at           INTEGER NOT NULL,
+    account_uuid TEXT NOT NULL,
+    session_id   TEXT NOT NULL DEFAULT '',
+    five_pct     REAL,
+    five_resets  INTEGER,
+    week_pct     REAL,
+    week_resets  INTEGER,
+    PRIMARY KEY (at, account_uuid, session_id)
+  );
+
+  CREATE INDEX IF NOT EXISTS idx_usage_hour_time ON usage_hour(hour);
+  CREATE INDEX IF NOT EXISTS idx_usage_event_time ON usage_event(at);
+  CREATE INDEX IF NOT EXISTS idx_usage_limit_session ON usage_limit(session_id, at);
 `)
 
 // Additive migrations: the column may be missing from a database created before it existed, and
@@ -1736,6 +1824,127 @@ export function setDevServer(projectPath, { pid, command, startedAt }) {
 
 export function clearDevServer(projectPath) {
   q('DELETE FROM dev_server WHERE project_path = ?').run(projectPath)
+}
+
+// ── What the sessions consumed ───────────────────────────────────────────────
+// Written by `usage.js` as it reads the transcripts, read back by the Usage page. See the
+// comments on the tables.
+
+export function usageFiles() {
+  const rows = q('SELECT path, "offset", size, session_id, agent, recent FROM usage_file').all()
+  return new Map(rows.map((r) => [r.path, { ...r, recent: JSON.parse(r.recent) }]))
+}
+
+export function saveUsageFile({ path: file, offset, size, session_id = null, agent = 'main', recent = [] }) {
+  q(`
+    INSERT INTO usage_file (path, "offset", size, session_id, agent, recent) VALUES (?, ?, ?, ?, ?, ?)
+    ON CONFLICT(path) DO UPDATE SET
+      "offset" = excluded."offset", size = excluded.size, recent = excluded.recent,
+      session_id = COALESCE(excluded.session_id, usage_file.session_id), agent = excluded.agent
+  `).run(file, offset, size, session_id, agent, JSON.stringify(recent))
+}
+
+/** Adds to what is there: the same hour of the same session is read in more than one bite. */
+export function addUsageHours(rows) {
+  const add = q(`
+    INSERT INTO usage_hour (session_id, hour, model, effort, speed, agent, account_uuid,
+      requests, input, output, thinking, cache_read, write_5m, write_1h, web_search, cost)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    ON CONFLICT(session_id, hour, model, effort, speed, agent, account_uuid) DO UPDATE SET
+      requests = requests + excluded.requests, input = input + excluded.input,
+      output = output + excluded.output, thinking = thinking + excluded.thinking,
+      cache_read = cache_read + excluded.cache_read, write_5m = write_5m + excluded.write_5m,
+      write_1h = write_1h + excluded.write_1h, web_search = web_search + excluded.web_search,
+      cost = usage_hour.cost + excluded.cost
+  `)
+  for (const r of rows) {
+    add.run(r.session_id, r.hour, r.model, r.effort, r.speed, r.agent, r.account_uuid, r.requests, r.input,
+      r.output, r.thinking, r.cache_read, r.write_5m, r.write_1h, r.web_search, r.cost)
+  }
+}
+
+/**
+ * The span only ever widens. A title Claude Code was given by hand wins over the one it made up,
+ * whichever of the two is read first.
+ */
+export function touchUsageSession({ session_id, project_path = null, cwd = null, first_at, last_at, custom = null, ai = null }) {
+  q(`
+    INSERT INTO usage_session (session_id, project_path, cwd, title, first_at, last_at)
+    VALUES (?, ?, ?, COALESCE(?, ?), ?, ?)
+    ON CONFLICT(session_id) DO UPDATE SET
+      project_path = COALESCE(usage_session.project_path, excluded.project_path),
+      cwd = COALESCE(usage_session.cwd, excluded.cwd),
+      title = COALESCE(?, usage_session.title, ?),
+      first_at = MIN(COALESCE(usage_session.first_at, excluded.first_at), COALESCE(excluded.first_at, usage_session.first_at)),
+      last_at = MAX(COALESCE(usage_session.last_at, excluded.last_at), COALESCE(excluded.last_at, usage_session.last_at))
+  `).run(session_id, project_path, cwd, custom, ai, first_at ?? null, last_at ?? null, custom, ai)
+}
+
+export function addUsageEvents(rows) {
+  const add = q('INSERT OR IGNORE INTO usage_event (session_id, at, kind, ms) VALUES (?, ?, ?, ?)')
+  for (const r of rows) add.run(r.session_id, r.at, r.kind, r.ms ?? 0)
+}
+
+export function seeAccount({ uuid, email = null, org_type = null, tier = null }, at) {
+  q(`
+    INSERT INTO usage_account (uuid, email, org_type, tier, first_seen, last_seen) VALUES (?, ?, ?, ?, ?, ?)
+    ON CONFLICT(uuid) DO UPDATE SET
+      email = COALESCE(excluded.email, email), org_type = COALESCE(excluded.org_type, org_type),
+      tier = COALESCE(excluded.tier, tier), last_seen = MAX(last_seen, excluded.last_seen)
+  `).run(uuid, email, org_type, tier, at, at)
+}
+
+export function addLimit(r) {
+  q(`
+    INSERT OR IGNORE INTO usage_limit (at, account_uuid, session_id, five_pct, five_resets, week_pct, week_resets)
+    VALUES (?, ?, ?, ?, ?, ?, ?)
+  `).run(r.at, r.account_uuid, r.session_id ?? '', r.five_pct ?? null, r.five_resets ?? null, r.week_pct ?? null,
+    r.week_resets ?? null)
+}
+
+/** Every moment an account is known to have been the one signed in, oldest first. */
+export function accountSightings() {
+  return q('SELECT at, account_uuid, session_id FROM usage_limit ORDER BY at').all()
+}
+
+export function usageHours(from, to) {
+  return q('SELECT * FROM usage_hour WHERE hour >= ? AND hour < ?').all(from, to)
+}
+
+export function usageEvents(from, to) {
+  return q('SELECT session_id, at, kind, ms FROM usage_event WHERE at >= ? AND at < ?').all(from, to)
+}
+
+/** The samples in the span, plus the one just before it: a week has to start from somewhere. */
+export function usageLimits(from, to) {
+  return q(`
+    SELECT * FROM usage_limit WHERE week_pct IS NOT NULL AND at >= ? AND at < ?
+    UNION
+    SELECT * FROM (
+      SELECT * FROM usage_limit WHERE week_pct IS NOT NULL AND at < ? ORDER BY at DESC LIMIT 20
+    )
+    ORDER BY at
+  `).all(from, to, from)
+}
+
+export function usageAccounts() {
+  return q('SELECT uuid, email, org_type, tier, first_seen, last_seen FROM usage_account ORDER BY first_seen').all()
+}
+
+/**
+ * The sessions that consumed something in the span, with the story each one belongs to when k0
+ * started it or imported it. A session belongs to one story at most; the newest wins if not.
+ */
+export function usageSessions(from, to) {
+  return q(`
+    SELECT us.session_id, us.project_path, us.cwd, us.title, us.first_at, us.last_at,
+           st.id AS story_id, 'K' || st.key_num AS story_key, st.title AS story_title
+      FROM usage_session us
+      LEFT JOIN session se ON se.id = (
+        SELECT id FROM session WHERE session_id = us.session_id ORDER BY started_at DESC LIMIT 1)
+      LEFT JOIN story st ON st.id = se.story_id
+     WHERE us.session_id IN (SELECT DISTINCT session_id FROM usage_hour WHERE hour >= ? AND hour < ?)
+  `).all(from, to)
 }
 
 /**

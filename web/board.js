@@ -2034,6 +2034,16 @@ async function boot() {
 
   // A direct link: k0 opened with the new story already in front of you.
   if (location.hash === '#new' || location.hash === '#nuovo') openEditor(null)
+  // And the other direct link, the one the Usage page makes: a session's story, already open.
+  const wanted = /^#story-(\d+)$/.exec(location.hash)
+  if (wanted) {
+    api('/api/board')
+      .then((d) => {
+        const story = d.stories.find((s) => s.id === Number(wanted[1]))
+        if (story) openEditor(story)
+      })
+      .catch(() => {})
+  }
 }
 
 boot()
