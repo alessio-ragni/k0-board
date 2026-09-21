@@ -179,22 +179,34 @@ function transcripts(root) {
     }
     for (const e of entries) {
       if (e.isFile() && e.name.endsWith('.jsonl')) out.push({ file: path.join(dir, e.name), agent: 'main' })
-      if (!e.isDirectory()) continue
-      const sub = path.join(dir, e.name, 'subagents')
-      let agents = []
-      try {
-        agents = fs.readdirSync(sub)
-      } catch {
-        continue
-      }
-      for (const name of agents) if (name.endsWith('.jsonl')) out.push({ file: path.join(sub, name), agent: null })
+      if (e.isDirectory()) agentFiles(path.join(dir, e.name, 'subagents'), out, 0)
     }
   }
   return out
 }
 
-/** A subagent file is a workflow's when its `.meta.json` says so; any other is a plain subagent. */
+/**
+ * A session's agents, however deep. A plain subagent sits in `subagents/` itself; a workflow's
+ * agents sit two levels further down, in `subagents/workflows/<run>/` — and those are exactly the
+ * ones worth counting, since a workflow is where a lot of agents run at once.
+ */
+function agentFiles(dir, out, depth) {
+  let entries = []
+  try {
+    entries = fs.readdirSync(dir, { withFileTypes: true })
+  } catch {
+    return
+  }
+  for (const e of entries) {
+    const file = path.join(dir, e.name)
+    if (e.isFile() && e.name.endsWith('.jsonl')) out.push({ file, agent: null })
+    else if (e.isDirectory() && depth < 3) agentFiles(file, out, depth + 1)
+  }
+}
+
+/** A subagent file is a workflow's when it sits in a workflow's folder or its `.meta.json` says so. */
 function agentKind(file) {
+  if (file.includes(`${path.sep}subagents${path.sep}workflows${path.sep}`)) return 'workflow'
   try {
     const meta = JSON.parse(fs.readFileSync(file.replace(/\.jsonl$/, '.meta.json'), 'utf8'))
     return meta.agentType === 'workflow-subagent' ? 'workflow' : 'sub'

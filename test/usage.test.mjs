@@ -80,9 +80,10 @@ fs.writeFileSync(MAIN, lines([
     message: { model: '<synthetic>', usage: { input_tokens: 0, output_tokens: 0 } } },
 ]))
 
-const SUB = path.join(dir, S1, 'subagents', 'agent-wf.jsonl')
+// Where Claude Code really puts a workflow's agents: two folders further down than a subagent.
+const SUB = path.join(dir, S1, 'subagents', 'workflows', 'wf_0123abcd-456', 'agent-wf.jsonl')
+fs.mkdirSync(path.dirname(SUB), { recursive: true })
 fs.writeFileSync(SUB, lines([reply('req-C', T0, 'claude-sonnet-5', { input_tokens: 1_000_000, output_tokens: 0 })]))
-fs.writeFileSync(SUB.replace('.jsonl', '.meta.json'), JSON.stringify({ agentType: 'workflow-subagent' }))
 const EXPLORE = path.join(dir, S1, 'subagents', 'agent-ex.jsonl')
 fs.writeFileSync(EXPLORE, lines([reply('req-D', T0, 'claude-haiku-4-5-20251001', { input_tokens: 1_000_000, output_tokens: 0 })]))
 fs.writeFileSync(EXPLORE.replace('.jsonl', '.meta.json'), JSON.stringify({ agentType: 'Explore' }))
