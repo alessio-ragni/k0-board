@@ -925,6 +925,86 @@ version exists, and leave `npx k0-board@latest` to you.
 
 ---
 
+## Usage: what your sessions consumed
+
+The icon with three bars, next to the ChangeLog's, opens a page that answers a question Claude Code
+leaves you to guess at: **where did the week go?** You switch between models, between efforts,
+between one agent and a whole workflow, and between accounts, and the only thing you ever see is a
+limit arriving.
+
+A week at a time, Monday to Sunday, with the arrows to go back:
+
+- **what each day would have cost at the API price list**, stacked by model. With a subscription
+  you do not pay this — it is the one scale on which a Fable hour and a Sonnet hour can be put side
+  by side, and the page says so;
+- **how full each account's weekly limit was**, as a line per account, and the five-hour limit as
+  it was last seen;
+- the week split **by model and effort** (fast mode is a row of its own), by **who did the work** —
+  the conversation itself, its subagents, or a workflow's agents — by **repository** and by
+  **account**;
+- and every **session**, the most expensive first: the model and effort it ran on, when it started,
+  how long Claude actually worked on your turns (not how long the window was open), its tokens, its
+  cost, its estimated share of the weekly limit, and how many times a limit stopped it. A session k0
+  started or imported links to its story, which opens on the board.
+
+**It costs nothing to find out.** No model is asked and nothing goes over the network: Claude Code
+already writes every reply's token counts, model and effort into the transcripts on your disk, and
+k0 reads them as they grow — the history first, a few megabytes at a time so the board never
+stalls, and after that once a minute. The first time, the page says how much history is still left
+to read.
+
+Two things are not in the transcripts, and the page is straight about both:
+
+- **Which account a reply came from.** Claude Code only records the account signed in *now*. k0
+  writes down every change of account it sees from the moment it is running, and the statusline
+  snippet below writes down the account of every session it draws. Everything before that stays
+  **"Unknown account"** — it is not guessed.
+- **How full the limits are.** Claude Code tells the statusline and keeps it nowhere else. So the
+  statusline has to write it down:
+
+### The limits: a few lines in your statusline
+
+If you have a statusline command, add this to it, where it has read Claude Code's JSON from standard
+input into `input` (Node, no packages; the same idea works in any language). It appends a line to
+`~/.k0/usage/limits.jsonl` only when a number has changed, and never breaks the bar if anything
+fails:
+
+```js
+try {
+  const fs = require('fs'), path = require('path'), os = require('os')
+  const data = JSON.parse(input), rl = data.rate_limits
+  if (rl && (rl.five_hour || rl.seven_day)) {
+    const pick = (w) => (w ? { pct: w.used_percentage, resets_at: w.resets_at } : null)
+    const now = { five_hour: pick(rl.five_hour), seven_day: pick(rl.seven_day) }
+    const dir = path.join(os.homedir(), '.k0', 'usage'), seen = path.join(dir, '.last')
+    const sig = JSON.stringify([data.session_id, now])
+    let last = ''
+    try { last = fs.readFileSync(seen, 'utf8') } catch {}
+    if (sig !== last) {
+      const a = JSON.parse(fs.readFileSync(path.join(os.homedir(), '.claude.json'), 'utf8')).oauthAccount || {}
+      const account = { uuid: a.accountUuid, email: a.emailAddress, org_type: a.organizationType, tier: a.organizationRateLimitTier }
+      fs.mkdirSync(dir, { recursive: true })
+      fs.appendFileSync(path.join(dir, 'limits.jsonl'),
+        JSON.stringify({ at: Date.now(), session_id: data.session_id, account, model: data.model?.id, ...now }) + '\n')
+      fs.writeFileSync(seen, sig)
+    }
+  }
+} catch {}
+```
+
+Claude Code only passes the limits to the statusline on a subscription, and only after the first
+reply of a session. Without the snippet the page works the same, with the limits chart empty and a
+note saying why.
+
+The share of the weekly limit next to each session is an **estimate**, and marked with `≈`: the
+statusline says how full the week is, not who filled it, so each rise is shared among the sessions
+that account ran in that hour, in proportion to their cost.
+
+The prices are Anthropic's published API rates, dated in the source. A model k0 does not have a
+price for is counted in tokens and shown as `?` in dollars — never as free.
+
+---
+
 ## The files of a session
 
 The git mark is also the door: clicking it opens a file viewer **in another tab**, and the board
@@ -1493,6 +1573,11 @@ server/
   idle.js        which terminals have sat still long enough to be closed and given back. Only the
                  deciding: it kills nothing, so every rule in it can be proved without a machine
   watcher.js     reads Claude Code's own files and derives the statuses; also renames a session
+  usage.js       reads what every session consumed out of its transcripts, a few megabytes at a
+                 time and only what is new, plus the statusline's limit samples and which account
+                 is signed in; adds it up by the hour for the Usage page. Never asks a model
+  prices.js      the API price list the Usage page's dollars come from, dated; a model not on it
+                 has no price rather than a zero one
   git.js         the only one that talks to git: what is committed, what is pushed, whose it is,
                  and — for the ChangeLog — what the commits actually said
   changelog.js   gathers what happened in a window, out of git and out of session_event. Decides
@@ -1595,13 +1680,17 @@ that branch into the branch you were standing on. It never pushes, never opens a
 never resolves a conflict on your behalf — where it cannot merge cleanly it stops and says so.
 None of it happens unless you run `/k0-work`.
 
-k0 does not emulate a terminal and installs no hooks. It reads two things Claude Code already
-writes for itself:
+k0 does not emulate a terminal and installs no hooks. It reads what Claude Code already writes for
+itself:
 
 - `~/.claude/sessions/<pid>.json` — live status (`busy`, `idle`, `waiting` with the reason for the
   wait) and the session id;
 - `~/.claude/projects/<project>/<session>.jsonl` — the transcript, read incrementally, which is
-  where you can tell whether you are inside a plan.
+  where you can tell whether you are inside a plan — and, for the Usage page, what every reply
+  consumed, the subagents' and workflows' transcripts beside it included.
+
+For the Usage page alone, two more: the account in `~/.claude.json`, read again only when that file
+changes, and `~/.k0/usage/limits.jsonl`, which your statusline writes if you gave it the snippet.
 
 Sessions are launched with `--session-id` (k0 chooses the id, so the story ↔ session link is
 certain), `-n` for the name, `--resume` to pick one up, and `--permission-mode plan` on new ones.

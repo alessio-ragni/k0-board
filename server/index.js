@@ -34,6 +34,7 @@ import * as backlog from './backlog.js'
 import * as mirror from './mirror.js'
 import * as worktree from './worktree.js'
 import * as update from './update.js'
+import * as usage from './usage.js'
 import { report as platformReport, capabilities, why } from '../platform/index.js'
 // The same front-matter reader the viewer uses: the PDF has to be called what the page is
 // called, and two different readings of the same header would give two different names.
@@ -1253,6 +1254,17 @@ async function api(req, res, url) {
   // pages can be open at once, so the jobs are keyed and neither cancels the other. The key
   // carries the language and the level, because a page asked for in Italian must not be handed
   // the English one that was already finished.
+  // ── What the sessions consumed ─────────────────────────────────────────────
+  // Straight out of the database: the reading happens in the background, see `usage.start`.
+  // The span is the page's to choose, because only the browser knows where your week begins.
+  if (resource === 'usage' && req.method === 'GET') {
+    const to = Number(url.searchParams.get('to')) || Date.now()
+    const from = Number(url.searchParams.get('from')) || to - 7 * 86_400_000
+    if (!(from < to) || to - from > 366 * 86_400_000) return send(res, 400, { error: 'A span of up to a year, please.' })
+    const account = url.searchParams.has('account') ? url.searchParams.get('account') : null
+    return send(res, 200, usage.report({ from, to, account }))
+  }
+
   if (resource === 'whatsnew' && !idRaw && req.method === 'GET') {
     return send(res, 200, whatsNew())
   }
@@ -1691,6 +1703,9 @@ http
     // The dev servers k0 started and then lost track of: the rows pointing at processes that died
     // while k0 was not running go now, before anything reads them. See `reconcile`.
     servers.reconcile()
+    // What the sessions consumed, read out of their transcripts at its own pace: quickly while
+    // there is history to catch up on, once a minute after that.
+    usage.start()
     // The first round, and the one that sets the loop going: `round` is `tick` plus the decision
     // of when to come back. Deliberately here and not at import time — the first round reads the
     // settings file, which the line above has only just made sure of.

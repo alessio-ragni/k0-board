@@ -109,7 +109,7 @@ function resolveRoot(cwd) {
   return cwd
 }
 
-function repoOf(cwd, cache) {
+export function repoOf(cwd, cache) {
   if (cache.has(cwd)) return cache.get(cwd)
   const r = resolveRoot(cwd)
   const ok =

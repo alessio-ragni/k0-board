@@ -1,0 +1,169 @@
+/* Usage: what the sessions consumed, a week at a time. Colours and fonts live in base.css.
+
+   One wide column. It is a page of numbers and charts read on a wide screen, so the container
+   takes the width and everything inside it — paragraphs included — goes edge to edge. */
+@import url('/base.css');
+
+:root {
+  /* The categorical order is fixed and follows the entity, never its rank: a model keeps its
+     colour from one week to the next. Validated for colour blindness on --paper. */
+  --s1: #2a78d6;
+  --s2: #eb6834;
+  --s3: #1baf7a;
+  --s4: #eda100;
+  --s5: #e87ba4;
+  --s6: #008300;
+  --other: #a8a293;
+}
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--ink);
+  font-family: var(--sans);
+  font-size: 1rem;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ── The top bar ─────────────────────────────────────────────────────── */
+.topbar {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 10px 18px;
+  background: var(--paper);
+  border-bottom: 1px solid var(--line);
+  flex-wrap: wrap;
+}
+.topbar .home {
+  font: 700 1.2rem/1 var(--mono);
+  letter-spacing: 1px;
+  color: var(--ink);
+  text-decoration: none;
+}
+.topbar .home:hover { color: var(--muted); }
+.topbar h1 { margin: 0; font: 600 1rem/1 var(--sans); color: var(--muted); flex: 1; }
+
+.week { display: flex; align-items: center; gap: 8px; font-weight: 600; font-size: .9rem; }
+.week button { padding: 3px 11px; font-size: 1rem; line-height: 1.2; }
+.week button:disabled { opacity: .35; cursor: default; }
+#span { min-width: 11rem; text-align: center; }
+
+.topbar select {
+  font: inherit;
+  font-size: .82rem;
+  font-weight: 600;
+  color: var(--muted);
+  border: 1px solid var(--line);
+  background: var(--paper);
+  border-radius: 8px;
+  padding: 5px 9px;
+  cursor: pointer;
+}
+
+/* ── The sheet ───────────────────────────────────────────────────────── */
+.sheet {
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 20px 18px 60px;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.notes:empty { display: none; }
+.notes { display: flex; flex-direction: column; gap: 8px; }
+.note {
+  margin: 0;
+  padding: 10px 14px;
+  border-radius: 10px;
+  background: var(--paper);
+  border: 1px solid var(--line);
+  font-size: .9rem;
+  color: var(--muted);
+}
+.note b { color: var(--ink); }
+.note code { font: .82rem var(--mono); background: var(--bg); padding: 1px 5px; border-radius: 4px; }
+
+.tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 12px; }
+.tile {
+  background: var(--paper);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 12px 16px;
+}
+.tile .v { font: 700 1.6rem/1.2 var(--sans); font-variant-numeric: tabular-nums; }
+.tile .k { font-size: .8rem; color: var(--muted); }
+.tile .s { font-size: .78rem; color: var(--muted); margin-top: 2px; }
+
+.panel {
+  background: var(--paper);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 14px 18px;
+  min-width: 0;
+}
+.panel h2 { margin: 0 0 4px; font: 600 .95rem/1.3 var(--sans); }
+.caption { margin: 0 0 10px; font-size: .82rem; color: var(--muted); }
+
+.grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(380px, 1fr)); gap: 18px; }
+
+/* ── Charts ──────────────────────────────────────────────────────────── */
+.legend { display: flex; flex-wrap: wrap; gap: 6px 16px; font-size: .8rem; color: var(--muted); margin-bottom: 6px; }
+.legend span { display: inline-flex; align-items: center; gap: 6px; }
+.legend i { width: 10px; height: 10px; border-radius: 3px; display: inline-block; }
+.chart svg { display: block; width: 100%; height: auto; overflow: visible; }
+.chart .grid-line { stroke: var(--line); stroke-width: 1; }
+.chart .axis { fill: var(--muted); font-size: 11px; font-family: var(--sans); }
+.chart .label { fill: var(--ink); font-size: 11px; font-weight: 600; font-family: var(--sans); }
+.chart .empty { fill: var(--muted); font-size: 13px; font-family: var(--sans); }
+.chart .hit { fill: transparent; cursor: default; }
+.chart .hit:hover + .bar-outline, .chart .col:hover .seg { opacity: .85; }
+.chart .line { fill: none; stroke-width: 2; stroke-linejoin: round; stroke-linecap: round; }
+.chart .dot { stroke: var(--paper); stroke-width: 2; }
+
+.tip {
+  position: fixed;
+  z-index: 10;
+  pointer-events: none;
+  background: var(--ink);
+  color: var(--paper);
+  font-size: .78rem;
+  line-height: 1.4;
+  padding: 7px 10px;
+  border-radius: 8px;
+  max-width: 320px;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, .18);
+}
+.tip i { width: 8px; height: 8px; border-radius: 2px; display: inline-block; margin-right: 6px; }
+
+/* ── Tables ──────────────────────────────────────────────────────────── */
+table { width: 100%; border-collapse: collapse; font-size: .84rem; font-variant-numeric: tabular-nums; }
+th {
+  text-align: left;
+  font-weight: 600;
+  color: var(--muted);
+  font-size: .75rem;
+  padding: 6px 8px;
+  border-bottom: 1px solid var(--line);
+  white-space: nowrap;
+}
+td { padding: 6px 8px; border-bottom: 1px solid #efebe0; vertical-align: top; }
+tr:last-child td { border-bottom: none; }
+td.n, th.n { text-align: right; white-space: nowrap; }
+td .sub { display: block; color: var(--muted); font-size: .75rem; }
+td a { color: var(--ink); }
+.swatch { width: 9px; height: 9px; border-radius: 2px; display: inline-block; margin-right: 7px; }
+.muted { color: var(--muted); }
+.warn { color: var(--warn); font-weight: 600; }
+.scroll { overflow-x: auto; }
+.sessions td:first-child { min-width: 16rem; }
+.key { font: 600 .75rem var(--mono); color: var(--muted); margin-right: 6px; }
+#more { margin-top: 10px; }
+
+@media (max-width: 600px) {
+  .sheet { padding: 14px 16px 40px; }
+  .grid { grid-template-columns: 1fr; }
+  #span { min-width: 0; }
+}

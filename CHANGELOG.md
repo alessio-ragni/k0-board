@@ -151,6 +151,21 @@ is exactly the board it was.
   repair attempts are spent, what is still broken is said out loud, and everything that works is
   already merged. On the board it sits beside *Work* as a second, quieter word, and on an epic it
   is in the epic's own panel.
+- **A Usage page: what your sessions consumed, a week at a time.** The icon with three bars in the
+  top bar opens it. It shows what each day would have cost at the API price list, stacked by model
+  (with a subscription you do not pay this, and the page says so), and splits the week by model and
+  effort, fast mode included; by the conversation, its subagents and workflow agents; by
+  repository; and by account. Every session is listed, the most expensive first, with its model
+  and effort, how long Claude actually worked on your turns, its tokens, its cost and how many times
+  a limit stopped it. A session that belongs to a story links to it, and the story opens on the
+  board. It costs no tokens and opens no connection: everything is read from the transcripts
+  Claude Code already keeps on your disk, the history a few megabytes at a time so the board never
+  stalls. Two things Claude Code does not keep are handled openly. Which account a reply came from
+  is only known from the moment k0 is running, so anything older says *Unknown account* rather than
+  being guessed. How full the five-hour and weekly limits are is only handed to the statusline, so
+  the manual has a few lines to add to yours; with them, the page draws each account's week and
+  estimates, marked `≈`, how much of it each session used. So far it has been tried only against
+  the automated tests' made-up transcripts, not against a real history.
 
 ### Changed
 

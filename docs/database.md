@@ -345,6 +345,103 @@ is still running the command it was started with.
 Servers **you** started, outside k0, have no row at all: they are recognised from the machine each
 time and forgotten between readings.
 
+## What the sessions consumed
+
+Six tables behind the Usage page, all written by the reader of Claude Code's transcripts. None of
+them holds the only copy of anything: every row was read out of a file Claude Code or the statusline
+wrote, and emptying all six makes k0 read the same history again from the top.
+
+### `usage_file`
+
+How far each file has been read, so a restart carries on instead of reading a gigabyte again.
+
+| column | | |
+|---|---|---|
+| `path` | TEXT | the transcript, a subagent's transcript, or the statusline's limits file; the primary key |
+| `offset` | INTEGER | the byte after the last whole line read |
+| `size` | INTEGER | the file's size when it was last looked at |
+| `session_id` | TEXT | the session its lines belong to — a subagent's is the one that started it |
+| `agent` | TEXT | `main`, `sub`, `workflow`, or `limits` for the statusline's file |
+| `recent` | TEXT | JSON: the last request ids counted from this file |
+
+`recent` is there because Claude Code writes one line per block of a reply, each carrying the same
+usage: a request is counted the first time its id is seen. A file that has become shorter is not
+read again from the start — everything in it was already counted — its offset simply moves to its
+new end.
+
+### `usage_session`
+
+| column | | |
+|---|---|---|
+| `session_id` | TEXT | Claude Code's session id; the primary key |
+| `project_path` | TEXT | the repository its working directory belongs to, a worktree folded into its repository |
+| `cwd` | TEXT | the directory it ran in |
+| `title` | TEXT | the name it was given by hand, or else the one Claude Code made up |
+| `first_at` / `last_at` | INTEGER | the first and last reply or turn seen, in milliseconds |
+
+The story a session belongs to is not stored here: it is looked up through `session.session_id`
+when the page is drawn, so a session imported later finds its story without anything being
+rewritten.
+
+### `usage_hour`
+
+The tokens, added up per hour. One row per request would be millions of rows for a year of work.
+
+| column | | |
+|---|---|---|
+| `session_id` | TEXT | |
+| `hour` | INTEGER | the start of the hour, in milliseconds |
+| `model` | TEXT | without the snapshot date: `claude-haiku-4-5`, not `claude-haiku-4-5-20251001` |
+| `effort` | TEXT | as Claude Code recorded it; empty on replies older than the field |
+| `speed` | TEXT | `standard` or `fast` |
+| `agent` | TEXT | `main`, `sub` or `workflow` |
+| `account_uuid` | TEXT | empty when nobody was watching which account was signed in |
+| `requests` | INTEGER | replies |
+| `input`, `output`, `thinking` | INTEGER | tokens; `thinking` is part of `output`, kept apart as well |
+| `cache_read`, `write_5m`, `write_1h` | INTEGER | cache tokens, the two write lifetimes apart because they cost differently |
+| `web_search` | INTEGER | searches run on the server |
+| `cost` | REAL | dollars at the API price list; NULL when the model has no price |
+
+The primary key is every column from `session_id` to `account_uuid`, and a second reading of the
+same hour adds to the row rather than replacing it.
+
+### `usage_event`
+
+| column | | |
+|---|---|---|
+| `session_id` | TEXT | |
+| `at` | INTEGER | milliseconds |
+| `kind` | TEXT | `work` — a turn Claude finished — or `limit` — a reply refused because a usage limit was reached |
+| `ms` | INTEGER | for `work`, how long the turn took |
+
+Only the main conversation's turns are `work`: a subagent's time is inside the turn that started it.
+
+### `usage_account`
+
+| column | | |
+|---|---|---|
+| `uuid` | TEXT | the account id; the primary key |
+| `email` | TEXT | |
+| `org_type`, `tier` | TEXT | e.g. `claude_max`, `default_claude_max_20x` |
+| `first_seen` / `last_seen` | INTEGER | milliseconds |
+
+### `usage_limit`
+
+Which account was signed in at a moment, and — when the statusline wrote the row — how full its
+limits were.
+
+| column | | |
+|---|---|---|
+| `at` | INTEGER | milliseconds |
+| `account_uuid` | TEXT | |
+| `session_id` | TEXT | the session whose statusline wrote it; empty on a row k0 wrote on seeing the account change |
+| `five_pct`, `week_pct` | REAL | percentage of the five-hour and weekly limit used |
+| `five_resets`, `week_resets` | INTEGER | when each window resets, as Claude Code gave it; a change means a new window |
+
+A reply is put down to an account by these rows: the nearest row of its own session within half an
+hour if there is one, otherwise the last account seen signed in before it, and none at all before
+the first row.
+
 ## Reading it by hand
 
 ```bash

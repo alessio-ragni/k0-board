@@ -1,0 +1,78 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>k0 — Usage</title>
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+  <link rel="stylesheet" href="/usage.css">
+</head>
+<body>
+  <header class="topbar">
+    <a class="home" href="/" title="Back to the dashboard">k0</a>
+    <h1>Usage</h1>
+
+    <!-- A week at a time, because the limit that matters is a weekly one. -->
+    <div class="week" role="group" aria-label="Week">
+      <button type="button" id="prev" aria-label="Previous week">‹</button>
+      <span id="span"></span>
+      <button type="button" id="next" aria-label="Next week">›</button>
+    </div>
+
+    <select id="account" aria-label="Account"></select>
+  </header>
+
+  <main class="sheet">
+    <div class="notes" id="notes"></div>
+
+    <section class="tiles" id="tiles" aria-label="The week in numbers"></section>
+
+    <section class="panel">
+      <h2>What each day would have cost at API prices</h2>
+      <p class="caption">Stacked by model. With a subscription you do not pay this: it is the one scale on which a
+        Fable hour and a Sonnet hour can be compared.</p>
+      <div class="legend" id="cost-legend"></div>
+      <div class="chart" id="cost-chart"></div>
+    </section>
+
+    <section class="panel">
+      <h2>How full the weekly limit was</h2>
+      <p class="caption" id="limits-caption"></p>
+      <div class="legend" id="limits-legend"></div>
+      <div class="chart" id="limits-chart"></div>
+    </section>
+
+    <div class="grid">
+      <section class="panel">
+        <h2>By model and effort</h2>
+        <table id="t-models"></table>
+      </section>
+      <section class="panel">
+        <h2>Who did the work</h2>
+        <table id="t-agents"></table>
+      </section>
+      <section class="panel">
+        <h2>By repository</h2>
+        <table id="t-repos"></table>
+      </section>
+      <section class="panel">
+        <h2>By account</h2>
+        <table id="t-accounts"></table>
+      </section>
+    </div>
+
+    <section class="panel">
+      <h2>Sessions, the most expensive first</h2>
+      <p class="caption">“Worked” is the time Claude spent on your turns, not the time the window was open. The share of
+        the weekly limit is an estimate: the statusline says how full the week is, not who filled it, so each rise is
+        shared among the sessions that ran in the same hour.</p>
+      <div class="scroll"><table id="t-sessions" class="sessions"></table></div>
+      <button type="button" id="more" hidden></button>
+    </section>
+  </main>
+
+  <div class="tip" id="tip" role="tooltip" hidden></div>
+
+  <script type="module" src="/usage.js"></script>
+</body>
+</html>
