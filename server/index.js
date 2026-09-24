@@ -308,7 +308,20 @@ const MIME = {
 
 const send = (res, code, body) => {
   const json = JSON.stringify(body)
-  res.writeHead(code, { 'content-type': 'application/json; charset=utf-8' })
+  res.writeHead(code, {
+    'content-type': 'application/json; charset=utf-8',
+    // These replies carried no cache instruction at all, and a browser given none falls back on a
+    // heuristic of its own. Nothing here should ever be reused: the board asks once a second and
+    // every answer is different, so an answer kept is only an answer that could come back stale.
+    //
+    // Said plainly because it was tried as a fix for a board tab that reaches ten gigabytes after
+    // a few days, and it is NOT the fix: measured before and after over a thousand refreshes, the
+    // growth was 34 KB per refresh and then 30 KB, which is the same number twice. The header is
+    // right on its own merits and stays. The leak is still open — it is native memory, not the
+    // page's: across those thousand refreshes the JavaScript heap never left four megabytes and
+    // the number of elements on the page never moved at all.
+    'cache-control': 'no-store',
+  })
   res.end(json)
 }
 
