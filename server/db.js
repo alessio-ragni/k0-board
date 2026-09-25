@@ -1713,6 +1713,31 @@ export function dependenciesOf(storyId) {
   `).all(storyId)
 }
 
+/**
+ * The same question asked once for the whole board instead of once per story.
+ *
+ * `dependenciesOf` above is right for a story you have opened. Asked from the loop that builds the
+ * board it was a statement per story per request — six hundred of them a second while a tab was
+ * open — to discover, almost always, that a story waits on nothing. The rows come back keyed by
+ * the story that waits, and a story with no row simply is not in the map.
+ *
+ * The same move `decidedStories` already made, for the same reason.
+ */
+export function dependenciesByStory() {
+  const rows = q(`
+    SELECT d.story_id, s.id, 'K' || s.key_num AS "key", s.title, s.state
+    FROM dependency d JOIN story s ON s.id = d.depends_on
+    ORDER BY s.sort_hint, s.id
+  `).all()
+  const byStory = new Map()
+  for (const r of rows) {
+    const list = byStory.get(r.story_id) ?? []
+    list.push({ id: r.id, key: r.key, title: r.title, state: r.state })
+    byStory.set(r.story_id, list)
+  }
+  return byStory
+}
+
 /** And the ones waiting for it, which is what makes finishing this one worth doing first. */
 export function dependentsOf(storyId) {
   return q(`
