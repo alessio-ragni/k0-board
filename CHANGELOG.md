@@ -238,6 +238,23 @@ is exactly the board it was.
 
 ### Fixed
 
+- **An open board no longer downloads fifty-six gigabytes a day.** It asked the server for
+  everything k0 knows once a second and got all of it — two thirds of a megabyte, six hundred
+  stories carrying their whole "Why" and their whole plan, most of them finished weeks ago and
+  hidden from view, none of which a post-it draws. The board now sends back a stamp of the answer
+  it is holding, and when the answer would be identical the server says so in a couple of hundred
+  bytes and sends nothing else; when something really changed, what goes out is only what the
+  board draws, compressed. The long texts arrive with the story's own panel, which is where they
+  were always read. A board on which nothing is happening also stops asking so often, dropping to
+  one round every four seconds until something moves or you come back to the tab.
+- **Building that answer stopped costing a disk scan and a query per story.** Every request listed
+  your home directory and asked the disk about each entry in it, for a list of repositories that
+  changes about once a week; that reading is now kept for half a minute. And the dependencies were
+  one statement per story per request — six hundred a second with a tab open — which is now one
+  statement for the whole board.
+- **The file viewer asks git every ten seconds instead of every three.** Each round runs two git
+  processes against the repository you are reading, and you are reading it, not watching it.
+
 - **k0 stops costing anything on a machine nobody is using.** The watching loop went round once a
   second for ever — awake or asleep, looked at or not — and every round asked the database about
   every story twice over and every repository on the board about its git state. On a real board

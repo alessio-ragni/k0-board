@@ -171,8 +171,17 @@ section('The order, the star, and what waits on what')
   db.setState(second.id, 'Done')
   check('finishing what it waited for unblocks it', backlog.publicStory(db.getStory(first.id)).blocked, false)
   check('and the dependency is still recorded', db.dependenciesOf(first.id).length, 1)
+
+  // The same answer for the whole board at once, which is how the board asks it: one statement
+  // instead of one per story. A story that waits on nothing is simply not in the map.
+  const all = db.dependenciesByStory()
+  check('asked for the whole board, it says the same thing', all.get(first.id)?.[0].key, db.getStory(second.id).key)
+  check('and says it once', all.get(first.id).length, 1)
+  check('a story waiting on nothing is not in there at all', all.has(second.id), false)
+
   db.removeDependency(first.id, second.id)
   check('until it is taken off', db.dependenciesOf(first.id).length, 0)
+  check('and then it is in neither answer', db.dependenciesByStory().has(first.id), false)
 }
 
 // ── What to pick up now ──────────────────────────────────────────────────────

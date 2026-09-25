@@ -24,7 +24,7 @@ process.env.USERPROFILE = FAKE_HOME
 // is written to it here, but the real one is not opened even to read. `K0_DB` first, the
 // import after — with a plain `import` at the top it would already be too late.
 process.env.K0_DB = path.join(os.tmpdir(), `k0-files-test-${process.pid}.db`)
-const { listProjects, onDisk } = await import('../server/projects.js')
+const { listProjects, onDisk, forget: forgetProjects } = await import('../server/projects.js')
 
 // A fake repository with no git: the case of a plain folder of notes, and the one the walk over
 // the disk has to hold up on by itself.
@@ -267,6 +267,8 @@ section('The repository list')
   fs.mkdirSync(path.join(repo, '.git'), { recursive: true })
 
   try {
+    // The reading is cached for half a minute: these directories were made a moment ago.
+    forgetProjects()
     const found = listProjects()
     const a = found.find((p) => p.path === dataOnly)
     const b = found.find((p) => p.path === papers)

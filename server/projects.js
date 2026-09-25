@@ -97,7 +97,30 @@ function scan(fromClaude) {
  * Code's, which knows where you have worked even outside k0, and k0's own stories, which are the
  * only thing that notices a session still open right now.
  */
+// How long a reading of the home directory is worth. The list it produces changes when you make a
+// repository, which is a thing that happens on a Tuesday, and working it out means listing your
+// home, asking the disk about every directory in it, and walking the ones no other sign has
+// already claimed. The board asked for it once a second, per open tab, for ever.
+//
+// Half a minute is not a compromise: a repository that turns up in the last column thirty seconds
+// late is a repository you have not finished making yet. And a repository with a story in it is
+// not affected at all — those come from the stories, which are not cached.
+const TTL = 30000
+let seen = { at: 0, list: null }
+
+/** Forgets the reading. For the tests, which make and unmake directories faster than a Tuesday. */
+export function forget() {
+  seen = { at: 0, list: null }
+}
+
 export function listProjects() {
+  if (seen.list && Date.now() - seen.at < TTL) return seen.list
+  const list = readProjects()
+  seen = { at: Date.now(), list }
+  return list
+}
+
+function readProjects() {
   const fromClaude = lastUsed()
   const mine = new Map(projectRecency().map((r) => [r.project_path, Number(r.at) || 0]))
   // A repository with a story is always selectable, even if it lives outside your home — but

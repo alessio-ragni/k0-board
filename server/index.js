@@ -2,6 +2,7 @@ import http from 'node:http'
 import fs from 'node:fs'
 import path from 'node:path'
 import crypto from 'node:crypto'
+import zlib from 'node:zlib'
 import * as db from './db.js'
 import { allowed } from './guard.js'
 import { ROOT } from './paths.js'
@@ -306,22 +307,28 @@ const MIME = {
   '.ttf': 'font/ttf',
 }
 
+// Below this, compressing costs more than it saves: the header alone is twenty bytes and the
+// round trip through zlib is not free. The short board answer lands well under it and goes out
+// as it is; the full one is a hundred times this and comes back about six times smaller.
+const COMPRESS_OVER = 4096
+
 const send = (res, code, body) => {
   const json = JSON.stringify(body)
-  res.writeHead(code, {
+  const headers = {
     'content-type': 'application/json; charset=utf-8',
     // These replies carried no cache instruction at all, and a browser given none falls back on a
     // heuristic of its own. Nothing here should ever be reused: the board asks once a second and
     // every answer is different, so an answer kept is only an answer that could come back stale.
-    //
-    // Said plainly because it was tried as a fix for a board tab that reaches ten gigabytes after
-    // a few days, and it is NOT the fix: measured before and after over a thousand refreshes, the
-    // growth was 34 KB per refresh and then 30 KB, which is the same number twice. The header is
-    // right on its own merits and stays. The leak is still open — it is native memory, not the
-    // page's: across those thousand refreshes the JavaScript heap never left four megabytes and
-    // the number of elements on the page never moved at all.
     'cache-control': 'no-store',
-  })
+  }
+  // `mayZip` is set once per request, where the request's headers are — see the server below.
+  // Gzip is in the runtime, so this is still a program with no dependencies.
+  if (res.mayZip && Buffer.byteLength(json) >= COMPRESS_OVER) {
+    const zipped = zlib.gzipSync(json)
+    res.writeHead(code, { ...headers, 'content-encoding': 'gzip', 'content-length': zipped.length })
+    return res.end(zipped)
+  }
+  res.writeHead(code, headers)
   res.end(json)
 }
 
@@ -372,9 +379,12 @@ function storyGit(story) {
  * always drawn — and one fact under two names is two facts that will one day disagree. What is
  * added is only what somebody would otherwise have to count.
  */
-function backlogPart(story, epics, decided) {
+function backlogPart(story, epics, decided, depsByStory) {
   const epic = story.epic_id ? epics.get(story.epic_id) : null
-  const deps = db.dependenciesOf(story.id)
+  // Handed in, counted once for the whole board — see `dependenciesByStory`. Asked story by
+  // story this was a statement per post-it per round, which is the same trap `decided` below
+  // was already pulled out of.
+  const deps = depsByStory.get(story.id) ?? []
   return {
     epic_key: epic?.key ?? null,
     epic_title: epic?.title ?? null,
@@ -388,6 +398,57 @@ function backlogPart(story, epics, decided) {
     next_step: backlog.nextStep(story, { decided: decided.has(story.id) }),
   }
 }
+
+/**
+ * A story as the browser needs it, and not one field more.
+ *
+ * The row `listStories` builds is the row the watching loop works on: it carries the session's
+ * whole life, the columns the status is derived from, and the two long texts a story can hold.
+ * All of that is the server's business. The board draws none of it — and it was going out over
+ * the wire, in full, for every story, once a second, for as long as a tab stayed open. Six
+ * hundred stories of it came to two thirds of a megabyte a second, which is fifty-six gigabytes
+ * a day to draw some post-its that had not moved.
+ *
+ * `body` and `plan` are the two that made the difference: whole markdown documents, and the one
+ * place that shows them — the panel you get when you open a story in the list — fetches the story
+ * again from `/api/backlog/story/:id` and reads them from there. It never looked at these.
+ *
+ * `load` is deliberately absent: it changes every second and belongs with the living half of the
+ * answer, not with the part that decides whether anything has to be redrawn. See `board`.
+ */
+const publicStory = (s) => ({
+  id: s.id,
+  key: s.key,
+  title: s.title,
+  description: s.description,
+  prompt: s.prompt,
+  status: s.status,
+  state: s.state,
+  starred: s.starred,
+  sort_hint: s.sort_hint,
+  parent_story_id: s.parent_story_id,
+  project_path: s.project_path,
+  project_name: s.project_name,
+  work_path: s.work_path,
+  session_id: s.session_id,
+  session_alive: s.session_alive,
+  auto_closed: s.auto_closed,
+  completed_at: s.completed_at,
+  created_at: s.created_at,
+  updated_at: s.updated_at,
+  status_since: s.status_since,
+  git: s.git,
+  // Only with the backlog on, and then they are already flat on the row — see `backlogPart`.
+  ...(s.epic_key === undefined
+    ? null
+    : {
+        epic_key: s.epic_key,
+        epic_title: s.epic_title,
+        deps: s.deps,
+        blocked: s.blocked,
+        next_step: s.next_step,
+      }),
+})
 
 function board() {
   // Looking at the board is the only thing that switches the load measurement on: reading the
@@ -410,14 +471,29 @@ function board() {
   // one fact `nextStep` needs that is not on the row it is handed, and asking it story by story is
   // what turns "what do I do next" into four hundred statements a second.
   const decided = on ? db.decidedStories() : new Set()
+  // And what waits on what, likewise: one question for the board rather than one per story.
+  const depsByStory = on ? db.dependenciesByStory() : new Map()
 
-  const stories = onDisk(all).map((s) => ({
+  const rows = onDisk(all).map((s) => ({
     ...s,
     project_name: projectName(s.project_path),
     git: storyGit(s),
-    load: machine.loadOf(live.get(s.session_id)?.pid),
-    ...(on ? backlogPart(s, epicById, decided) : null),
+    ...(on ? backlogPart(s, epicById, decided, depsByStory) : null),
   }))
+  const stories = rows.map(publicStory)
+
+  // What each live session weighs, kept apart from the stories themselves.
+  //
+  // It is the one number on a post-it that really does move every second, and left among the
+  // stories it would make the whole board look different on every round — which is the whole
+  // thing this answer is now arranged to avoid. Only a session with a process has a weight, so
+  // this is a handful of entries beside six hundred stories.
+  const loads = {}
+  for (const s of rows) {
+    const l = machine.loadOf(live.get(s.session_id)?.pid)
+    if (l) loads[s.id] = l
+  }
+
   const paths = [...new Set(stories.map((s) => s.project_path))]
   // And the same for the dev servers: looking at the board is what makes k0 ask the machine
   // who is listening, and it asks only about the repositories in front of you.
@@ -428,7 +504,9 @@ function board() {
   const onBoard = new Set(stories.map((s) => s.session_id).filter(Boolean))
   const outside = [...live.keys()].filter((sid) => !onBoard.has(sid)).length
 
-  return {
+  // Everything that only changes when you change something. This is the half that is hashed, and
+  // the half that is not sent again when the hash says it would be the same answer twice.
+  const settled = {
     // The columns are the projects with at least one story — and that still exist: a story is
     // kept alive by its directory (see `onDisk` in projects.js).
     columns: paths
@@ -448,24 +526,6 @@ function board() {
     projects: listProjects()
       .filter((p) => p.known)
       .map((p) => ({ ...p, git: publicGit(git.stateOf(p.path)) })),
-    machine: { ...machine.overview([...live.values()].map((s) => s.pid)), alive: live.size, outside },
-    // What k0 costs to run, which until now was the one thing the chip never said. The three
-    // numbers beside the weight are the three that were wrong: how often git is asked, how many
-    // queries had to be compiled rather than reused, and how hard the loop is currently running.
-    k0: { ...(machine.self() ?? {}), pace, git: git.recent(), sql: db.sqlCost() },
-    // What colour the icon in the tab should be: the same thing /api/status tells the icon in
-    // the menu bar.
-    urgent: attention(stories).urgent,
-    // Which mode we are in. It travels in here rather than on an address of its own because
-    // the board already makes this round every second: a second address to poll would only be
-    // another way of finding out the same thing later.
-    //
-    // `mode` is what you want; `lid` is what the machine is actually doing. They are two
-    // different things — a mode can be on without the lid block holding — and the board has to
-    // be able to tell you both.
-    mode: mode.current(),
-    lid: mode.lid(),
-    reason: mode.reason(),
     // After how long a forgotten terminal is closed, so the machine chip can say that it is
     // watching and after how long. Zero means it is switched off, and then the chip says nothing
     // rather than saying "0h" — a number that would read as "closes immediately".
@@ -492,9 +552,63 @@ function board() {
     // theirs is on the board — an epic with nothing under it yet is exactly the one you are about
     // to put something in — but only from the repositories that are still on this machine, which
     // is the same rule the stories are held to.
-    epics: onDisk(allEpics).map((e) => backlog.publicEpic(e)),
+    // The same trim as `publicStory`, for the same reason: `publicEpic` is written for the panel
+    // that opens when you click one, and carries the epic's whole "Why" text. The board draws a
+    // label and a progress bar. The panel fetches the epic again and gets the rest from there.
+    epics: onDisk(allEpics)
+      .map((e) => backlog.publicEpic(e))
+      .map(({ body, lang, ...rest }) => rest),
+  }
+
+  // And everything that moves on its own, whether or not you touch anything. It is small, it is
+  // sent every time, and it is deliberately outside the hash: the weight of a session and the
+  // pressure on the machine change every second and have never been a reason to redraw a board.
+  const living = {
+    loads,
+    machine: { ...machine.overview([...live.values()].map((s) => s.pid)), alive: live.size, outside },
+    // What k0 costs to run, which until now was the one thing the chip never said. The three
+    // numbers beside the weight are the three that were wrong: how often git is asked, how many
+    // queries had to be compiled rather than reused, and how hard the loop is currently running.
+    k0: { ...(machine.self() ?? {}), pace, git: git.recent(), sql: db.sqlCost() },
+    // What colour the icon in the tab should be: the same thing /api/status tells the icon in
+    // the menu bar.
+    urgent: attention(stories).urgent,
+    // Which mode we are in. It travels in here rather than on an address of its own because
+    // the board already makes this round every second: a second address to poll would only be
+    // another way of finding out the same thing later.
+    //
+    // `mode` is what you want; `lid` is what the machine is actually doing. They are two
+    // different things — a mode can be on without the lid block holding — and the board has to
+    // be able to tell you both.
+    mode: mode.current(),
+    lid: mode.lid(),
+    reason: mode.reason(),
     now: Date.now(),
   }
+
+  return { settled, living }
+}
+
+/**
+ * The board, answered only if it would say something new.
+ *
+ * The browser sends back the stamp it was given last time. The stamp is a hash of the settled
+ * half — every field whose changing is a reason to draw the board again — so when it matches,
+ * there is provably nothing to draw and the answer is the living half alone: a couple of
+ * kilobytes instead of seven hundred.
+ *
+ * Hashing the answer rather than guessing at a cheaper signal is the whole point. A hand-built
+ * stamp made of "the newest updated_at and a few counters" would have been cheaper still and
+ * would eventually have missed something — a git mark, a dev server coming up, a directory
+ * disappearing — and a board that silently stops updating is a far worse fault than a board that
+ * costs too much. What is hashed is exactly what is sent.
+ */
+function boardAnswer(since) {
+  const { settled, living } = board()
+  const json = JSON.stringify(settled)
+  const stamp = crypto.createHash('sha1').update(json).digest('base64url')
+  if (since && since === stamp) return { same: true, stamp, ...living }
+  return { ...settled, stamp, ...living }
 }
 
 // Attention order, most urgent first. These five are everything a live session can be doing.
@@ -1244,7 +1358,8 @@ async function api(req, res, url) {
   // that needs it was rebuilt.
   const resource = named === 'card' ? 'story' : named
 
-  if (resource === 'board' && req.method === 'GET') return send(res, 200, board())
+  if (resource === 'board' && req.method === 'GET')
+    return send(res, 200, boardAnswer(url.searchParams.get('since')))
   if (resource === 'status' && req.method === 'GET') return send(res, 200, status())
   if (resource === 'projects' && req.method === 'GET') return send(res, 200, listProjects())
 
@@ -1696,6 +1811,11 @@ http
       return
     }
     const url = new URL(req.url, `http://${req.headers.host}`)
+    // Whether this caller can read a compressed answer, noted here because `send` is handed the
+    // response and never the request. Everything local goes through a loopback socket, so this is
+    // not about the network: it is about how much there is to hand to the browser at the other
+    // end, which was two thirds of a megabyte a second.
+    res.mayZip = /\bgzip\b/.test(req.headers['accept-encoding'] || '')
     try {
       if (url.pathname.startsWith('/api/')) return await api(req, res, url)
       serveStatic(res, url.pathname)

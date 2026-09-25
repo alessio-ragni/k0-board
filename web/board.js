@@ -1694,9 +1694,38 @@ const LIST = {
 }
 
 // ── The loop ──────────────────────────────────────────────────────
+/**
+ * The last answer that had a board in it, and the stamp that came with it.
+ *
+ * The stamp goes back to the server on the next round, and if the board would be the same answer
+ * twice the server says so in a couple of hundred bytes instead of sending two thirds of a
+ * megabyte again. On a board nobody is touching that is every round of every second of every day:
+ * it came to fifty-six gigabytes through the browser in twenty-four hours, to draw post-its that
+ * had not moved.
+ */
+let lastBoard = null
+let stamp = ''
+
 async function refresh() {
   try {
-    const data = await api('/api/board')
+    const answer = await api(`/api/board${stamp ? `?since=${encodeURIComponent(stamp)}` : ''}`)
+    stamp = answer.stamp ?? ''
+    // The first answer is always a whole one — the stamp starts empty — so `held` cannot be null
+    // here unless the server is older than this page, and then it simply never says `same`.
+    const settled = answer.same ? lastBoard : (lastBoard = answer)
+    // A server older than this page: it never says `same`, so this cannot happen twice.
+    if (!settled) return true
+
+    // The weights travel apart from the stories, because they are the one thing on a post-it that
+    // changes every second, and put back on here so everything below reads a story the way it
+    // always has. Only a live session has one.
+    const loads = answer.loads ?? {}
+    const data = {
+      ...settled,
+      ...answer,
+      stories: settled.stories.map((s) => (loads[s.id] ? { ...s, load: loads[s.id] } : s)),
+    }
+
     // The icon in the tab is tinted like the one in the menu bar: red if a session is waiting
     // for you, blue if they are grinding away, outline if everything is still.
     setFavicon(data.urgent)
@@ -1706,24 +1735,35 @@ async function refresh() {
 
     setMode(data.mode, data.reason)
     setWhatsNew(data.update)
+    const wasOn = backlogOn
     backlogOn = !!data.backlog
     // Every epic k0 knows, kept for the editor's list: the dialog is opened between rounds and has
     // to be able to offer them without a request of its own.
     allEpics = data.epics ?? []
     // The switch belongs to the bar and not to the board: it has to appear the moment the server
-    // says there is a backlog, whether or not anything on the board changed with it.
-    renderColumnsSwitch()
+    // says there is a backlog. Only then, though — it used to be rewritten every second to say
+    // the same thing.
+    if (wasOn !== backlogOn) renderColumnsSwitch()
     machine = data.machine ?? null
     k0 = data.k0 ?? null
-    // What is eating most right now: it is what tints that one red and nobody else.
-    heaviest =
-      data.stories.filter((c) => c.load).sort((a, b) => b.load.rss - a.load.rss)[0]?.id ?? null
+    // What is eating most right now: it is what tints that one red and nobody else. Read off the
+    // weights rather than by sorting every story on the board, since only a handful have one.
+    heaviest = Number(Object.entries(loads).sort((a, b) => b[1].rss - a[1].rss)[0]?.[0]) || null
     renderMachine(machine, data.stories, data.closeIdleAfterHours)
 
     // Redraw only if something really changed, so the editor and the focus stay where they are.
     // The git state is inside the signature: without it, the mark would stay the one from the
     // first round. The weight goes in already rounded — see `weight` — otherwise the board
     // would redraw on every sample of the load.
+    // Nothing the server sent can have moved: it hashed exactly what it would have sent, and the
+    // hash matched. What is left in the signature below is this page's own state — the filters,
+    // the lane, which way the columns are read — and every one of those clears `lastSignature`
+    // itself the moment you change it. The only other one is the heaviest story, and that
+    // counts only while the machine is under pressure. So there is nothing to compare: no second
+    // pass over six hundred stories, and no string a hundred kilobytes long built to prove that
+    // nothing happened.
+    if (answer.same && lastSignature && machine?.pressure === 'ok') return false
+
     const sig = JSON.stringify([
       showLoad,
       // The column order depends on it: changing mode means the board has to be rebuilt.
@@ -1791,8 +1831,11 @@ async function refresh() {
       lastSignature = sig
       render(data)
     }
+    // Whether this round was worth making, which is what decides the pace of the next one.
+    return !answer.same
   } catch {
-    /* server down: we try again next round */
+    /* server down: we try again next round, and at the working pace — this is not a quiet board */
+    return true
   }
 }
 
@@ -2028,9 +2071,10 @@ async function boot() {
   }
 
   refresh()
-  // Only while the tab is in front of you: see `whileVisible`. A board nobody is looking at asked
-  // the server for everything it knows once a second, and by asking kept the server awake too.
-  whileVisible(refresh, 1000)
+  // Only while the tab is in front of you, and only as often as it is worth: see `whileVisible`.
+  // A still board drops to one round every four seconds, and the first thing that moves — or your
+  // coming back to the tab — puts it straight back to one.
+  whileVisible(refresh, 1000, 4000)
 
   // A direct link: k0 opened with the new story already in front of you.
   if (location.hash === '#new' || location.hash === '#nuovo') openEditor(null)

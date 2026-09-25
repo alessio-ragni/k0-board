@@ -1235,6 +1235,23 @@ The git marks follow the same rule. Every repository on the board used to be ask
 away from the board only the repositories a session is actually working in, and a reading is good
 for half a minute. Nothing in a repository changes faster than that unless you make it.
 
+### And what the page downloads
+
+The other half of the bill is paid by the browser, and it was the larger one. The board asked for
+everything k0 knows once a second and got it: two thirds of a megabyte, six hundred stories with
+their whole "Why" and their whole plan, most of them finished weeks ago and hidden from view. Over
+a day with one tab open that came to **fifty-six gigabytes**, to draw post-its that had not moved.
+
+Now the board sends back a stamp of the answer it already has, and when the answer would be the
+same — which on a board nobody is touching is every round of every day — the server says so in a
+couple of hundred bytes and sends nothing else. When something really did change, what goes out is
+only what a post-it draws, compressed. The long texts come with the story's own panel, when you
+open one, where they were always read from anyway.
+
+A still board also stops asking so often: after a few rounds saying nothing moved it drops to one
+in four seconds, and the first thing that moves — or your coming back to the tab — puts it
+straight back to one.
+
 ### And the ones you forget, k0 closes for you
 
 The paragraph above assumes you noticed. Most of the time nobody does: the window that is costing

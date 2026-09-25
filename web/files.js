@@ -1325,7 +1325,9 @@ async function boot() {
   if (HEADLESS) return
   // And only while the tab is in front of you: both of these run git, and a viewer left open in a
   // window you are not in has nothing to show anybody. See `whileVisible`.
-  whileVisible(poll, 3000)
+  // Ten seconds, not three. Every round of this runs two git processes against the repository you
+  // are reading, and you are reading it, not watching a counter for the moment a file changes.
+  whileVisible(poll, 10000)
   // The full listing ages slowly, but the dates do not: half a minute is enough.
   whileVisible(() => loadAll().catch(() => {}), 30000)
 }
