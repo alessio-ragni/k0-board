@@ -143,7 +143,7 @@ Nothing on this list happens before you have seen it and said yes. Everything on
 | **macOS only** — one administrator rule | `/etc/sudoers.d/k0-pmset` | to keep the Mac awake with the lid closed. Asks for your password once, and grants exactly two command lines |
 | **macOS only** — one key binding | your Terminal profile (backed up first) | so Shift+Enter starts a new line |
 | **macOS only** — Accessibility for `node` | you grant it by hand, in System Settings | so k0 can place a prompt without sending it |
-| The commands, if you want them | `~/.claude/skills/` | Claude Code looks there and in the repository you have open, and nowhere else. Asked once; installing again brings the copies up to date without asking |
+| The commands, and the `k0-links` mod, if you want them | `~/.claude/skills/` | Claude Code looks there and in the repository you have open, and nowhere else. Asked once; installing again brings the copies up to date without asking |
 
 That last one deserves a sentence of its own: a process with the Accessibility permission can
 send keystrokes to any application, and here it is granted to your `node`, not to a signed k0
@@ -407,7 +407,7 @@ Copying them out is **one question, asked by the installer**, right after it sta
   /k0-epic    — an epic, discussed in rounds, then a tree of stories
   /k0-story   — one story, straight onto the board
   …
-  Install 11 commands for Claude Code? (Y/n)
+  Install 11 commands and the mod for Claude Code? (Y/n)
 ```
 
 Say yes and they are there in every repository you ever open. It is worth saying plainly what
@@ -546,7 +546,8 @@ was always the wrong gesture — states move from the terminal, and from the Don
 ### The ten commands
 
 Ten you type, and the installer offers eleven — these ten plus
-[`/k0-import`](#filling-the-board-with-what-you-have-already-done). `/k0-whatsnew` and
+[`/k0-import`](#filling-the-board-with-what-you-have-already-done) — and one more thing that is not a
+command at all, [the `k0-links` mod](#the-files-claude-names-are-clickable-in-the-terminal). `/k0-whatsnew` and
 `/k0-changelog` are deliberately not on that list: k0 runs those two itself, out of its own
 directory, and you never type them.
 
@@ -1173,6 +1174,34 @@ gives the listing only its finished documents — so a page under an ignored `di
 Named inside a document it still counts: the document said so, not the directory. Hidden
 directories really do stay out: `.claude/` is configuration, not something to read.
 
+### The files Claude names are clickable in the terminal
+
+The same idea, one step earlier: in the Claude Code session itself. Claude says "the plan is in
+`docs/plan.md`", or publishes an artifact and talks about it by its title, and in the terminal that
+was dead text. With the `k0-links` mod installed, and **while k0 is running**:
+
+- **a file named in a reply is a link** to this viewer, in the repository the session is working
+  in, and it opens in a new tab;
+- **an artifact the session published is a link** wherever the reply says its title, to its own
+  claude.ai page;
+- **what the last reply pointed at stays in a row just above the prompt**, so you do not have to
+  scroll back up to find it, and the hint line under the prompt says how many there are.
+
+In the macOS Terminal a link opens with **cmd+click** — a plain click selects text there, as it
+always has. The row sits above the prompt and not in the line under it because that line can only
+hold text: nothing in it can be clicked.
+
+It is a **mod**, a small piece of code Claude Code runs inside itself, and the installer copies it
+into `~/.claude/skills/k0-links` together with the commands, behind the same question. So it is
+there in **every** Claude Code session on the machine, not only the ones a story opened — and it
+does nothing at all while k0 is off: no row, no links, nothing changed.
+
+The limits are the viewer's. A file becomes a link only if it is **a document the viewer shows**
+(Markdown, HTML, text, PDF, Word…) and only in **a repository k0 knows**; a `.js` file stays text,
+and so does every file in a folder k0 has never opened a session in — there the artifacts still
+become links, the files do not. The mod rewrites how a reply is **drawn**, never what is stored:
+ctrl+o still shows exactly what Claude wrote.
+
 ### On paper
 
 At the end of the path row there are three buttons that change with the file: the **printer** (or
@@ -1657,6 +1686,12 @@ web/             the four pages (html, css, js served exactly as they are)
   k0-verify/     the counter-check: every decision one by one, the checklist, the outcome
   k0-next/       what to pick up now, and why — the server decides, not the model
   k0-order/      priority and dependencies, dictated
+  k0-links/      not a skill but a mod: hooks Claude Code runs inside itself. At the start of a
+                 session and at the end of each turn it asks k0, on loopback, which of the files
+                 the reply named are real (POST /api/files/exist), keeps the artifacts the session
+                 published, and redraws the reply with links and the row above the prompt. Drawing
+                 never waits on the network. links.js is the pure half, tested by npm test;
+                 nothing in it may come from k0's own folders, because it is copied out alone
   k0-whatsnew/   the What is New page, written from the changelog entries k0 hands it
   k0-changelog/  the one that turns the facts of a stretch of work into something readable. k0
                  calls it by itself when the ChangeLog is opened, so it is in the package too
@@ -1697,8 +1732,10 @@ that branch into the branch you were standing on. It never pushes, never opens a
 never resolves a conflict on your behalf — where it cannot merge cleanly it stops and says so.
 None of it happens unless you run `/k0-work`.
 
-k0 does not emulate a terminal and installs no hooks. It reads what Claude Code already writes for
-itself:
+k0 does not emulate a terminal and installs no settings hooks. The one thing it puts inside Claude
+Code is [the `k0-links` mod](#the-files-claude-names-are-clickable-in-the-terminal), and only if you
+said yes: it rewrites how a reply is drawn, never what is stored, and talks to nobody but k0 on the
+loopback address. Beyond that k0 reads what Claude Code already writes for itself:
 
 - `~/.claude/sessions/<pid>.json` — live status (`busy`, `idle`, `waiting` with the reason for the
   wait) and the session id;
