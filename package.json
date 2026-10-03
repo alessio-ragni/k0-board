@@ -45,6 +45,7 @@
     ".claude/skills/k0-verify",
     ".claude/skills/k0-next",
     ".claude/skills/k0-whatsnew",
+    ".claude/skills/k0-links",
     "README.md",
     "CHANGELOG.md",
     "LICENSE"

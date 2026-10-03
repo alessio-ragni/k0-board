@@ -302,7 +302,13 @@ const SKILLS = [
   ['k0-verify', 'the counter-check, one decision at a time'],
   ['k0-next', 'what to pick up now, and why'],
   ['k0-order', 'priority and dependencies, dictated'],
+  // Not a command but a mod: nobody types it, Claude Code loads it from the same directory and it
+  // turns the files and artifacts named in a reply into links while k0 is running.
+  ['k0-links', 'the files and artifacts Claude names become links, while k0 is running', 'mod'],
 ]
+
+/** How the list shows an entry: a command by what you type, the mod by its name. */
+const shown = ([name, , kind]) => (kind === 'mod' ? name : `/${name}`)
 
 /**
  * The skills live in the repository, which is enough for anybody who cloned it. For anybody who
@@ -327,14 +333,20 @@ async function offerSkill() {
     fs.rmSync(path.join(home, name), { recursive: true, force: true })
     copyTree(source(name), path.join(home, name))
   }
-  if (stale.length) ok(`brought up to date in ${home}: ${stale.map(([name]) => `/${name}`).join(', ')}`)
+  if (stale.length) ok(`brought up to date in ${home}: ${stale.map(shown).join(', ')}`)
 
   const missing = shipped.filter(([name]) => !fs.existsSync(path.join(home, name)))
   if (!missing.length) return
   say('')
-  for (const [name, what] of missing) note(`${bold(`/${name}`)} ${dim(`— ${what}`)}`)
+  for (const entry of missing) note(`${bold(shown(entry))} ${dim(`— ${entry[1]}`)}`)
+  const commands = missing.filter(([, , kind]) => kind !== 'mod').length
+  const mods = missing.length - commands
+  const what = [
+    commands && `${bold(String(commands))} ${commands === 1 ? 'command' : 'commands'}`,
+    mods && `${mods === 1 ? 'the mod' : `${bold(String(mods))} mods`}`,
+  ].filter(Boolean).join(' and ')
   const yes = await confirm(
-    `Install ${bold(String(missing.length))} ${missing.length === 1 ? 'command' : 'commands'} for Claude Code?`,
+    `Install ${what} for Claude Code?`,
     { fallback: true }
   )
   if (!yes) return

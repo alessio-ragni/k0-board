@@ -24,6 +24,12 @@ is exactly the board it was.
 
 ### Added
 
+- **The files and artifacts Claude names in a session are links, while k0 is running.** A
+  document a reply mentions opens in the file viewer, in a new tab, and an artifact the session
+  published opens on its claude.ai page wherever the reply says its title — cmd+click in the macOS
+  Terminal. What the last reply pointed at also stays in a row just above the prompt. It is a
+  Claude Code mod the installer offers together with the commands, so it works in every session on
+  the machine, and it does nothing at all while k0 is off.
 - **A button on every story saying what to do with it next, which opens the terminal on it.**
   *Discuss* on something nothing has been decided about, *Plan* once it has been discussed, *Work*
   once there is a plan, and *Resume* on a story whose terminal was closed — three words in the
