@@ -1,11 +1,12 @@
-// ── Turning what Claude names into links ──────────────────────────────────────
-// Claude's replies are full of files — "the plan is in docs/plan.md", "I wrote out/report.html" —
-// and of artifacts it has just published, which it mentions by title. In the terminal all of it
-// is dead text. This decides which pieces of a reply are worth asking k0 about, and rewrites the
-// reply's markdown so the ones that turned out to be real become links.
+// ── What a reply points at ────────────────────────────────────────────────────
+// Claude's replies are full of places — "open localhost:4321/projects/furniture/", "the photos are
+// in docs/projects/sideboard-140/", "it goes live on alessioragni.com/projects/furniture/" — and in
+// the terminal all of it is dead text. This finds them in the reply, in the order they were said,
+// so the mod can put them in a row above the prompt where one click opens each.
 //
 // It is pure on purpose: the mod's environment has no Node, the test runner has no Claude Code,
-// and this file has to run in both. Everything that needs the outside world is in register.js.
+// and this file has to run in both. Whether a path is a folder, and whether k0 is listening, is
+// for register.js to ask.
 //
 // Not imported from web/refs.js because the mod is copied into ~/.claude/skills/, where nothing
 // of k0 is next to it. The extension list is the server's `DOC_EXT`, kept in step by a test.
@@ -16,50 +17,89 @@ export const DOC = new Set([
   '.pdf', '.docx', '.doc', '.odt', '.pages',
 ])
 
-/** At most this many names go to k0 per reply: the server reads no more than 60 either. */
-const MAX_ASK = 60
+/** A reply naming more than this is a listing, and a row of forty buttons is noise. */
+export const MAX_REFS = 12
 
-const extOf = (p) => {
-  const n = p.slice(p.lastIndexOf('/') + 1)
+export const extOf = (p) => {
+  const n = p.replace(/\/+$/, '').slice(p.replace(/\/+$/, '').lastIndexOf('/') + 1)
   const i = n.lastIndexOf('.')
   return i > 0 ? n.slice(i).toLowerCase() : ''
 }
 
-/** Fenced blocks are code being shown, not things being pointed at. */
+/** Fenced blocks are code being shown, not places being pointed at. */
 const FENCE = /^\s*(```+|~~~+)[\s\S]*?^\s*\1\s*$/gm
 
-/** A path as Claude writes one: relative, or absolute, with the extension that makes it a file. */
-const TOKEN = /(?:~|\/)?[A-Za-z0-9_.][A-Za-z0-9._/~-]*/g
+const END = `[^\\s)>\\]\`'"<]`
+/** Every way a reply writes an address: with a scheme, a local port, or a domain with a path. */
+const WEB = new RegExp(
+  [
+    `https?:\\/\\/${END}+`,
+    `(?:localhost|127\\.0\\.0\\.1|\\[::1\\]):\\d{2,5}(?:\\/${END}*)?`,
+    `(?<![\\w./-])(?:[a-z0-9-]+\\.)+[a-z]{2,}\\/${END}*`,
+  ].join('|'),
+  'gi'
+)
+/** A path: something with a slash in it, relative, absolute or from home. */
+const PATH = /(?<![\w.:/~-])(?:~\/|\/|\.{1,2}\/)?[A-Za-z0-9_.@-]+(?:\/[A-Za-z0-9_.@-]+)*\/?/g
 
-/** Punctuation stuck on the end is not part of the name: "…it is in docs/plan.md." */
-const trim = (t) => t.replace(/[.\-~]+$/, '')
+/** Punctuation stuck on the end is not part of the name: "…it is in docs/plan/." */
+const trim = (t) => t.replace(/[.,;:!?]+$/, '')
 
-/**
- * The names in a reply worth asking k0 about, each as `{ written, rel }`: how the reply spells it,
- * and the path inside `root` that spelling means. An absolute path outside the repository, a
- * hidden one and a piece of code are left out before anybody is asked.
- */
-export function candidates(text, root) {
-  const clean = String(text ?? '').replace(FENCE, '')
-  const seen = new Map()
-  for (const m of clean.matchAll(TOKEN)) {
-    const written = trim(m[0])
-    if (seen.has(written) || !DOC.has(extOf(written))) continue
-    const rel = relative(written, root)
-    if (!rel || rel.split('/').some((s) => s.startsWith('.') || s === '')) continue
-    seen.set(written, rel)
-    if (seen.size >= MAX_ASK) break
-  }
-  return [...seen].map(([written, rel]) => ({ written, rel }))
+/** The address a written one means: a scheme added where the reply left it out. */
+export function webUrl(written) {
+  if (/^https?:\/\//i.test(written)) return written
+  if (/^(?:localhost|127\.0\.0\.1|\[::1\])[:/]/i.test(written)) return `http://${written}`
+  return `https://${written}`
 }
 
-/** `written` as a path inside `root`, or null when it points somewhere else. */
-function relative(written, root) {
-  if (written.startsWith('~')) return null
-  if (!written.startsWith('/')) return written.replace(/^\.\//, '')
+/**
+ * The places a reply points at, in the order it says them, each as `{ kind, written }`:
+ * `web` for an address, `path` for something on disk. Which paths are real, and what they are,
+ * is not known here.
+ */
+export function references(text) {
+  const clean = String(text ?? '').replace(FENCE, '')
+  const found = []
+  const taken = [] // the stretches already claimed by an address, so a path is not found inside one
+  for (const m of clean.matchAll(WEB)) {
+    const written = trim(m[0])
+    found.push({ i: m.index, kind: 'web', written })
+    taken.push([m.index, m.index + m[0].length])
+  }
+  for (const m of clean.matchAll(PATH)) {
+    const written = trim(m[0])
+    // A bare name counts only when it is a document: `README.md` is a place, `index` is a word.
+    if (!written.includes('/') && !DOC.has(extOf(written))) continue
+    if (taken.some(([a, b]) => m.index < b && m.index + m[0].length > a)) continue
+    if (/^\/+$/.test(written)) continue
+    found.push({ i: m.index, kind: 'path', written })
+  }
+  const seen = new Set()
+  return found
+    .sort((a, b) => a.i - b.i)
+    .filter((r) => !seen.has(r.written) && seen.add(r.written))
+    .map(({ kind, written }) => ({ kind, written }))
+}
+
+/** `written` as an absolute path, or null when it cannot be one. */
+export function absolute(written, root, home) {
+  const p = written.replace(/\/+$/, '')
+  if (p.startsWith('~/')) return home ? `${home.replace(/\/+$/, '')}/${p.slice(2)}` : null
+  if (p.startsWith('/')) return p
+  if (!root) return null
+  const parts = `${root.replace(/\/+$/, '')}/${p}`.split('/')
+  const out = []
+  for (const s of parts) {
+    if (s === '..') out.pop()
+    else if (s !== '.' && s !== '') out.push(s)
+  }
+  return '/' + out.join('/')
+}
+
+/** `abs` as a path inside `root`, or null when it is somewhere else. */
+export function inside(abs, root) {
   const base = String(root || '').replace(/\/+$/, '')
-  if (!base || !written.startsWith(base + '/')) return null
-  return written.slice(base.length + 1)
+  return base && abs.startsWith(base + '/') ? abs.slice(base.length + 1) : null
 }
 
 /** The viewer's address for one file, the same shape the board's git mark opens. */
@@ -76,65 +116,13 @@ export const titleOf = (html) => {
   return t ? t.replace(/\s+/g, ' ').trim() || null : null
 }
 
-const escapeRe = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
-const label = (s) => s.replace(/([\\[\]])/g, '\\$1')
-
-/**
- * The reply, with every name in `links` (spelling → address) turned into a markdown link.
- *
- * Fenced blocks, links that are already links and bare addresses are left exactly as they are;
- * a name inside backticks keeps its backticks inside the link. Names are matched longest first,
- * so `docs/plan.md` is never cut down to the `plan.md` inside it.
- */
-export function linkify(text, links) {
+/** The artifacts a reply mentions, by title or by address, with where it mentions them. */
+export function artifactsIn(text, artifacts) {
   const src = String(text ?? '')
-  const names = [...links.keys()].filter(Boolean).sort((a, b) => b.length - a.length)
-  if (!names.length || !src) return src
-  const edge = '[\\p{L}\\p{N}_/.~-]'
-  const re = new RegExp(
-    [
-      '(\\[[^\\]\\n]*\\]\\([^)\\n]*\\))', // a link already
-      '(`[^`\\n]+`)', // inline code
-      '(https?:\\/\\/[^\\s)>\\]]+)', // a bare address
-      `(?<!${edge})(${names.map(escapeRe).join('|')})(?!${edge.replace('.', '')})`,
-    ].join('|'),
-    'gu'
-  )
-  const swap = (chunk) =>
-    chunk.replace(re, (whole, link, code, url, name) => {
-      if (code) {
-        const inner = code.slice(1, -1)
-        return links.has(inner) ? `[${code}](${links.get(inner)})` : code
-      }
-      if (name) return `[${label(name)}](${links.get(name)})`
-      return whole
-    })
-  // Walk the text keeping fenced blocks out of the rewrite, rather than removing them.
-  let out = ''
-  let last = 0
-  for (const m of src.matchAll(FENCE)) {
-    out += swap(src.slice(last, m.index)) + m[0]
-    last = m.index + m[0].length
-  }
-  return out + swap(src.slice(last))
-}
-
-/**
- * What the last reply pointed at, in the order it said them: the files k0 confirmed, then the
- * artifacts whose title or address it mentions. One entry per address.
- */
-export function referencesIn(text, files, artifacts) {
-  const src = String(text ?? '')
-  const out = new Map()
-  const found = []
-  for (const [written, url] of files) {
-    const i = src.indexOf(written)
-    if (i >= 0) found.push({ i, label: written, url })
-  }
+  const out = []
   for (const [title, url] of artifacts) {
-    const i = Math.max(src.indexOf(title), src.indexOf(url))
-    if (i >= 0) found.push({ i, label: title, url })
+    const at = [src.indexOf(title), src.indexOf(url)].filter((i) => i >= 0)
+    if (at.length) out.push({ i: Math.min(...at), title, url })
   }
-  for (const r of found.sort((a, b) => a.i - b.i)) if (!out.has(r.url)) out.set(r.url, r)
-  return [...out.values()].map(({ label, url }) => ({ label, url }))
+  return out
 }

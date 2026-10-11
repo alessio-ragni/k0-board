@@ -2,5 +2,5 @@
   "name": "k0-links",
   "version": "0.1.0",
   "author": { "name": "Alessio Ragni", "url": "https://alessioragni.com" },
-  "description": "While k0 is running, the files and artifacts Claude names in its replies become links: files open in k0's viewer, artifacts on claude.ai"
+  "description": "While k0 is running, the addresses, folders, documents and artifacts the last reply named sit above the prompt, one click away"
 }

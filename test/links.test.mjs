@@ -2,48 +2,56 @@ import { check, section } from './harness.mjs'
 import fs from 'node:fs'
 import {
   DOC,
-  candidates,
+  references,
+  webUrl,
+  absolute,
+  inside,
+  extOf,
   viewerUrl,
   artifactUrl,
   titleOf,
-  linkify,
-  referencesIn,
+  artifactsIn,
 } from '../.claude/skills/k0-links/hooks/links.js'
 
-// ── The mod: what Claude names, as links ─────────────────────────────────────
-// The mod's hooks need Claude Code to run, and CI has none; what decides anything — which names
-// are worth asking about, and how the reply is rewritten — is pure, and is tested here.
+// ── The mod: what the last reply pointed at ──────────────────────────────────
+// The mod's hooks need Claude Code to run, and CI has none; what decides anything — what in a
+// reply is a place, and where it leads — is pure, and is tested here.
 
-const ROOT = '/work/repo'
+const said = (text) => references(text).map((r) => `${r.kind}:${r.written}`).join(' | ')
 
-section('k0-links · which names are worth asking k0 about')
-{
-  const got = candidates('The plan is in docs/plan.md, the code in server/index.js.', ROOT)
-  check('a document is asked about', got.map((c) => c.rel).join(','), 'docs/plan.md')
-  check('trailing punctuation is not part of the name', got[0].written, 'docs/plan.md')
-}
+section('k0-links · what a reply points at')
 check(
-  'an absolute path inside the repository becomes relative',
-  candidates('Wrote /work/repo/out/report.html', ROOT)[0]?.rel,
-  'out/report.html'
+  'a local address, without its scheme',
+  said('Open localhost:4321/projects/furniture/ and pick one.'),
+  'web:localhost:4321/projects/furniture/'
 )
-check('an absolute path outside the repository is left out', candidates('See /etc/notes.md', ROOT).length, 0)
-check('a hidden path is left out', candidates('In .claude/skills/x/SKILL.md', ROOT).length, 0)
-check('a path from home is left out', candidates('See ~/notes.md', ROOT).length, 0)
-check('a fenced block is not looked into', candidates('```\nREADME.md\n```', ROOT).length, 0)
-check('one spelling is asked about once', candidates('README.md and README.md', ROOT).length, 1)
-check(
-  'at most sixty names, as the server reads no more',
-  candidates(Array.from({ length: 80 }, (_, i) => `f${i}.md`).join(' '), ROOT).length,
-  60
-)
+check('a full address, with the punctuation after it left out', said('See https://example.com/a?b=1.'), 'web:https://example.com/a?b=1')
+check('a domain with a path is an address', said('online on alessioragni.com/projects/furniture/.'), 'web:alessioragni.com/projects/furniture/')
+check('a domain alone is a name, not a place', said('in the alessioragni.com repo'), '')
+check('a folder', said('Photos in docs/projects/sideboard-140/, untouched.'), 'path:docs/projects/sideboard-140/')
+check('a path from home and an absolute one', said('~/k0/README.md and /Users/x/docs/'), 'path:~/k0/README.md | path:/Users/x/docs/')
+check('no path is found inside an address', said('http://localhost:4319/files.html?f=a/b.md'), 'web:http://localhost:4319/files.html?f=a/b.md')
+check('a document named alone, but not a word or a piece of code', said('See README.md, index and app.js.'), 'path:README.md')
+check('a fenced block is not looked into', said('```\ncd docs/plan/\n```'), '')
+check('in the order the reply said them, once each', said('b/c, then https://x.io/, then b/c'), 'path:b/c | web:https://x.io/')
 
-section('k0-links · addresses')
+section('k0-links · where each one leads')
+check('a scheme is added to a local address', webUrl('localhost:4321/x'), 'http://localhost:4321/x')
+check('and https to a domain', webUrl('alessioragni.com/p/'), 'https://alessioragni.com/p/')
+check('a full address is left as it is', webUrl('http://a.b/c'), 'http://a.b/c')
+check('a relative path is inside the repository', absolute('docs/plan/', '/work/repo', '/home/me'), '/work/repo/docs/plan')
+check('dots are walked', absolute('../other/x.md', '/work/repo', '/home/me'), '/work/other/x.md')
+check('home is home', absolute('~/k0/README.md', '/work/repo', '/home/me'), '/home/me/k0/README.md')
+check('inside the repository', inside('/work/repo/docs/a.md', '/work/repo'), 'docs/a.md')
+check('outside it', inside('/work/other/a.md', '/work/repo'), null)
+check('a folder has no extension', extOf('docs/v1.2/'), '.2')
 check(
   "the viewer's address is the one the git mark opens",
   viewerUrl(4319, '/work/my repo', 'docs/a b.md'),
   'http://localhost:4319/files.html?repo=%2Fwork%2Fmy+repo&f=docs%2Fa+b.md'
 )
+
+section('k0-links · artifacts')
 check(
   "an artifact's address is found in what the tool answered",
   artifactUrl('Published. https://claude.ai/code/artifact/ab12-cd34 is private.'),
@@ -52,31 +60,11 @@ check(
 check('no address, no artifact', artifactUrl('Refused.'), null)
 check('the title comes from the page', titleOf('<html><title> Usage  page </title></html>'), 'Usage page')
 check('no title, no guess', titleOf('<html></html>'), null)
-
-section('k0-links · rewriting the reply')
 {
-  const links = new Map([
-    ['docs/plan.md', 'http://v/plan'],
-    ['plan.md', 'http://v/short'],
-    ['Usage page', 'https://claude.ai/artifact/u'],
-  ])
-  check('a name becomes a link', linkify('Read docs/plan.md.', links), 'Read [docs/plan.md](http://v/plan).')
-  check('the longest name wins', linkify('docs/plan.md', links).includes('http://v/short'), false)
-  check('backticks stay inside the link', linkify('see `plan.md`', links), 'see [`plan.md`](http://v/short)')
-  check('a title becomes a link', linkify('I published the Usage page.', links), 'I published the [Usage page](https://claude.ai/artifact/u).')
-  check('a link already there is left alone', linkify('[plan](docs/plan.md)', links), '[plan](docs/plan.md)')
-  check('a fenced block is left alone', linkify('```\nplan.md\n```', links), '```\nplan.md\n```')
-  check('half a name is not a name', linkify('myplan.md', links), 'myplan.md')
-  check('nothing known, nothing changes', linkify('docs/plan.md', new Map()), 'docs/plan.md')
-}
-
-section('k0-links · what the last reply pointed at')
-{
-  const files = new Map([['b.md', 'http://v/b'], ['a.md', 'http://v/a'], ['z.md', 'http://v/z']])
-  const artifacts = new Map([['Usage page', 'https://claude.ai/artifact/u']])
-  const got = referencesIn('First a.md, then the Usage page, then b.md and a.md again.', files, artifacts)
-  check('in the order the reply said them', got.map((r) => r.label).join(','), 'a.md,Usage page,b.md')
-  check('a file the reply did not name is not there', got.some((r) => r.label === 'z.md'), false)
+  const known = new Map([['Usage page', 'https://claude.ai/artifact/u'], ['Other one', 'https://claude.ai/artifact/o']])
+  const got = artifactsIn('I published the Usage page.', known)
+  check('an artifact the reply names by title', got.map((a) => a.url).join(), 'https://claude.ai/artifact/u')
+  check('or by its address', artifactsIn('see https://claude.ai/artifact/o', known)[0]?.title, 'Other one')
 }
 
 section('k0-links · the same documents as the viewer')

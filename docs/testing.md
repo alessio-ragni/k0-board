@@ -169,11 +169,16 @@ The `k0-links` mod under `.claude/skills/k0-links/` follows the same split. Its 
 (`hooks/register.js`) only run inside Claude Code, which CI does not have, and Claude Code's own
 `claude plugin test` reads TypeScript, which k0 does not write — so the hooks are left to
 `claude plugin validate` and to a session. Everything that decides something lives in
-`hooks/links.js` instead: which names in a reply are worth asking k0 about, how the reply is
-rewritten, what the last reply pointed at. `test/links.test.mjs` covers it, and also reads the
-server's extension list out of `server/files.js` to prove the mod's copy has not drifted from it —
-the mod is copied out of k0 alone and cannot import it. It is outside `server/` and `web/`, so it
-does not count towards the coverage floor.
+`hooks/links.js` instead: what in a reply is an address, a path or an artifact, and where each one
+leads. `test/links.test.mjs` covers it, and also reads the server's extension list out of
+`server/files.js` to prove the mod's copy has not drifted from it — the mod is copied out of k0
+alone and cannot import it. It is outside `server/` and `web/`, so it does not count towards the
+coverage floor.
+
+When the hooks change, the way to see them work is a real session: Claude Code started under a
+pseudo-terminal with its fullscreen view, a reply that names a folder, an address and a document,
+and a mouse click sent as the terminal would send it, onto the entry in the row — with a stand-in
+for `open` first on the `PATH`, so the test records what would have opened instead of opening it.
 
 `server/index.js` is not loaded by any test. The piece of it that carries a promise — who is
 allowed to talk to the server at all — was moved into `server/guard.js` so it could be read and

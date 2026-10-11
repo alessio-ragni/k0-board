@@ -547,7 +547,7 @@ was always the wrong gesture — states move from the terminal, and from the Don
 
 Ten you type, and the installer offers eleven — these ten plus
 [`/k0-import`](#filling-the-board-with-what-you-have-already-done) — and one more thing that is not a
-command at all, [the `k0-links` mod](#the-files-claude-names-are-clickable-in-the-terminal). `/k0-whatsnew` and
+command at all, [the `k0-links` mod](#what-claude-points-at-one-click-away). `/k0-whatsnew` and
 `/k0-changelog` are deliberately not on that list: k0 runs those two itself, out of its own
 directory, and you never type them.
 
@@ -1174,33 +1174,40 @@ gives the listing only its finished documents — so a page under an ignored `di
 Named inside a document it still counts: the document said so, not the directory. Hidden
 directories really do stay out: `.claude/` is configuration, not something to read.
 
-### The files Claude names are clickable in the terminal
+### What Claude points at, one click away
 
-The same idea, one step earlier: in the Claude Code session itself. Claude says "the plan is in
-`docs/plan.md`", or publishes an artifact and talks about it by its title, and in the terminal that
-was dead text. With the `k0-links` mod installed, and **while k0 is running**:
+The same idea, one step earlier: in the Claude Code session itself. Claude says "open
+`localhost:4321/projects/furniture/`", "the photos are in `docs/projects/sideboard-140/`", "the
+manual is `README.md`", or publishes an artifact and talks about it by its title — and in the
+terminal all of that was dead text. With the `k0-links` mod installed, and **while k0 is running**,
+everything the last reply pointed at is in a row **just above the prompt**, and **one plain click**
+on an entry opens it:
 
-- **a file named in a reply is a link** to this viewer, in the repository the session is working
-  in, and it opens in a new tab;
-- **an artifact the session published is a link** wherever the reply says its title, to its own
-  claude.ai page;
-- **what the last reply pointed at stays in a row just above the prompt**, so you do not have to
-  scroll back up to find it, and the hint line under the prompt says how many there are.
+| | What the reply wrote | Opens in |
+|---|---|---|
+| 🌐 | an address — `https://…`, `localhost:4321/…`, `alessioragni.com/projects/…` | the browser, in a new tab |
+| 📁 | a folder, relative to the repository or written in full | Finder |
+| 📄 | a document the viewer shows — Markdown, HTML, text, PDF, Word… | this viewer, in a new tab |
+| ✦ | the title of an artifact this session published | its claude.ai page |
 
-In the macOS Terminal a link opens with **cmd+click** — a plain click selects text there, as it
-always has. The row sits above the prompt and not in the line under it because that line can only
-hold text: nothing in it can be clicked.
+Code files and a repository's own name stay out of the row: they are not places you go to. A
+domain counts as an address only with a path after it — `alessioragni.com` alone is usually the
+name of a repository.
+
+**Claude's reply is left exactly as Claude Code draws it.** The macOS Terminal cannot open a link
+drawn inside the text — it shows the words, and a click does nothing — and redrawing every reply to
+get around that would have changed a screen that works. The row is the mod's own space, and its
+entries are buttons, which Claude Code itself receives the click for. That needs Claude Code's
+**fullscreen** view (`"tui": "fullscreen"` in `~/.claude/settings.json`, or `/config`), where the
+mouse reaches it; in the classic view the row is still there, and ctrl+x tab then Enter opens an
+entry.
 
 It is a **mod**, a small piece of code Claude Code runs inside itself, and the installer copies it
 into `~/.claude/skills/k0-links` together with the commands, behind the same question. So it is
-there in **every** Claude Code session on the machine, not only the ones a story opened — and it
-does nothing at all while k0 is off: no row, no links, nothing changed.
-
-The limits are the viewer's. A file becomes a link only if it is **a document the viewer shows**
-(Markdown, HTML, text, PDF, Word…) and only in **a repository k0 knows**; a `.js` file stays text,
-and so does every file in a folder k0 has never opened a session in — there the artifacts still
-become links, the files do not. The mod rewrites how a reply is **drawn**, never what is stored:
-ctrl+o still shows exactly what Claude wrote.
+there in **every** Claude Code session on the machine, not only the ones a story opened — new
+sessions pick it up when they start, an open one with `/reload-plugins` — and it does nothing at
+all while k0 is off. Documents become entries only in **a repository k0 knows**; elsewhere the
+addresses, folders and artifacts still do.
 
 ### On paper
 
@@ -1686,12 +1693,13 @@ web/             the four pages (html, css, js served exactly as they are)
   k0-verify/     the counter-check: every decision one by one, the checklist, the outcome
   k0-next/       what to pick up now, and why — the server decides, not the model
   k0-order/      priority and dependencies, dictated
-  k0-links/      not a skill but a mod: hooks Claude Code runs inside itself. At the start of a
-                 session and at the end of each turn it asks k0, on loopback, which of the files
-                 the reply named are real (POST /api/files/exist), keeps the artifacts the session
-                 published, and redraws the reply with links and the row above the prompt. Drawing
-                 never waits on the network. links.js is the pure half, tested by npm test;
-                 nothing in it may come from k0's own folders, because it is copied out alone
+  k0-links/      not a skill but a mod: hooks Claude Code runs inside itself. At the end of each
+                 reply it finds the addresses, folders and documents the reply named, asks the
+                 disk what each path is and k0, on loopback, which documents its viewer has
+                 (POST /api/files/exist), adds the artifacts the session published, and draws them
+                 as buttons in the row above the prompt; a press runs the system's `open`. It never
+                 touches the reply. links.js is the pure half, tested by npm test; nothing in it
+                 may come from k0's own folders, because it is copied out alone
   k0-whatsnew/   the What is New page, written from the changelog entries k0 hands it
   k0-changelog/  the one that turns the facts of a stretch of work into something readable. k0
                  calls it by itself when the ChangeLog is opened, so it is in the package too
@@ -1733,8 +1741,8 @@ never resolves a conflict on your behalf — where it cannot merge cleanly it st
 None of it happens unless you run `/k0-work`.
 
 k0 does not emulate a terminal and installs no settings hooks. The one thing it puts inside Claude
-Code is [the `k0-links` mod](#the-files-claude-names-are-clickable-in-the-terminal), and only if you
-said yes: it rewrites how a reply is drawn, never what is stored, and talks to nobody but k0 on the
+Code is [the `k0-links` mod](#what-claude-points-at-one-click-away), and only if you
+said yes: it draws a row above the prompt, never touches a reply, and talks to nobody but k0 on the
 loopback address. Beyond that k0 reads what Claude Code already writes for itself:
 
 - `~/.claude/sessions/<pid>.json` — live status (`busy`, `idle`, `waiting` with the reason for the

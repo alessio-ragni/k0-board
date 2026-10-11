@@ -304,7 +304,7 @@ const SKILLS = [
   ['k0-order', 'priority and dependencies, dictated'],
   // Not a command but a mod: nobody types it, Claude Code loads it from the same directory and it
   // turns the files and artifacts named in a reply into links while k0 is running.
-  ['k0-links', 'the files and artifacts Claude names become links, while k0 is running', 'mod'],
+  ['k0-links', 'what the last reply pointed at, one click away above the prompt', 'mod'],
 ]
 
 /** How the list shows an entry: a command by what you type, the mod by its name. */
