@@ -6,6 +6,8 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.5.0]
+
 **The board tells you what to do next, and starts it.** Every story carries one button saying the
 one thing to do with it — *Discuss*, *Plan*, *Work*, or *Resume* on a terminal that was closed —
 and pressing it opens a terminal with the command already sent. Beside it, **Quick Start** opens an
@@ -692,7 +694,9 @@ here is everything that had to change for it to be somebody else's tool as well.
 - The personal fixtures k0 grew up on. `test/clean.test.mjs` now fails the build if any of them
   come back.
 
-[Unreleased]: https://github.com/alessio-ragni/k0-board/compare/v0.3.0...HEAD
+[Unreleased]: https://github.com/alessio-ragni/k0-board/compare/v0.5.0...HEAD
+[0.5.0]: https://github.com/alessio-ragni/k0-board/compare/v0.4.0...v0.5.0
+[0.4.0]: https://github.com/alessio-ragni/k0-board/compare/v0.3.0...v0.4.0
 [0.3.0]: https://github.com/alessio-ragni/k0-board/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/alessio-ragni/k0-board/compare/v0.1.2...v0.2.0
 [0.1.2]: https://github.com/alessio-ragni/k0-board/compare/v0.1.1...v0.1.2
