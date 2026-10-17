@@ -66,6 +66,10 @@ is switched on in the cloud.
   its own, and they say so — two places, the cloud and the daily version check, and still nothing
   else.
 
+### Fixed
+
+- **The new tests pass on Windows too.** Nothing about k0 itself changed.
+
 ## [0.5.0]
 
 **The board tells you what to do next, and starts it.** Every story carries one button saying the

@@ -29,7 +29,11 @@ const db = await import('../server/db.js')
 const cloud = await import('../server/cloud.js')
 const sync = await import('../server/sync.js')
 
-after(() => fs.rmSync(FAKE_HOME, { recursive: true, force: true }))
+// The database is closed first: Windows refuses to delete a folder with an open file in it.
+after(() => {
+  db.close()
+  fs.rmSync(FAKE_HOME, { recursive: true, force: true })
+})
 
 /** A Supabase that fits in a test: one user, one workspace, the records table and the counter. */
 function fakeSupabase() {
