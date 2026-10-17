@@ -436,3 +436,10 @@ enabled = true
 client_id = "env(K0_GOOGLE_CLIENT_ID)"
 secret = "env(K0_GOOGLE_SECRET)"
 skip_nonce_check = false
+
+# The emails k0 Cloud sends (supabase/functions/notify). Called by the database with a shared
+# secret, not by a signed-in user, so Supabase's own JWT check is off and the function checks the
+# secret itself. Plain JavaScript, like the rest of k0.
+[functions.notify]
+verify_jwt = false
+entrypoint = "./functions/notify/index.js"

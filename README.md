@@ -1862,6 +1862,11 @@ test/            npm test — Node's own runner, no framework. See docs/testing.
   harness.mjs    check(label, got, want), and the sections the labels are grouped under
 ```
 
+
+Two small pieces live outside the app because they run in the cloud, not on your machine:
+`supabase/functions/notify` sends the emails k0 Cloud sends (an early-access request, an account
+waiting to be let in), and `infra/mail-forward` forwards mail sent to the site's contact address.
+Neither ships in the npm package. Where each one runs and how it is put online: `docs/cloud.md`.
 ### How the board reaches the cloud
 
 The board's rules live on the machine, in SQLite, and they stay there: states, decisions, rounds,

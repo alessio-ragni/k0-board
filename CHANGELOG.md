@@ -12,6 +12,10 @@ All notable changes to this project are documented here. The format follows
   nothing is charged during early access — and a form to ask for an account, which says you are on
   the list the moment you send it. Privacy and terms pages say plainly what is stored and where. It
   follows the light or dark setting of your system, and reads on a phone.
+- **Asking for early access sends an email.** The person who asked gets a line saying they are on the
+  list, and whoever runs k0 is told — about that, and about anybody who signs in and is waiting to be
+  let in. Mail to the address on the site reaches a person. Tried for real: the notice and a
+  forwarded message both arrived.
 
 
 ## [0.6.0]
