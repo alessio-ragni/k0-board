@@ -36,6 +36,8 @@ import * as mirror from './mirror.js'
 import * as worktree from './worktree.js'
 import * as update from './update.js'
 import * as usage from './usage.js'
+import * as cloud from './cloud.js'
+import * as sync from './sync.js'
 import { report as platformReport, capabilities, why } from '../platform/index.js'
 // The same front-matter reader the viewer uses: the PDF has to be called what the page is
 // called, and two different readings of the same header would give two different names.
@@ -1004,7 +1006,12 @@ async function backlogApi(req, res, url, seg) {
     // checkout would make an epic nothing could ever write down.
     const repo = backlog.backlogRepo(body.project_path)
     if (!body.title?.trim() || !repo) return send(res, 400, { error: 'Title and a known repository are required' })
-    const epic = db.createEpic({ ...only(NEW_EPIC, body), title: body.title.trim(), project_path: repo })
+    const epic = db.createEpic({
+      ...only(NEW_EPIC, body),
+      title: body.title.trim(),
+      project_path: repo,
+      cloud_key: await cloud.nextKey(),
+    })
     return wrote(res, backlog.publicEpic(epic), mirrorEpic(epic.id))
   }
 
@@ -1107,6 +1114,7 @@ async function backlogApi(req, res, url, seg) {
       ...only(NEW_STORY, body),
       title: body.title.trim(),
       project_path: repo,
+      cloud_key: await cloud.nextKey(),
       // A task takes its parent's epic unless it was given one of its own. Not tidiness: a
       // story's effective decisions are its own plus its EPIC's, so a task left outside the epic
       // its parent sits in would be planned and counter-checked blind to every rule that shaped
@@ -1361,6 +1369,9 @@ async function api(req, res, url) {
   if (resource === 'board' && req.method === 'GET')
     return send(res, 200, boardAnswer(url.searchParams.get('since')))
   if (resource === 'status' && req.method === 'GET') return send(res, 200, status())
+
+  // ── k0 Cloud: who is signed in, and the way in and out ─────────────────────
+  if (resource === 'cloud') return cloudApi(req, res, url, idRaw)
   if (resource === 'projects' && req.method === 'GET') return send(res, 200, listProjects())
 
   // ── What you have been doing ───────────────────────────────────────────────
@@ -1528,6 +1539,7 @@ async function api(req, res, url) {
         session_id: sessionId,
         started_at: it.started_at,
         ended_at: it.ended_at,
+        cloud_key: await cloud.nextKey(),
       })
       stories.push(made)
       // The readable copy is written here as it is at every other door. An imported story that
@@ -1681,7 +1693,12 @@ async function api(req, res, url) {
   if (resource === 'story' && req.method === 'POST' && !idRaw) {
     const b = await readBody(req)
     if (!b.title?.trim() || !b.project_path) return send(res, 400, { error: 'Title and repository are required' })
-    const story = db.createStory({ ...only(NEW_STORY, b), title: b.title.trim(), project_path: b.project_path })
+    const story = db.createStory({
+      ...only(NEW_STORY, b),
+      title: b.title.trim(),
+      project_path: b.project_path,
+      cloud_key: await cloud.nextKey(),
+    })
     return wrote(res, story, mirrorStory(story.id))
   }
 
@@ -1781,6 +1798,59 @@ async function api(req, res, url) {
   return send(res, 404, { error: 'No such endpoint' })
 }
 
+// ── k0 Cloud ─────────────────────────────────────────────────────────────────
+
+/** Where the browser comes back to after signing in: this machine, on the name it used to get here. */
+const callbackFor = (req) => `http://${req.headers.host}/auth/callback`
+
+async function cloudApi(req, res, url, action) {
+  if (!action && req.method === 'GET') {
+    return send(res, 200, { ...sync.status(), providers: cloud.enabled() ? await cloud.providers() : [] })
+  }
+  if (action === 'login' && req.method === 'POST') {
+    const body = await readBody(req)
+    if (!cloud.enabled()) return send(res, 400, { error: 'k0 Cloud is switched off on this machine.' })
+    try {
+      return send(res, 200, { url: cloud.loginUrl(String(body.provider || ''), callbackFor(req)) })
+    } catch (err) {
+      return send(res, 400, { error: err.message })
+    }
+  }
+  if (action === 'logout' && req.method === 'POST') {
+    sync.detach()
+    return send(res, 200, await cloud.logout())
+  }
+  if (action === 'sync' && req.method === 'POST') return send(res, 200, await sync.round())
+  return send(res, 404, { error: 'No such endpoint' })
+}
+
+/**
+ * The page the browser lands on after GitHub or Google. It is not under `/api/` because it is a
+ * page somebody sees, for a moment: it trades the code for a session and sends them to the board,
+ * or says in a sentence what went wrong.
+ */
+async function authCallback(req, res, url) {
+  const page = (title, line) => {
+    res.writeHead(200, { 'content-type': 'text/html; charset=utf-8', 'cache-control': 'no-store' })
+    res.end(`<!doctype html><meta charset="utf-8"><title>${title}</title>
+<link rel="stylesheet" href="/base.css"><body class="auth-page"><main><h1>${title}</h1><p>${line}</p>
+<p><a href="/">Back to the board</a></p></main></body>`)
+  }
+  const escape = (t) => String(t).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c])
+  const failed = url.searchParams.get('error_description') || url.searchParams.get('error')
+  if (failed) return page('Not signed in', escape(failed))
+  const code = url.searchParams.get('code')
+  if (!code) return page('Not signed in', 'The sign-in came back without anything to sign in with. Start it again from the board.')
+  try {
+    await cloud.finishLogin(code)
+    sync.attach()
+    sync.round()
+    res.writeHead(302, { location: '/' }).end()
+  } catch (err) {
+    page('Not signed in', escape(err.message || err))
+  }
+}
+
 // ── Static files ─────────────────────────────────────────────────────────────
 function serveStatic(res, pathname) {
   const rel = pathname === '/' ? 'index.html' : pathname.replace(/^\/+/, '')
@@ -1818,6 +1888,7 @@ http
     res.mayZip = /\bgzip\b/.test(req.headers['accept-encoding'] || '')
     try {
       if (url.pathname.startsWith('/api/')) return await api(req, res, url)
+      if (url.pathname === '/auth/callback' && req.method === 'GET') return await authCallback(req, res, url)
       serveStatic(res, url.pathname)
     } catch (err) {
       send(res, 500, { error: String(err.message || err) })
@@ -1839,6 +1910,9 @@ http
     // What the sessions consumed, read out of their transcripts at its own pace: quickly while
     // there is history to catch up on, once a minute after that.
     usage.start()
+    // The cloud's copy of the board, kept up to date every few seconds while somebody is signed
+    // in and let in. Nothing happens here for a board that is not linked to an account.
+    sync.start()
     // The first round, and the one that sets the loop going: `round` is `tick` plus the decision
     // of when to come back. Deliberately here and not at import time — the first round reads the
     // settings file, which the line above has only just made sure of.
@@ -1869,6 +1943,7 @@ for (const signal of ['SIGTERM', 'SIGINT', 'SIGHUP']) {
     mode.stopNow()
     // A summary being written when the server goes down has nobody left to give it to.
     writer.stop()
+    sync.stop()
     process.exit(0)
   })
 }

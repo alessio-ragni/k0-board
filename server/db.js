@@ -1022,7 +1022,7 @@ const PATCHABLE = [
  * the two axes are put back together here, in one place, and only here.
  */
 const STORY_COLUMNS = `
-  s.id, s.key_num, ${keyText('s.key_num')} AS "key", s.project_path, s.epic_id, s.parent_story_id,
+  s.id, s.uid, s.key_num, ${keyText('s.key_num')} AS "key", s.project_path, s.epic_id, s.parent_story_id,
   s.title, s.description, s.body, s.prompt, s.plan, s.state, s.starred, s.lang, s.color,
   s.sort_hint, s.completed_at, s.imported_at, s.created_at, s.updated_at,
   v.id AS session_row_id, v.session_id, COALESCE(v.alive, 0) AS session_alive,
@@ -1584,7 +1584,7 @@ const EPIC_PATCHABLE = ['title', 'body', 'state', 'lang', 'sort_hint']
 /** An epic is open or it is done. There is no third thing an epic can be. */
 export const EPIC_STATES = ['Open', 'Done']
 
-const epicRow = `SELECT id, key_num, ${keyText('key_num')} AS "key", project_path, title, body, state, lang,
+const epicRow = `SELECT id, uid, key_num, ${keyText('key_num')} AS "key", project_path, title, body, state, lang,
                         sort_hint, created_at, updated_at FROM epic`
 
 export function listEpics(projectPath = null) {
