@@ -12,7 +12,7 @@ again where a key lives or how somebody is let in.
 | Schema | `supabase/migrations/*.sql`, applied with `supabase db push` | this repository |
 | Sign-in settings (redirects, providers) | `supabase/config.toml`, and the project's Auth settings | this repository + the Supabase dashboard |
 | Sign in with GitHub | OAuth app **k0** on the GitHub account `alessio-ragni` (Settings → Developer settings → OAuth Apps) | alessio-ragni |
-| Sign in with Google | Google Cloud project **k0-board**, Google Auth Platform → client **k0 sign-in** (Web application) | ishconsultingsrl@gmail.com |
+| Sign in with Google | Google Cloud project **k0-board**, Google Auth Platform → client **k0 sign-in** (Web application) | the ISH Consulting Google account |
 | Secrets for development | `~/.config/k0-cloud/.env`, mode 600, never in a repository | the machine |
 | The board's own copy of a sign-in | `~/.k0/cloud.json`, mode 600 | each user's machine |
 | Read-only board and admin page | `site/app/`, static, deployed with the site at `k0-board.com/app/` | this repository |
@@ -59,7 +59,7 @@ the same way. Nothing in the repository changes.
 ## Not done yet
 
 - **Google sign-in is in "Testing".** Only the test users listed in Google Auth Platform → Audience
-  can sign in with Google (alessio.ragni@gmail.com is one), up to 100. Publishing it needs the
+  can sign in with Google (the owner's address is one), up to 100. Publishing it needs the
   branding page completed — home page, privacy policy and terms on `k0-board.com` — which waits for
   the site and the domain. GitHub has no such limit.
 - **The read-only board and the admin page are not online.** They go up with the site.

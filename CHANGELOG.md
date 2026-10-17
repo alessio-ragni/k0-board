@@ -6,6 +6,14 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.6.0]
+
+k0 gets an account and a cloud. The board still runs on your machine and keeps working with no
+network, but it now keeps a copy of itself in k0 Cloud, signs in with GitHub or Google, and numbers
+every story once for your whole account instead of once per repository; a board that existed before
+moves over once, after you have seen every old number beside its new one. k0 is in early access,
+and from this version on it is source-available under the Sustainable Use License rather than MIT.
+
 ### Added
 
 - **k0 Cloud: your board keeps a copy of itself, and you sign in with GitHub or Google.** The board
@@ -749,7 +757,8 @@ here is everything that had to change for it to be somebody else's tool as well.
 - The personal fixtures k0 grew up on. `test/clean.test.mjs` now fails the build if any of them
   come back.
 
-[Unreleased]: https://github.com/alessio-ragni/k0-board/compare/v0.5.0...HEAD
+[Unreleased]: https://github.com/alessio-ragni/k0-board/compare/v0.6.0...HEAD
+[0.6.0]: https://github.com/alessio-ragni/k0-board/compare/v0.5.0...v0.6.0
 [0.5.0]: https://github.com/alessio-ragni/k0-board/compare/v0.4.0...v0.5.0
 [0.4.0]: https://github.com/alessio-ragni/k0-board/compare/v0.3.0...v0.4.0
 [0.3.0]: https://github.com/alessio-ragni/k0-board/compare/v0.2.0...v0.3.0
