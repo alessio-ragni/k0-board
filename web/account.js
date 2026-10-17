@@ -86,7 +86,7 @@ function move(s) {
         const res = await fetch('/api/cloud/move', { cache: 'no-store' })
         const plan = await res.json()
         if (!res.ok) throw new Error(plan.error || `HTTP ${res.status}`)
-        table.replaceChildren(numbers(plan.rows))
+        table.replaceChildren(numbers(plan.rows, plan.texts))
         go.hidden = false
         show.hidden = true
       } catch (err) {
@@ -130,7 +130,7 @@ function move(s) {
 }
 
 /** Old number beside new, a repository at a time, the way the person reading it thinks of them. */
-function numbers(rows) {
+function numbers(rows, texts = 0) {
   const byRepo = new Map()
   for (const r of rows) {
     const name = (r.project_path || '').split(/[\\/]/).filter(Boolean).pop() || r.project_path
@@ -138,7 +138,8 @@ function numbers(rows) {
     byRepo.get(name).push(r)
   }
   const wrap = el('div')
-  wrap.append(el('p', { class: 'gate-note' }, `${rows.length} in all, across ${byRepo.size} repositor${byRepo.size === 1 ? 'y' : 'ies'}.`))
+  wrap.append(el('p', { class: 'gate-note' }, `${rows.length} in all, across ${byRepo.size} repositor${byRepo.size === 1 ? 'y' : 'ies'}.` +
+    (texts ? ` ${texts} pieces of text name a story by its number — a plan, a prompt, a decision — and are updated to the new one, inside the same repository.` : '')))
   for (const [name, list] of byRepo) {
     wrap.append(el('h3', {}, name))
     const t = el('table')

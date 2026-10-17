@@ -223,7 +223,8 @@ export function needsMove() {
 /** What the move would do: every story and epic, its old key and its new one. Writes nothing. */
 export async function movePlan() {
   const start = await peekNext()
-  return { start, rows: db.renumberAll({ start, apply: false }) }
+  const rows = db.renumberAll({ start, apply: false })
+  return { start, rows, texts: rows.textChanges || 0 }
 }
 
 /**

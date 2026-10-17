@@ -306,3 +306,22 @@ check('ssh and https name the same repository', sync.normaliseRemote('git@github
   sync.normaliseRemote('https://github.com/alessio-ragni/k0-board'))
 check('a password in the address does not travel', sync.normaliseRemote('https://user:secret@github.com/a/b.git'), 'github.com/a/b')
 check('no remote is no name', sync.normaliseRemote(''), '')
+
+// ── An old board, numbered per repository ────────────────────────────────────
+// What a board from before k0 Cloud looks like: every repository counted from one, so K1 exists
+// several times over, and the text of the stories names other stories by those numbers.
+section('An old board, numbered per repository')
+{
+  const A = '/tmp/k0-old-a'
+  const B = '/tmp/k0-old-b'
+  const a1 = db.createStory({ project_path: A, title: 'First in A', key_num: 9001 })
+  const a2 = db.createStory({ project_path: A, title: 'Second in A', key_num: 9002, body: 'Needs K9001 done first, see also K9001·D3.' })
+  const b1 = db.createStory({ project_path: B, title: 'First in B', key_num: 9001, body: 'Nothing to do with K9002 over there? K9001 here.' })
+  const plan = db.renumberAll({ start: 500, apply: false })
+  const mine = plan.filter((r) => [A, B].includes(r.project_path))
+  check('the same old key in two repositories gets two new ones', new Set(mine.map((r) => r.new)).size, 3)
+  db.renumberAll({ start: 500, apply: true })
+  const newA1 = db.getStory(a1.id).key
+  check('a key named in the text follows the story it named', db.getStory(a2.id).body, `Needs ${newA1} done first, see also ${newA1}·D3.`)
+  check('but only inside its own repository', db.getStory(b1.id).body, `Nothing to do with K9002 over there? ${db.getStory(b1.id).key} here.`)
+}

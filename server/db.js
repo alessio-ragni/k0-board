@@ -989,9 +989,45 @@ export function renumberAll({ start = 1, apply = false } = {}) {
     key_num: start + i,
     new: `K${start + i}`,
   }))
+  // The keys written INSIDE the text — "see K12", a plan naming the story it depends on, a prompt
+  // saying which epic it belongs to — are moved too, or every one of them would quietly point at
+  // a different story after the move. Only within the same repository: that is the only place a
+  // bare `K12` ever meant anything. One pass with the whole map, never one key after another, so a
+  // K3 that became K12 is not then turned into whatever K12 became.
+  const byRepo = new Map()
+  for (const p of plan) {
+    if (!byRepo.has(p.project_path)) byRepo.set(p.project_path, new Map())
+    byRepo.get(p.project_path).set(p.old, p.new)
+  }
+  const rewrite = (repo, text) => {
+    const map = byRepo.get(repo)
+    if (!map || typeof text !== 'string' || !text) return text
+    return text.replace(/(?<![\w~])K~?\d+(?![\w])/g, (k) => map.get(k) ?? k)
+  }
+  const TEXTS = [
+    ['story', ['title', 'description', 'body', 'prompt', 'plan'], 'project_path'],
+    ['epic', ['title', 'body'], 'project_path'],
+    ['decision', ['text'], `COALESCE((SELECT project_path FROM story WHERE id = decision.story_id), (SELECT project_path FROM epic WHERE id = decision.epic_id))`],
+    ['round', ['question', 'answer'], `COALESCE((SELECT project_path FROM story WHERE id = round.story_id), (SELECT project_path FROM epic WHERE id = round.epic_id))`],
+    ['story_log', ['text'], '(SELECT project_path FROM story WHERE id = story_log.story_id)'],
+    ['check_item', ['text', 'evidence'], '(SELECT project_path FROM story WHERE id = check_item.story_id)'],
+  ]
+  const changes = []
+  for (const [table, cols, repoExpr] of TEXTS) {
+    const rows = db.prepare(`SELECT id, ${repoExpr} AS repo, ${cols.join(', ')} FROM ${table}`).all()
+    for (const r of rows) {
+      const set = cols.filter((c) => rewrite(r.repo, r[c]) !== r[c])
+      if (set.length) changes.push({ table, id: r.id, set: set.map((c) => [c, rewrite(r.repo, r[c])]) })
+    }
+  }
+  plan.textChanges = changes.length
+
   if (apply) {
     atomically(() => {
       for (const p of plan) db.prepare(`UPDATE ${p.kind} SET key_num = ? WHERE id = ?`).run(p.key_num, p.id)
+      for (const c of changes) {
+        db.prepare(`UPDATE ${c.table} SET ${c.set.map(([k]) => `${k} = ?`).join(', ')} WHERE id = ?`).run(...c.set.map(([, v]) => v), c.id)
+      }
       db.prepare('DELETE FROM key_seq').run()
       setCounter(ACCOUNT, start + plan.length)
     })
