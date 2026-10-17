@@ -421,15 +421,16 @@ s3_secret_key = "env(S3_SECRET_KEY)"
 # JSON string passed through to pg-delta SQL formatting.
 # format_options = "{\"keywordCase\":\"upper\",\"indent\":2,\"maxWidth\":80,\"commaStyle\":\"trailing\"}"
 
-# The two ways into k0. Switched on once their OAuth apps exist; the ids and secrets come from the
+# The two ways into k0: the GitHub OAuth app "k0" (on alessio-ragni's account) and the Google OAuth
+# client "k0 sign-in" in the Google Cloud project k0-board. The ids and secrets come from the
 # environment (see ~/.config/k0-cloud/.env), never from this file.
 [auth.external.github]
-enabled = false
+enabled = true
 client_id = "env(K0_GITHUB_CLIENT_ID)"
 secret = "env(K0_GITHUB_SECRET)"
 
 [auth.external.google]
-enabled = false
+enabled = true
 client_id = "env(K0_GOOGLE_CLIENT_ID)"
 secret = "env(K0_GOOGLE_SECRET)"
 skip_nonce_check = false
