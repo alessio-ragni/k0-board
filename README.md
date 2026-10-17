@@ -172,6 +172,8 @@ Your board lives on your machine and keeps working with no network at all. k0 Cl
 of it, so it survives a lost laptop, reaches your other machines, and — coming with the site — can
 be read from a browser at `k0-board.com/app/`.
 
+Who owns which piece of it, where the keys live and how somebody is let in: [`docs/cloud.md`](docs/cloud.md).
+
 ### Signing in
 
 The first time you open the board it shows **Connect your account**, with a button for GitHub and
