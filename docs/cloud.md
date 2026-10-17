@@ -59,7 +59,7 @@ the same way. Nothing in the repository changes.
 ## Not done yet
 
 - **Google sign-in is in "Testing".** Only the test users listed in Google Auth Platform → Audience
-  can sign in with Google (alessio.ragni@gmail.com is one), up to 100. Publishing it needs the
+  can sign in with Google (the maintainer's own Google account is one), up to 100. Publishing it needs the
   branding page completed — home page, privacy policy and terms on `k0-board.com` — which waits for
   the site and the domain. GitHub has no such limit.
 - **The read-only board and the admin page are not online.** They go up with the site.

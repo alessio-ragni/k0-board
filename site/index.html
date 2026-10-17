@@ -1,0 +1,194 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>k0 — the board that knows which Claude Code session needs you</title>
+  <meta name="description" content="Every Claude Code session is a sticky note that turns red when it waits for an answer, orange when a plan needs your yes, green when it is done. Stories, epics and decisions on the same board, synced to every machine.">
+  <link rel="canonical" href="https://k0-board.com/">
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="k0">
+  <meta property="og:url" content="https://k0-board.com/">
+  <meta property="og:title" content="k0 — the board that knows which session needs you">
+  <meta property="og:description" content="A sticky-note board for people who run ten Claude Code sessions at once. Runs on your machine, synced with k0 Cloud.">
+  <meta name="twitter:card" content="summary">
+  <meta name="theme-color" content="#f3f1ea" media="(prefers-color-scheme: light)">
+  <meta name="theme-color" content="#1b1a17" media="(prefers-color-scheme: dark)">
+  <link rel="icon" href="favicon.svg" type="image/svg+xml">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Caveat:wght@500;700&family=Instrument+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap">
+  <link rel="stylesheet" href="site.css">
+  <script type="module" src="waitlist.js"></script>
+</head>
+<body>
+  <a class="skip" href="#main">Skip to content</a>
+
+  <header class="wrap site-header">
+    <a class="logo" href="#top" aria-label="k0, back to the top">k0</a>
+    <nav class="site-nav" aria-label="Main">
+      <a href="#features">Features</a>
+      <a href="#how">How it works</a>
+      <a href="#pricing">Pricing</a>
+      <a href="https://github.com/alessio-ragni/k0-board">GitHub</a>
+      <a href="/app/">Sign in</a>
+    </nav>
+    <a class="btn" href="#access">Get early access</a>
+  </header>
+
+  <main id="main">
+    <section id="top" class="wrap hero">
+      <div class="hero-copy">
+        <p class="kicker">for people who run ten Claude Code sessions at once</p>
+        <h1>The board that knows which session needs you.</h1>
+        <p class="lede">Every Claude Code session is a sticky note. It turns red when it is waiting for an answer, orange when a plan needs your yes, and green when it is done. Double-click and you are in its terminal. Stories, epics and the decisions behind them live on the same board — and follow you to every machine.</p>
+        <div class="actions">
+          <a class="btn btn-big" href="#access">Get early access</a>
+          <code class="pill-code">npx k0-board</code>
+        </div>
+        <p class="small">Source-available · runs on your machine · synced with k0 Cloud</p>
+      </div>
+      <div class="notes" aria-hidden="true">
+        <div class="note note-red">
+          <span class="note-key">K412 · invoices</span>
+          <span class="note-title">Fix the CSV totals</span>
+          <span class="note-status">Needs your answer · 4 min</span>
+        </div>
+        <div class="note note-orange">
+          <span class="note-key">K415 · website</span>
+          <span class="note-title">Pricing section</span>
+          <span class="note-status">Plan ready for your yes</span>
+        </div>
+        <div class="note note-blue">
+          <span class="note-key">K409 · k0</span>
+          <span class="note-title">Sync on two laptops</span>
+          <span class="note-status">Working · 12 min</span>
+        </div>
+        <div class="note note-green">
+          <span class="note-key">K401 · mobile-app</span>
+          <span class="note-title">Login with GitHub</span>
+          <span class="note-status">Done · decisions checked 6/6</span>
+        </div>
+      </div>
+    </section>
+
+    <section id="features" class="wrap section" aria-labelledby="features-title">
+      <h2 id="features-title">What it does</h2>
+      <p class="intro">Six things, each one because juggling sessions without it was costing an afternoon.</p>
+      <div class="grid">
+        <article class="card">
+          <h3>Seven colours, one glance</h3>
+          <p>Waiting for an answer, a plan to approve, your turn, working, done. The board sorts itself by who needs you first.</p>
+        </article>
+        <article class="card">
+          <h3>The real terminal, one click away</h3>
+          <p>No embedded imitation. Double-click a note and the session's own terminal comes to the front.</p>
+        </article>
+        <article class="card">
+          <h3>Decisions that get checked</h3>
+          <p>Epics, stories and every decision taken while discussing them — then the finished work held up against each one before anything is called done.</p>
+        </article>
+        <article class="card">
+          <h3>One number, everywhere</h3>
+          <p>K150 is the same story in every repository and on every machine. Offline, a story waits with a provisional key and gets its real one when you are back.</p>
+        </article>
+        <article class="card">
+          <h3>Your board on your phone</h3>
+          <p>k0 Cloud keeps a copy, so the board survives a lost laptop and reads from any browser.</p>
+        </article>
+        <article class="card">
+          <h3>Work in a worktree, merge back</h3>
+          <p>A planned story is built in its own git worktree, logged as it goes, and merged back into the branch it came from.</p>
+        </article>
+      </div>
+    </section>
+
+    <section id="how" class="wrap section-tight" aria-labelledby="how-title">
+      <h2 id="how-title">Three steps</h2>
+      <p class="intro">From nothing to a board full of sessions in about a minute.</p>
+      <ol class="steps">
+        <li>
+          <span class="step-num" aria-hidden="true">01</span>
+          <strong>Install it</strong>
+          <span class="step-text"><code>npx k0-board</code> — it runs on your machine, next to Claude Code.</span>
+        </li>
+        <li>
+          <span class="step-num" aria-hidden="true">02</span>
+          <strong>Sign in</strong>
+          <span class="step-text">GitHub or Google. Your board syncs to k0 Cloud and keeps working offline.</span>
+        </li>
+        <li>
+          <span class="step-num" aria-hidden="true">03</span>
+          <strong>Open ten sessions</strong>
+          <span class="step-text">Start them from the board and stop wondering which one needed you.</span>
+        </li>
+      </ol>
+    </section>
+
+    <section id="pricing" class="wrap section" aria-labelledby="pricing-title">
+      <h2 id="pricing-title">Pricing</h2>
+      <p class="intro">Nothing is charged during early access. These are the plans it is heading for.</p>
+      <div class="grid">
+        <div class="plan">
+          <h3>Free</h3>
+          <p class="price">$0</p>
+          <ul>
+            <li>The board and every session on it</li>
+            <li>Epics, stories, decisions, counter-check</li>
+            <li>k0 Cloud sync and the web view</li>
+          </ul>
+          <a class="btn btn-outline" href="#access">Get early access</a>
+        </div>
+        <div class="plan plan-featured">
+          <h3>Solo</h3>
+          <p class="price">$10<span> / month</span></p>
+          <p class="small-note">early access price · then $50</p>
+          <ul>
+            <li>Everything in Free</li>
+            <li>Client tickets with screenshots <span class="coming">coming</span></li>
+            <li>A first look at every ticket, before you do <span class="coming">coming</span></li>
+          </ul>
+          <a class="btn" href="#access">Get early access</a>
+        </div>
+        <div class="plan">
+          <h3>Team</h3>
+          <p class="price">Let's talk</p>
+          <ul>
+            <li>Everything in Solo</li>
+            <li>One board for the whole team <span class="coming">coming</span></li>
+            <li>See how everyone's work is going <span class="coming">coming</span></li>
+          </ul>
+          <a class="btn btn-outline" href="#access">Get early access</a>
+        </div>
+      </div>
+    </section>
+
+    <section id="access" class="wrap section" aria-labelledby="access-title">
+      <div class="access">
+        <div class="access-copy">
+          <h2 id="access-title">Get early access</h2>
+          <p>Accounts open one at a time while k0 Cloud grows. Leave your address and you will hear when yours is ready.</p>
+        </div>
+        <form class="access-form" id="waitlist" novalidate>
+          <label for="a-email">Email</label>
+          <input id="a-email" name="email" type="email" autocomplete="email" required placeholder="you@example.com"
+            aria-describedby="a-error">
+          <label for="a-note">What would you use it for? (optional)</label>
+          <input id="a-note" name="note" type="text" maxlength="500" placeholder="Five client projects, too many terminals">
+          <p class="form-error" id="a-error" role="alert" aria-live="assertive"></p>
+          <button type="submit">Get early access</button>
+        </form>
+      </div>
+    </section>
+  </main>
+
+  <footer class="wrap site-footer">
+    <span>k0 · source-available under the Sustainable Use License · made by Alessio Ragni</span>
+    <span class="footer-links">
+      <a href="https://github.com/alessio-ragni/k0-board">GitHub</a>
+      <a href="privacy.html">Privacy</a>
+      <a href="terms.html">Terms</a>
+    </span>
+  </footer>
+</body>
+</html>
