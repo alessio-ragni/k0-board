@@ -1849,8 +1849,10 @@ web/             the four pages (html, css, js served exactly as they are)
 supabase/        k0 Cloud's own side: migrations/ is its database (accounts, workspaces, the
                  rows of every board, the counter), config.toml its sign-in settings. The secrets
                  are in ~/.config/k0-cloud/.env, never in the repository
-site/            k0-board.com: static pages, no build. app/ is the read-only web board and the
-                 page where accounts are approved — both coming with the site
+site/            k0-board.com: static pages, no build, deployed as they are. index.html is the
+                 home page with the early-access form (waitlist.js), privacy, terms and 404
+                 beside it, one site.css; app/ is the read-only web board and the page where
+                 accounts are approved
 docs/
   database.md    the shape of the database as it is now, table by table, column by column
   method.md      why a decision has to be an object, what a round of questions is for, and

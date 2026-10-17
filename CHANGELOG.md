@@ -6,6 +6,14 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+### Added
+
+- **k0-board.com has a home page.** What k0 does, how to start, the plans it is heading for —
+  nothing is charged during early access — and a form to ask for an account, which says you are on
+  the list the moment you send it. Privacy and terms pages say plainly what is stored and where. It
+  follows the light or dark setting of your system, and reads on a phone.
+
+
 ## [0.6.0]
 
 k0 gets an account and a cloud. The board still runs on your machine and keeps working with no

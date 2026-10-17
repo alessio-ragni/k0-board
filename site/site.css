@@ -1,0 +1,457 @@
+/* The marketing site for k0-board.com. One stylesheet for every page; the colours live on :root so
+   the dark scheme only has to say which ones change. */
+
+:root {
+  color-scheme: light dark;
+  --paper: #f3f1ea;
+  --card: #fffdf7;
+  --line: #ddd8cb;
+  --ink: #2b2b2b;
+  --ink-strong: #000;
+  --body: #4a4740;
+  --muted: #6b665a;
+  --hand: #7d7869;
+  --on-ink: #fffdf7;
+  --panel: #2b2b2b;
+  --panel-text: #fffdf7;
+  --panel-soft: #e8e4d8;
+  --panel-line: #5a564c;
+  --panel-error: #fbb4b4;
+  --shadow: rgba(0, 0, 0, .12);
+
+  /* The notes are paper whatever the screen is doing, so their ink never changes either. */
+  --note-ink: #2b2b2b;
+  --red: #fbb4b4;
+  --orange: #fdd0a2;
+  --blue: #a9c9f5;
+  --green: #b7e8c4;
+  --yellow: #fde68a;
+  --yellow-line: #e3c65a;
+
+  --hand-font: 'Caveat', cursive;
+  --sans: 'Instrument Sans', system-ui, sans-serif;
+  --mono: 'JetBrains Mono', ui-monospace, monospace;
+  --wide: 1240px;
+  --gutter: 24px;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --paper: #1b1a17;
+    --card: #25231f;
+    --line: #3b3830;
+    --ink: #ece8dc;
+    --ink-strong: #fff;
+    --body: #c9c4b6;
+    --muted: #9d9789;
+    --hand: #a9a393;
+    --on-ink: #1b1a17;
+    --panel: #2c2a25;
+    --panel-text: #fffdf7;
+    --panel-soft: #d6d1c3;
+    --panel-line: #4a463d;
+    --shadow: rgba(0, 0, 0, .45);
+    /* A little less glare from the notes on a dark page, still light enough for their dark ink. */
+    --red: #f2a5a5;
+    --orange: #f3c290;
+    --blue: #9dbde9;
+    --green: #a8dbb5;
+    --yellow: #f4dc7c;
+    --yellow-line: #c9ab45;
+  }
+}
+
+* { box-sizing: border-box; }
+
+html { scroll-behavior: smooth; }
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  background: var(--paper);
+  color: var(--ink);
+  font-family: var(--sans);
+  overflow-wrap: break-word;
+}
+
+a { color: var(--ink); }
+a:hover { color: var(--ink-strong); }
+
+code { font-family: var(--mono); }
+
+.wrap {
+  max-width: var(--wide);
+  margin: 0 auto;
+  padding-left: var(--gutter);
+  padding-right: var(--gutter);
+}
+
+.skip {
+  position: absolute;
+  left: -9999px;
+}
+.skip:focus {
+  left: 16px;
+  top: 16px;
+  z-index: 10;
+  background: var(--card);
+  padding: 8px 12px;
+  border-radius: 8px;
+}
+
+:focus-visible {
+  outline: 3px solid var(--blue);
+  outline-offset: 2px;
+}
+
+/* Header */
+
+.site-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 16px 24px;
+  padding-top: 22px;
+  padding-bottom: 22px;
+}
+
+.logo {
+  font-family: var(--mono);
+  font-weight: 600;
+  font-size: 26px;
+  text-decoration: none;
+}
+
+.site-nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px 22px;
+  font-size: 16px;
+  flex: 1 1 auto;
+}
+.site-nav a { text-decoration: none; }
+
+.btn {
+  display: inline-block;
+  background: var(--ink);
+  color: var(--on-ink);
+  text-decoration: none;
+  padding: 12px 20px;
+  border-radius: 999px;
+  font-weight: 600;
+  font-size: 15px;
+  text-align: center;
+}
+.btn:hover { color: var(--on-ink); opacity: .9; }
+.btn-big { padding: 16px 26px; font-size: 17px; }
+.btn-outline {
+  background: transparent;
+  color: var(--ink);
+  border: 1px solid var(--ink);
+}
+.btn-outline:hover { color: var(--ink); opacity: 1; background: var(--paper); }
+
+/* Hero */
+
+.hero {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 48px;
+  align-items: center;
+  padding-top: 56px;
+  padding-bottom: 40px;
+}
+
+.hero-copy {
+  flex: 1 1 460px;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 22px;
+}
+.hero-copy p { margin: 0; }
+
+.kicker {
+  font-family: var(--hand-font);
+  font-size: 30px;
+  color: var(--hand);
+}
+
+h1 {
+  margin: 0;
+  font-size: clamp(40px, 7vw, 64px);
+  line-height: 1.02;
+  letter-spacing: -0.02em;
+  font-weight: 700;
+}
+
+.lede {
+  font-size: 20px;
+  line-height: 1.55;
+  color: var(--body);
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: center;
+}
+
+.pill-code {
+  font-size: 15px;
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  padding: 15px 20px;
+}
+
+.small { font-size: 14px; color: var(--muted); }
+
+.notes {
+  flex: 1 1 520px;
+  min-width: 0;
+  position: relative;
+  height: 470px;
+}
+
+.note {
+  position: absolute;
+  padding: 18px;
+  border-radius: 4px;
+  box-shadow: 0 12px 24px var(--shadow);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  color: var(--note-ink);
+}
+.note-key { font-family: var(--mono); font-size: 13px; font-weight: 600; }
+.note-title { font-family: var(--hand-font); font-size: 30px; line-height: 1.05; }
+.note-status { font-size: 13px; }
+
+.note-red { left: 4%; top: 10px; width: 46%; transform: rotate(-3deg); background: var(--red); }
+.note-orange { right: 4%; top: 40px; width: 44%; transform: rotate(2.5deg); background: var(--orange); }
+.note-blue { left: 10%; top: 200px; width: 42%; transform: rotate(1.5deg); background: var(--blue); }
+.note-green { right: 8%; top: 250px; width: 40%; transform: rotate(-2deg); background: var(--green); }
+
+/* Sections */
+
+.section { padding-top: 64px; padding-bottom: 64px; }
+.section-tight { padding-top: 48px; padding-bottom: 48px; }
+
+h2 {
+  margin: 0 0 8px;
+  font-family: var(--hand-font);
+  font-size: 52px;
+  font-weight: 700;
+  line-height: 1.1;
+}
+
+.intro {
+  margin: 0 0 36px;
+  font-size: 19px;
+  color: var(--body);
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(300px, 100%), 1fr));
+  gap: 20px;
+}
+
+.card {
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  padding: 26px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.card h3 { margin: 0; font-size: 21px; }
+.card p { margin: 0; font-size: 16px; line-height: 1.55; color: var(--body); }
+
+.steps {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(280px, 100%), 1fr));
+  gap: 20px;
+}
+.steps li {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  border-top: 2px solid var(--ink);
+  padding-top: 16px;
+}
+.step-num { font-family: var(--mono); font-size: 14px; color: var(--muted); }
+.steps strong { font-size: 20px; }
+.step-text { font-size: 16px; line-height: 1.5; color: var(--body); }
+
+/* Pricing */
+
+.plan {
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  padding: 28px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.plan h3 { margin: 0; font-size: 22px; }
+.plan p { margin: 0; }
+.price { font-size: 44px; font-weight: 700; line-height: 1.1; }
+.price span { font-size: 18px; font-weight: 500; }
+.small-note { font-size: 14px; }
+.plan ul { margin: 0; padding-left: 18px; font-size: 16px; line-height: 1.8; color: var(--body); }
+.plan .btn { margin-top: auto; padding: 13px; font-size: 16px; }
+
+/* The featured plan is a sticky note too, so it keeps dark ink in both schemes. */
+.plan-featured {
+  background: var(--yellow);
+  border-color: var(--yellow-line);
+  box-shadow: 0 14px 30px var(--shadow);
+  color: var(--note-ink);
+}
+.plan-featured ul { color: var(--note-ink); }
+.plan-featured .btn, .plan-featured .btn:hover { background: var(--note-ink); color: #fffdf7; }
+
+.coming {
+  font-family: var(--mono);
+  font-size: 12px;
+  padding: 1px 7px;
+  border-radius: 999px;
+  border: 1px solid currentColor;
+  white-space: nowrap;
+}
+
+/* Early access */
+
+.access {
+  background: var(--panel);
+  color: var(--panel-text);
+  border-radius: 22px;
+  padding: 44px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 32px;
+  align-items: flex-end;
+}
+.access h2 { margin: 0; }
+.access-copy {
+  flex: 1 1 380px;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.access-copy p { margin: 0; font-size: 18px; line-height: 1.5; color: var(--panel-soft); }
+
+.access-form {
+  flex: 1 1 420px;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.access-form label { font-size: 14px; color: var(--panel-soft); }
+.access-form input {
+  font: inherit;
+  font-size: 17px;
+  padding: 15px 18px;
+  border-radius: 12px;
+  border: 1px solid var(--panel-line);
+  background: #fffdf7;
+  color: #2b2b2b;
+  width: 100%;
+}
+.access-form input[aria-invalid='true'] { border-color: var(--panel-error); box-shadow: 0 0 0 2px var(--panel-error); }
+.access-form button {
+  font: inherit;
+  font-weight: 600;
+  font-size: 17px;
+  padding: 16px;
+  border-radius: 999px;
+  border: 0;
+  background: var(--yellow);
+  color: var(--note-ink);
+  cursor: pointer;
+}
+.access-form button:disabled { opacity: .6; cursor: progress; }
+.form-error { margin: 0; font-size: 15px; color: var(--panel-error); }
+.form-error:empty { display: none; }
+
+.thanks {
+  flex: 1 1 420px;
+  min-width: 0;
+  margin: 0;
+  font-family: var(--hand-font);
+  font-size: 32px;
+  line-height: 1.2;
+  color: var(--yellow);
+}
+
+/* Footer */
+
+.site-footer {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 18px;
+  justify-content: space-between;
+  font-size: 14px;
+  color: var(--muted);
+  border-top: 1px solid var(--line);
+  padding-top: 28px;
+  padding-bottom: 48px;
+}
+.footer-links { display: flex; flex-wrap: wrap; gap: 18px; }
+
+/* Privacy, terms, 404 */
+
+.doc { padding-top: 32px; padding-bottom: 72px; }
+.doc h1 { font-size: clamp(36px, 6vw, 52px); margin-bottom: 8px; }
+.doc h2 { font-size: 38px; margin: 40px 0 8px; }
+.doc p, .doc li { font-size: 17px; line-height: 1.65; color: var(--body); }
+.doc ul { padding-left: 22px; }
+.doc .small { margin-top: 0; }
+
+.lost {
+  padding-top: 64px;
+  padding-bottom: 96px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 24px;
+}
+.lost .note {
+  position: static;
+  transform: rotate(-2deg);
+  background: var(--red);
+  width: min(340px, 100%);
+}
+.lost p { margin: 0; font-size: 19px; color: var(--body); }
+
+/* Phones */
+
+@media (max-width: 640px) {
+  :root { --gutter: 16px; }
+  h2 { font-size: 42px; }
+  .lede { font-size: 18px; }
+  .hero { padding-top: 32px; gap: 32px; }
+  .section { padding-top: 44px; padding-bottom: 44px; }
+  .access { padding: 28px 20px; }
+  /* Four notes placed by hand overlap their own words on a phone, so they settle into two
+     columns, still a little crooked. */
+  .notes {
+    height: auto;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 14px;
+    padding: 6px;
+  }
+  .note { position: static; width: auto; padding: 14px; }
+  .note-title { font-size: 24px; }
+}
