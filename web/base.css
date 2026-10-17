@@ -136,3 +136,95 @@ dialog .spacer { flex: 1; }
 dialog.ask { width: min(380px, 88vw); padding: 22px 24px 18px; }
 dialog.ask p { margin: 0 0 20px; font-size: 1rem; }
 dialog.ask footer { margin: 0; }
+
+/* ── The account ──────────────────────────────────────────────────────────────
+   The chip at the end of the bar, and the screen in front of the board until an account is
+   linked and let in. See web/account.js. */
+.account { position: relative; flex: none; }
+.account-chip {
+  position: relative;
+  width: 34px;
+  height: 34px;
+  padding: 0;
+  border-radius: 999px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: visible;
+}
+.account-chip img { width: 100%; height: 100%; border-radius: 999px; object-fit: cover; }
+.account-chip .initial { font-weight: 600; }
+.account-chip .dot {
+  position: absolute;
+  right: -1px;
+  bottom: -1px;
+  width: 11px;
+  height: 11px;
+  border-radius: 999px;
+  border: 2px solid var(--bg);
+  background: var(--calm);
+}
+.account-chip.pending .dot { background: var(--warn); }
+.account-chip.offline .dot { background: var(--muted); }
+.account-menu {
+  position: absolute;
+  z-index: 6;
+  top: calc(100% + 6px);
+  right: 0;
+  min-width: 240px;
+  padding: 10px;
+  background: var(--paper);
+  border: 1px solid var(--line);
+  border-radius: 11px;
+  box-shadow: 0 12px 30px rgba(0, 0, 0, .18);
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.account-menu[hidden] { display: none; }
+.account-menu button {
+  width: 100%;
+  border: none;
+  background: none;
+  border-radius: 7px;
+  padding: 8px 11px;
+  text-align: left;
+  font-weight: 600;
+}
+.account-menu button:hover { background: #f0ede3; }
+.account-menu p { margin: 0 0 6px; overflow-wrap: anywhere; }
+.account-menu .account-said { color: var(--muted); font-size: 0.85rem; }
+
+body.gated { overflow: hidden; }
+.account-gate {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  background: color-mix(in srgb, var(--bg) 92%, transparent);
+  backdrop-filter: blur(6px);
+}
+.gate-card {
+  width: 100%;
+  max-width: 520px;
+  padding: 28px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: var(--paper);
+  box-shadow: 0 10px 40px rgb(0 0 0 / 0.08);
+}
+.gate-card h2 { margin: 0 0 10px; font-family: var(--hand); font-size: 2rem; font-weight: 600; }
+.gate-card p { margin: 0 0 14px; line-height: 1.5; }
+.gate-buttons { display: flex; flex-wrap: wrap; gap: 10px; margin: 18px 0 14px; }
+.gate-note { color: var(--muted); font-size: 0.9rem; }
+.gate-error { color: var(--alert); font-size: 0.9rem; }
+
+.auth-page main { max-width: 520px; margin: 15vh auto; padding: 0 16px; font-family: var(--sans); }
+.gate-card.wide { max-width: 860px; max-height: calc(100vh - 32px); overflow: auto; }
+.move-table h3 { margin: 18px 0 6px; font-size: 1rem; }
+.move-table table { width: 100%; border-collapse: collapse; font-size: 0.9rem; }
+.move-table th, .move-table td { text-align: left; padding: 4px 8px; border-bottom: 1px solid var(--line); vertical-align: top; }
+.move-table td:first-child, .move-table td:nth-child(2) { font-family: var(--mono); white-space: nowrap; }

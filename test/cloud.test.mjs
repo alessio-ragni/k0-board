@@ -76,6 +76,10 @@ function fakeSupabase() {
       if (!s.approved) return json(403, { message: 'not a member of this workspace' })
       return json(200, s.nextKey++)
     }
+    if (u.pathname === '/rest/v1/rpc/k0_reserve_keys') {
+      s.nextKey = Math.max(s.nextKey, body.upto + 1)
+      return json(200, s.nextKey)
+    }
     if (u.pathname === '/rest/v1/records' && opts.method === 'POST') {
       for (const r of body) s.records.set(`${r.kind}:${r.uid}`, { ...r, seq: ++s.seq })
       return json(201)
@@ -154,6 +158,31 @@ section('Signing in')
     reused = err.message
   }
   check('a sign-in cannot be finished twice', /expired/.test(reused || ''), true)
+}
+
+// ── Moving a board that was already here ─────────────────────────────────────
+section('Moving a board that was already here')
+{
+  db.createStory({ project_path: REPO, title: 'A second old one' })
+  sb.nextKey = 1
+  const before = await sync.round()
+  check('a board made before signing in has to be moved first', before.needs_move, true)
+  check('and until it is, nothing goes up', sb.records.size, 0)
+  check('and new stories are still numbered here, not by the cloud', db.createStory({ project_path: REPO, title: 'meanwhile' }).key, 'K3')
+  check('so the cloud has handed out nothing yet', sb.nextKey, 1)
+
+  const plan = await sync.movePlan()
+  check('the preview starts where the cloud is', plan.start, 1)
+  check('and lists every story on the board', plan.rows.length, 3)
+  check('oldest first, old number beside new', plan.rows.map((r) => `${r.old}>${r.new}`).join(' '), 'K1>K1 K2>K2 K3>K3')
+  check('the preview changes nothing', db.getStory(1).key, 'K1')
+
+  const done = await sync.move()
+  check('the move says how many it moved', done.moved, 3)
+  check('a copy of the database was kept first', fs.existsSync(done.backup), true)
+  check('and every old number beside its new one', JSON.parse(fs.readFileSync(done.map, 'utf8')).length, 3)
+  check('the cloud\'s counter is past the whole board', sb.nextKey, 4)
+  check('after the move nothing is left to move', sync.needsMove(), false)
 }
 
 // ── The first sync ───────────────────────────────────────────────────────────

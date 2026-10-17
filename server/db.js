@@ -735,6 +735,21 @@ function prepareSync() {
 // placed earlier in the file would reach before they exist.
 prepareSync()
 
+/** Whether there is anything on this board at all: a board with nothing on it has nothing to move. */
+export function boardIsEmpty() {
+  return !db.prepare('SELECT 1 FROM story UNION ALL SELECT 1 FROM epic LIMIT 1').get()
+}
+
+/**
+ * A copy of the whole database at this instant, in one file. `VACUUM INTO` rather than copying
+ * `k0.db`: with the write-ahead log on, the file alone is not the board — the last few changes may
+ * still be sitting in `-wal` — and this writes one consistent file with all of it folded in.
+ */
+export function backupTo(file) {
+  db.prepare('VACUUM INTO ?').run(file)
+  return file
+}
+
 /** Whether changes are being written down for the cloud. */
 export function syncRecording() {
   return !!db.prepare('SELECT recording FROM sync_flag WHERE id = 1').get()?.recording

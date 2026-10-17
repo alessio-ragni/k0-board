@@ -1,7 +1,9 @@
 import { execFileSync } from 'node:child_process'
 import path from 'node:path'
 import crypto from 'node:crypto'
+import fs from 'node:fs'
 import * as db from './db.js'
+import { HOME } from './paths.js'
 import * as cloud from './cloud.js'
 import * as mirror from './mirror.js'
 import { listProjects } from './projects.js'
@@ -196,14 +198,82 @@ export function status() {
     recording: db.syncRecording(),
     pending: db.outboxSize(),
     provisional: db.provisionalKeys().length,
+    needs_move: needsMove(),
     last_sync: state.last,
     sync_error: state.error,
   }
 }
 
+// ── The first time ───────────────────────────────────────────────────────────
+// A board that existed before its owner signed in has numbers counted on this machine — per
+// repository, if it is older than k0 Cloud — and the cloud's counter starts somewhere else. Using
+// the cloud's numbers straight away would give a new story a K1 that the old board already has.
+// So nothing is recorded and no number comes from the cloud until the board has MOVED: renumbered
+// once, in the order its stories were made, starting where the cloud says, with a copy of the
+// database kept first. The person whose board it is sees every old number beside its new one and
+// says yes before any of it happens.
+
+const MOVED = 'cloud.moved'
+
+/** Signed in, let in, and the board on this machine still has to be moved to the account. */
+export function needsMove() {
+  return cloud.linked() && cloud.approved() && db.getPref(MOVED, '') !== String(cloud.me()?.id || '') && !db.boardIsEmpty()
+}
+
+/** What the move would do: every story and epic, its old key and its new one. Writes nothing. */
+export async function movePlan() {
+  const start = await peekNext()
+  return { start, rows: db.renumberAll({ start, apply: false }) }
+}
+
+/**
+ * The cloud's next number without using it up. There is no such call in the cloud on purpose — a
+ * number asked for is a number handed out — so this asks for one and the move then starts from
+ * exactly it; the preview is computed from the same number, and the counter is pushed past the
+ * whole board at the end.
+ */
+let peeked = null
+async function peekNext() {
+  if (peeked && Date.now() - peeked.at < 30 * 60_000 && peeked.who === cloud.me()?.id) return peeked.n
+  const n = await cloud.nextKey()
+  if (!n) throw new Error('k0 Cloud cannot be reached, so the board cannot be moved yet.')
+  peeked = { n, at: Date.now(), who: cloud.me()?.id }
+  return n
+}
+
+export const BACKUPS = path.join(HOME, 'backups')
+
+/** The move itself. A copy first, then the numbers, then the `.k0/` files, then the first sync. */
+export async function move() {
+  if (!cloud.linked() || !cloud.approved()) throw new Error('Sign in, and be let in, before moving the board.')
+  const start = await peekNext()
+  fs.mkdirSync(BACKUPS, { recursive: true })
+  const stamp = new Date().toISOString().replace(/[:.]/g, '-')
+  const backup = db.backupTo(path.join(BACKUPS, `k0-before-cloud-${stamp}.db`))
+  const rows = db.renumberAll({ start, apply: true })
+  const map = path.join(BACKUPS, `k0-before-cloud-${stamp}.keys.json`)
+  fs.writeFileSync(map, JSON.stringify(rows.map((r) => ({ kind: r.kind, project: r.project_path, title: r.title, old: r.old, new: r.new })), null, 2))
+  for (const r of rows) {
+    if (r.old === r.new) continue
+    try {
+      mirror.renameKey(r.kind, r.id, r.old)
+    } catch {
+      // `.k0/` reports its own errors where it is written; the numbers are moved regardless.
+    }
+  }
+  if (rows.length) await cloud.reserveKeys(start + rows.length - 1)
+  peeked = null
+  db.setPref(MOVED, String(cloud.me()?.id || ''))
+  attach()
+  await round()
+  return { moved: rows.length, start, backup, map }
+}
+
 /** Links the board to the account that just signed in: keys from the cloud, changes recorded. */
 export function attach() {
   if (!cloud.linked() || !cloud.approved()) return false
+  if (db.boardIsEmpty() && db.getPref(MOVED, '') !== String(cloud.me()?.id || '')) db.setPref(MOVED, String(cloud.me()?.id || ''))
+  if (needsMove()) return false
   db.useCloudKeys(true)
   if (!db.syncRecording()) db.setSyncRecording(true, { snapshot: true })
   return true
@@ -276,7 +346,7 @@ export async function round() {
       await cloud.refreshMe()
       if (!cloud.approved()) return status()
     }
-    attach()
+    if (!attach()) return status()
     await giveRealKeys()
     await sendUp()
     await bringDown()

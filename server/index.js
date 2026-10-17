@@ -1821,6 +1821,21 @@ async function cloudApi(req, res, url, action) {
     return send(res, 200, await cloud.logout())
   }
   if (action === 'sync' && req.method === 'POST') return send(res, 200, await sync.round())
+  // Moving a board that existed before its owner signed in: the preview, and then the move.
+  if (action === 'move' && req.method === 'GET') {
+    try {
+      return send(res, 200, await sync.movePlan())
+    } catch (err) {
+      return send(res, 503, { error: err.message })
+    }
+  }
+  if (action === 'move' && req.method === 'POST') {
+    try {
+      return send(res, 200, await sync.move())
+    } catch (err) {
+      return send(res, 400, { error: err.message })
+    }
+  }
   return send(res, 404, { error: 'No such endpoint' })
 }
 

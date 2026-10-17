@@ -156,11 +156,19 @@ max_indexes = 5
 enabled = true
 # The base URL of your website. Used as an allow-list for redirects and for constructing URLs used
 # in emails.
-site_url = "http://127.0.0.1:3000"
+site_url = "https://k0-board.com"
 # The public URL that Auth serves on. Defaults to the API external URL with `/auth/v1` appended.
 # external_url = ""
 # A list of *exact* URLs that auth providers are permitted to redirect to post authentication.
-additional_redirect_urls = ["https://127.0.0.1:3000"]
+# k0 signs in from the machine it runs on and comes back to its own address there; the site and
+# its read-only board come back to k0-board.com.
+additional_redirect_urls = [
+  "http://localhost:*/auth/callback",
+  "http://k0.localhost:*/auth/callback",
+  "http://127.0.0.1:*/auth/callback",
+  "https://k0-board.com/**",
+  "http://localhost:*/app/**",
+]
 # How long tokens are valid for, in seconds. Defaults to 3600 (1 hour), maximum 604,800 (1 week).
 jwt_expiry = 3600
 # JWT issuer URL. If not set, defaults to auth.external_url.
@@ -218,7 +226,8 @@ web3 = 30
 
 [auth.email]
 # Allow/disallow new user signups via email to your project.
-enable_signup = true
+# GitHub or Google and nothing else: no addresses and passwords.
+enable_signup = false
 # If enabled, a user will be required to confirm any email change on both the old, and new email
 # addresses. If disabled, only the new email is required to confirm.
 double_confirm_changes = true
@@ -411,3 +420,16 @@ s3_secret_key = "env(S3_SECRET_KEY)"
 # declarative_schema_path = "./database"
 # JSON string passed through to pg-delta SQL formatting.
 # format_options = "{\"keywordCase\":\"upper\",\"indent\":2,\"maxWidth\":80,\"commaStyle\":\"trailing\"}"
+
+# The two ways into k0. Switched on once their OAuth apps exist; the ids and secrets come from the
+# environment (see ~/.config/k0-cloud/.env), never from this file.
+[auth.external.github]
+enabled = false
+client_id = "env(K0_GITHUB_CLIENT_ID)"
+secret = "env(K0_GITHUB_SECRET)"
+
+[auth.external.google]
+enabled = false
+client_id = "env(K0_GOOGLE_CLIENT_ID)"
+secret = "env(K0_GOOGLE_SECRET)"
+skip_nonce_check = false
