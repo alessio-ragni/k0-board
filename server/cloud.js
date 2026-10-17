@@ -45,14 +45,26 @@ export function useFetch(f) {
 // ── What is kept on disk ─────────────────────────────────────────────────────
 
 let saved = null
+let savedAt = 0
 
+const mtime = () => {
+  try {
+    return fs.statSync(FILE).mtimeMs
+  } catch {
+    return 0
+  }
+}
+
+// Read again whenever the file changes, so a sign-in finished by another k0 process — the command
+// line, a second server started by hand — is seen here without a restart.
 function load() {
-  if (saved) return saved
+  if (saved && mtime() === savedAt) return saved
   try {
     saved = JSON.parse(fs.readFileSync(FILE, 'utf8'))
   } catch {
     saved = {}
   }
+  savedAt = mtime()
   if (!saved.machine) {
     saved.machine = crypto.randomUUID()
     store()
@@ -67,6 +79,7 @@ function store() {
     // `mode` only applies when the file is created; one written before this line existed keeps
     // whatever it had, so it is said again.
     fs.chmodSync(FILE, 0o600)
+    savedAt = mtime()
   } catch {
     // A sign-in that cannot be written down is one that has to be done again next start. That is
     // an annoyance, not a reason for the board to stop.

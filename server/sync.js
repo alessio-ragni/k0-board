@@ -190,7 +190,7 @@ export function apply(records) {
 
 // ── The round ────────────────────────────────────────────────────────────────
 
-const state = { running: false, last: null, error: null, pushed: 0, pulled: 0 }
+const state = { running: false, last: null, error: null, pushed: 0, pulled: 0, askedMe: 0 }
 
 export function status() {
   return {
@@ -340,7 +340,12 @@ export async function round() {
   if (state.running || !cloud.enabled() || !cloud.linked()) return status()
   state.running = true
   try {
-    if (!cloud.me()) await cloud.refreshMe()
+    // Who this is is asked again every ten minutes, not only once: an account can be let in, or
+    // shut out, from the other side, and the board should notice without a restart.
+    if (!cloud.me() || Date.now() - state.askedMe > 10 * 60_000) {
+      await cloud.refreshMe()
+      state.askedMe = Date.now()
+    }
     if (!cloud.approved()) {
       // Signed in, waiting to be let in: ask again now and then, and do nothing else.
       await cloud.refreshMe()

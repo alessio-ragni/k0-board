@@ -471,6 +471,8 @@ async function doctor() {
   else if (state.running) warn('the service is running but the server is not answering')
   else warn('not running — `k0-board install` or `k0-board start`')
 
+  await cloudReport()
+
   step('What this machine can do')
   const rows = [
     ['open terminals', capabilities.terminal.pasteWithoutSending || capabilities.terminal.readScreen],
@@ -514,6 +516,49 @@ async function doctor() {
   }
 }
 
+// ── k0 Cloud ─────────────────────────────────────────────────────────────────
+/**
+ * Signing in happens in the browser, on the board: that is where GitHub or Google send you back
+ * to. So this opens the board, which shows the way in when nobody is signed in yet, and says
+ * where things stand when somebody is.
+ */
+async function login() {
+  if (!(await alive())) {
+    fail('k0 is not running — `k0-board install` or `k0-board start` first')
+    process.exit(1)
+  }
+  const s = await api('/api/cloud')
+  if (!s.enabled) return warn('k0 Cloud is switched off on this machine (K0_CLOUD=off)')
+  if (s.linked && s.approved) return ok(`signed in as ${s.email || s.name}`)
+  if (s.linked) return note(`signed in as ${s.email || s.name}, waiting to be let in — the board notices by itself`)
+  const url = await openBoard()
+  say(`Sign in on the board: ${url}`)
+}
+
+async function logout() {
+  if (!(await alive())) {
+    fail('k0 is not running')
+    process.exit(1)
+  }
+  await api('/api/cloud/logout', {})
+  ok('signed out — the board stays on this machine, and stops syncing')
+}
+
+async function cloudReport() {
+  step('k0 Cloud')
+  if (!(await alive())) return warn('the server is not running, so there is nothing to ask')
+  const s = await api('/api/cloud').catch(() => null)
+  if (!s) return warn('the server did not say')
+  if (!s.enabled) return warn('switched off on this machine (K0_CLOUD=off)')
+  if (!s.linked) return warn('nobody is signed in — `k0-board login`')
+  ok(`signed in as ${s.email || s.name}`)
+  ;(s.approved ? ok : warn)(s.approved ? 'let in' : 'waiting to be let in')
+  if (s.needs_move) warn('the board on this machine has not been moved to the account yet — the board offers it')
+  ;(s.online === false ? warn : ok)(s.online === false ? 'k0 Cloud cannot be reached right now' : 'k0 Cloud answers')
+  if (s.pending) note(`${s.pending} change${s.pending === 1 ? '' : 's'} waiting to go up`)
+  if (s.sync_error) warn(s.sync_error)
+}
+
 // ── the rest ─────────────────────────────────────────────────────────────────
 async function restart() {
   await service.restart()
@@ -547,6 +592,8 @@ ${bold('k0-board')} — a board of sticky notes that drives your Claude Code ses
   ${bold('k0-board restart')}     restart the service
   ${bold('k0-board status')}      is it running?
   ${bold('k0-board doctor')}      what this machine can and cannot do, and why
+  ${bold('k0-board login')}       sign in to k0 Cloud with GitHub or Google (on the board)
+  ${bold('k0-board logout')}      sign out; the board stays on this machine
 
 Options
   ${bold('--yes')}            do not ask, assume yes
@@ -556,7 +603,7 @@ Options
 `)
 }
 
-const commands = { install, uninstall, start, restart, status, doctor, 'shift-enter': shiftEnter }
+const commands = { install, uninstall, start, restart, status, doctor, login, logout, 'shift-enter': shiftEnter }
 
 if (flag('help') || flag('h') || command === 'help') {
   usage()
