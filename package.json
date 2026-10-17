@@ -16,7 +16,7 @@
     "type": "git",
     "url": "git+https://github.com/alessio-ragni/k0-board.git"
   },
-  "license": "MIT",
+  "license": "SEE LICENSE IN LICENSE",
   "author": "Alessio Ragni (https://alessioragni.com)",
   "type": "module",
   "bin": {

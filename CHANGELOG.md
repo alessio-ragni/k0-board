@@ -6,6 +6,17 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+### Changed
+
+- **k0 is now under the Sustainable Use License instead of MIT.** The code stays public, all of it,
+  and you can still use it, change it, and run it for yourself or inside your company; what the
+  license no longer allows is taking k0 and selling it to other people as a hosted service. It is
+  source-available, not open source, and k0 no longer calls itself that. Versions up to and
+  including 0.5.0 were released under MIT and remain under it. The manual and the security notes
+  also stop saying that k0 makes a single network request: it now has an account and a cloud of
+  its own, and they say so — two places, the cloud and the daily version check, and still nothing
+  else.
+
 ## [0.5.0]
 
 **The board tells you what to do next, and starts it.** Every story carries one button saying the

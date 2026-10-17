@@ -59,7 +59,7 @@ check('and there is no address without one', urlFor(null), null)
 // ── The four states ──────────────────────────────────────────────────────────
 section('The four states')
 const NOW = 1_700_000_000_000
-// "Up" is never a reply to a request — k0 makes no network requests. It is: the process is
+// "Up" is never a reply to a request — k0 never asks a dev server anything. It is: the process is
 // alive AND the system says it is holding a port. That is stronger evidence anyway: a server
 // still compiling would answer a request with an error and this test with the truth.
 check('nothing running, and nothing asked for', phaseOf({ started: false, running: false, now: NOW }), 'off')

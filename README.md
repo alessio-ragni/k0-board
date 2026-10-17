@@ -23,7 +23,7 @@ several over its life, one at a time, and it keeps all of them.
 
 [![Tests](https://github.com/alessio-ragni/k0-board/actions/workflows/ci.yml/badge.svg)](https://github.com/alessio-ragni/k0-board/actions/workflows/ci.yml)
 [![npm](https://img.shields.io/npm/v/k0-board)](https://www.npmjs.com/package/k0-board)
-[![License: MIT](https://img.shields.io/badge/License-MIT-informational)](LICENSE)
+[![License: Sustainable Use](https://img.shields.io/badge/License-Sustainable%20Use-informational)](LICENSE)
 
 **Contents** · [Install](#install) · [How it is used](#how-it-is-used) ·
 [The backlog](#the-backlog) · [The ChangeLog](#the-changelog) · [What's New](#whats-new) ·
@@ -33,7 +33,7 @@ several over its life, one at a time, and it keeps all of them.
 [Shift+Enter starts a new line](#shiftenter-starts-a-new-line) ·
 [Pasting into the terminal](#pasting-into-the-terminal) ·
 [How it is put together](#how-it-is-put-together) · [Security](#security) ·
-[What is not here yet](#what-is-not-here-yet) · [Contributing](#contributing) · [Licence](#licence)
+[What is not here yet](#what-is-not-here-yet) · [Contributing](#contributing) · [License](#license)
 
 ---
 
@@ -149,13 +149,18 @@ That last one deserves a sentence of its own: a process with the Accessibility p
 send keystrokes to any application, and here it is granted to your `node`, not to a signed k0
 app. Skipping it breaks nothing — the prompt gets typed and the session starts by itself.
 
-k0 makes **exactly one network request**, and you can switch it off. Once a day it asks the public
-npm registry what the newest version of `k0-board` is, so the board can mention that there is one.
-The package name is in the address and nothing else is in the request: not the version you are
-running, not your repositories, not your commits, not your board, not an identifier of any kind.
-Nothing is downloaded and nothing is run — k0 cannot update itself. Set `"updateCheck": false` in `~/.k0/config.json` and and no
-socket is opened, ever. Everything else stays as it was: no fonts fetched, no telemetry, no
-`git fetch`.
+k0 needs **an account**, and it talks to **exactly two places**. You sign in with GitHub or Google,
+and your board is kept in sync with **k0 Cloud** — k0's own database, on Supabase, in the EU — so
+it survives a lost laptop and can be read from a browser. The board you work on is still the copy
+on this machine: without a connection k0 keeps working, and catches up when the connection is back.
+
+The second place is the public npm registry. Once a day k0 asks it what the newest version of
+`k0-board` is, so the board can mention that there is one. The package name is in the address and
+nothing else is in the request: not the version you are running, not your repositories, not your
+commits, not your board, not an identifier of any kind. Nothing is downloaded and nothing is run —
+k0 cannot update itself. Set `"updateCheck": false` in `~/.k0/config.json` and that socket is never
+opened. Everything else stays as it was: no fonts fetched, no telemetry, no analytics, no
+`git fetch`, and the models still run here, through your own Claude Code.
 
 ---
 
@@ -357,8 +362,8 @@ that asked for it, close every session, restart k0 itself — the server stays u
 stays green. This is the whole reason it exists: a dev server started inside a session belongs to
 that session, and dies with it.
 
-**k0 never asks the server whether it is up.** Nothing here opens a socket — the one request k0
-makes goes to npm, and it is about versions, not about you. "Up" means the process is alive *and*
+**k0 never asks the server whether it is up.** Nothing here opens a socket to it — k0 talks to its
+own cloud and to npm, and to nothing it finds running on your machine. "Up" means the process is alive *and*
 the operating system says it is holding a TCP port
 open. That is stronger evidence than a reply would be, and it is where the port in the tooltip
 comes from — k0 never guesses a port, it reads the one your server actually chose.
@@ -874,10 +879,10 @@ not believe the paragraph above it.
 
 ### Who writes it
 
-k0 does not. **Nothing about your work leaves this machine**, and that is worth more than a better
-paragraph: a model of its own would mean a key to keep, an account to configure, and your commit
-messages going out over a wire. The one request k0 makes is to the npm registry, asking after its
-own version; it carries no commits, no repository names and no identifier.
+k0 does not. **No model of k0's own reads your work**, and that is worth more than a better
+paragraph: a model of its own would mean a key to keep, a second account to configure, and your
+commit messages going out over a wire to somebody's model. The facts are gathered on this machine
+and written up here; what k0 Cloud keeps is your board, not your commits or your diffs.
 
 It does not need one. If you are running k0 you already have Claude Code installed, signed in and
 paid for — that is the whole point of the board — so the model is already here. k0 works out the
@@ -920,7 +925,7 @@ they were written. While the prose is being written they are what there is to re
 are what you check it against.
 
 It is the same machinery as the ChangeLog, and it has the same shape: nothing is stored, no model
-of k0's own, no key and no account — the Claude Code you already pay for does the writing, on this
+of k0's own and no key of its own — the Claude Code you already pay for does the writing, on this
 machine. Nothing is downloaded either. k0 cannot update itself; the most it can do is say a newer
 version exists, and leave `npx k0-board@latest` to you.
 
@@ -1618,8 +1623,8 @@ server/
   worktree.js    a session working copy of its own: open it from the branch you are on, merge
                  it back, destroy it. Never a push, never a pull request, never a conflict
                  resolved for you, and it never runs tests or a build in there
-  update.js      the one request k0 makes — what npm says the newest version is — and the
-                 version jump that puts the mark next to k0 in the top bar
+  update.js      one of the two places k0 reaches outside — what npm says the newest version
+                 is — and the version jump that puts the mark next to k0 in the top bar
   paths.js       where the board, the logs, the settings and the cache live
   settings.js    the few things you can change, and the file that is the list of them —
                  ~/.k0/config.json, written out with everything in it and re-read when it changes
@@ -1762,8 +1767,8 @@ Windows.
 
 The ChangeLog and the What's New page run Claude Code a second way: `claude -p` on the skill that
 writes them, with the facts on standard input and no terminal at all. Those are the only times k0
-starts a model, and they still open no socket of k0's own — the request is Claude Code's, made
-with your own account, from your own machine. Both pages can be writing at once without either
+starts a model, and the model runs on Claude Code's own connection — the request is Claude Code's,
+made with your own Claude account, from your own machine, and it goes nowhere near k0 Cloud. Both pages can be writing at once without either
 cancelling the other. Those runs cannot come back as stories: `sessions.js` drops `claude -p` when it looks for
 sessions to import, which is also how it tells a hundred and forty real sessions from eight
 hundred automated ones.
@@ -1868,14 +1873,17 @@ deleting**: the stories stay in the database, and if the directory comes back so
 
 The server listens on loopback only, and refuses requests that arrive with a `Host` or `Origin`
 it does not recognise — which is what stops a web page you happen to have open from talking to it.
-HTML files from your repositories are shown in a sandbox with no permissions. There is no account
-and no token: anything already running as you on this machine can reach the API, and that is worth
+HTML files from your repositories are shown in a sandbox with no permissions. The local API has no
+login of its own: anything already running as you on this machine can reach it, and that is worth
 knowing rather than glossing over.
 
-**One request leaves this machine, and it is about k0 rather than about you.** Once a day k0 asks
-the public npm registry what the newest version of `k0-board` is, so the board can say there is
-one. The package name is in the address and nothing else — nothing about you, your repositories,
-your commits or your board — nothing is downloaded, and `"updateCheck": false` in `~/.k0/config.json` switches it off entirely.
+**k0 talks to two places, and to nothing else.** The first is k0 Cloud, where your board is synced
+once you have signed in with GitHub or Google. The token that keeps you signed in sits in `~/.k0/`,
+readable by you alone, and in the cloud every workspace's rows are fenced off from every other's by
+the database itself. The second is the public npm registry, once a day, asking what the newest
+version of `k0-board` is. The package name is in the address and nothing else — nothing about you,
+your repositories, your commits or your board — nothing is downloaded, and `"updateCheck": false`
+in `~/.k0/config.json` switches it off entirely. No telemetry, no analytics, no fonts from anywhere.
 
 The full picture, and how to report a problem privately, is in [SECURITY.md](SECURITY.md).
 
@@ -1898,6 +1906,14 @@ Yes please — especially if you are on Linux or Windows, where nobody has tried
 [CONTRIBUTING.md](CONTRIBUTING.md); the fastest useful thing you can send is the output of
 `k0-board doctor`.
 
-## Licence
+## License
 
-[MIT](LICENSE) © Alessio Ragni · [alessioragni.com](https://alessioragni.com)
+k0 is source-available under the [Sustainable Use License](LICENSE) © Alessio Ragni ·
+[alessioragni.com](https://alessioragni.com). Every line of it is public, and you may use it, change
+it, and run it for yourself or inside your company, for your own work; you may also pass it on,
+free of charge, for non-commercial purposes. What it does not allow is offering k0 to other people
+as a paid or hosted service of your own. It is not an open source license in the OSI sense, and k0
+does not call itself one.
+
+Versions up to and including 0.5.0 were released under the MIT License, and they stay that way: a
+copy of one of those keeps every right MIT gave it.

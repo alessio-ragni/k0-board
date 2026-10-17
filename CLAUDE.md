@@ -47,12 +47,14 @@ rules about tone live. It ships with the repository, not with the package.
 - **Anything that talks to the operating system goes behind `platform/contract.js`**, with an
   adapter under `platform/<os>/`. An adapter never pretends: what it cannot do it reports as a
   missing capability, so the interface can grey the button out and say why.
-- **k0 makes exactly one network request, and it lives in `server/update.js`.** Once a day it
-  asks the public npm registry what the newest version of `k0-board` is, so the board can say
-  there is one; the package name is in the address and nothing else is in the request, nothing is
-  downloaded, and `update.check = 0` stops it opening a socket at all. Everywhere else the answer
-  is still no: no fonts fetched, no telemetry, no `git fetch`. If a change would open a second
-  socket to the outside, it is the wrong change.
+- **k0 talks to two places only.** Its cloud (k0 Cloud, on Supabase), and only through
+  `server/cloud.js`; and the public npm registry, through `server/update.js`, once a day, asking
+  what the newest version of `k0-board` is — the package name is in the address and nothing else
+  is in the request, nothing is downloaded, and `"updateCheck": false` stops it opening a socket
+  at all. Everywhere else the answer is still no: no telemetry, no fonts fetched, no `git fetch`.
+  If a change would open a socket to a third destination, it is the wrong change.
+- **No secrets in the repository.** Supabase keys live in `~/.config/k0-cloud/.env` for
+  development; the only key that may appear in code is the publishable one.
 - **The server answers only itself.** Loopback bind plus a `Host`/`Origin` allowlist. Do not add
   a CORS header to make something work.
 
