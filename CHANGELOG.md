@@ -246,6 +246,9 @@ is exactly the board it was.
 
 ### Fixed
 
+- **The tests pass on Windows and Linux again**, where three of them depended on line endings, on
+  how Windows spells its temporary folder, and on two settings changes landing in different
+  milliseconds. Nothing about k0 itself changed.
 - **An open board no longer downloads fifty-six gigabytes a day.** It asked the server for
   everything k0 knows once a second and got all of it — two thirds of a megabyte, six hundred
   stories carrying their whole "Why" and their whole plan, most of them finished weeks ago and

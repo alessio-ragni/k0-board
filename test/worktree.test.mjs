@@ -133,7 +133,9 @@ const git = (args, cwd) =>
   spawnSync('git', args, { cwd, encoding: 'utf8', env: { ...process.env, GIT_CONFIG_NOSYSTEM: '1' } })
 
 const tmp = (prefix) => {
-  const dir = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), prefix)))
+  // `.native` because Windows hands the temporary folder out under its short 8.3 name
+  // (`RUNNER~1`), while git answers with the long one, and the two have to compare equal.
+  const dir = fs.realpathSync.native(fs.mkdtempSync(path.join(os.tmpdir(), prefix)))
   made.push(dir)
   return dir
 }
@@ -158,7 +160,10 @@ function settle(repo) {
     path.join(repo, '.git', 'config'),
     '[user]\n\temail = test@example.invalid\n\tname = k0 test\n' +
       '[commit]\n\tgpgsign = false\n' +
-      `[core]\n\thooksPath = ${hooks.split(path.sep).join('/')}\n`
+      `[core]\n\thooksPath = ${hooks.split(path.sep).join('/')}\n` +
+      // Git for Windows turns line endings into CRLF on checkout by default, and the tests read
+      // back exactly the bytes they wrote.
+      '\tautocrlf = false\n'
   )
   fs.writeFileSync(path.join(repo, 'README.md'), '# start\n')
   git(['add', '-A'], repo)

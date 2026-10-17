@@ -28,9 +28,13 @@ process.env.K0_CONFIG = path.join(FAKE_HOME, 'config.json')
  * writes inside the same millisecond look to it like no change at all, and the test would be
  * reading the answer from before.
  */
+let lastMoved = 0
 function switchTo(on) {
   fs.writeFileSync(process.env.K0_CONFIG, JSON.stringify({ updateCheck: on }))
-  const moved = Date.now() + 2000
+  // Always later than the previous write, even when two land inside the same millisecond on a
+  // fast machine: otherwise the second switch is invisible and the test reads the first.
+  const moved = Math.max(Date.now(), lastMoved) + 2000
+  lastMoved = moved
   fs.utimesSync(process.env.K0_CONFIG, new Date(moved), new Date(moved))
 }
 
