@@ -241,21 +241,24 @@ check('and the board still sees no session there', one(5).session_id, null)
 
 // ── The keys ─────────────────────────────────────────────────────────────────
 section('The keys')
-// Per repository, in the order the work was thought of. Two repositories both having a K1 is
-// intended: a key means something inside its own repository and nowhere else.
-check('the first repository is numbered in order', [1, 2, 3].map((id) => one(id).key).join(' '), 'K1 K2 K3')
-check('and the second one starts again at one', [4, 5, 6].map((id) => one(id).key).join(' '), 'K1 K2 K3')
+// One sequence for the whole account, in the order the work was thought of: a key is the same
+// story wherever it lives, so two repositories no longer each start at one.
+const keys = [1, 2, 3, 4, 5, 6].map((id) => one(id).key)
+check('every story is numbered', keys.every((k) => /^K\d+$/.test(k)), true)
+check('and no two share a number', new Set(keys).size, 6)
+check('in the order they were made', [1, 2, 3, 4, 5, 6].sort((x, y) => one(x).created_at - one(y).created_at || x - y)
+  .map((id) => one(id).key_num).join(' '), '1 2 3 4 5 6')
 check(
   'and the counter is left above what it handed out',
-  db.prepare('SELECT next FROM key_seq WHERE project_path = ?').get(REPO_A).next,
-  4
+  db.prepare("SELECT next FROM key_seq WHERE project_path = ''").get().next,
+  7
 )
 {
   const born = store.createStory({ title: 'after the migration', project_path: REPO_A })
-  check('so the next story gets the next number', born.key, 'K4')
+  check('so the next story gets the next number', born.key, 'K7')
   store.deleteStory(born.id)
   const again = store.createStory({ title: 'and the one after that', project_path: REPO_A })
-  check('and a deleted key is never handed out twice', again.key, 'K5')
+  check('and a deleted key is never handed out twice', again.key, 'K8')
   store.deleteStory(again.id)
 }
 

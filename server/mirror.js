@@ -622,6 +622,27 @@ function drop(folder, key, repoPath) {
   })
 }
 
+/**
+ * A story or an epic that changed its key — a provisional `K~3` that got its real number, or the
+ * one-time move to numbers counted across the whole account. The file under the old key goes and
+ * the file under the new one is written; `place` alone would leave both, because it only ever
+ * looks for files under the key it is about to write.
+ */
+export function renameKey(kind, id, oldKey) {
+  const row = kind === 'epic' ? db.getEpic(id) : db.getStory(id)
+  if (!row || !there(row.project_path)) return { file: null, error: null }
+  const folder = kind === 'epic' ? 'epics' : 'stories'
+  attempt(null, () => {
+    const dir = inside(row.project_path, folder)
+    if (!fs.existsSync(dir)) return null
+    const escaped = String(oldKey).replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+    const mine = new RegExp(`^${escaped}(-.*)?\\.md$`)
+    for (const name of fs.readdirSync(dir)) if (mine.test(name)) fs.rmSync(inside(row.project_path, folder, name))
+    return null
+  })
+  return kind === 'epic' ? writeEpic(id) : writeStory(id)
+}
+
 export const removeStory = (key, repoPath) => drop('stories', key, repoPath)
 
 export const removeEpic = (key, repoPath) => drop('epics', key, repoPath)

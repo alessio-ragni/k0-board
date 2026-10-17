@@ -23,9 +23,9 @@ several over its life, one at a time, and it keeps all of them.
 
 [![Tests](https://github.com/alessio-ragni/k0-board/actions/workflows/ci.yml/badge.svg)](https://github.com/alessio-ragni/k0-board/actions/workflows/ci.yml)
 [![npm](https://img.shields.io/npm/v/k0-board)](https://www.npmjs.com/package/k0-board)
-[![License: MIT](https://img.shields.io/badge/License-MIT-informational)](LICENSE)
+[![License: Sustainable Use](https://img.shields.io/badge/License-Sustainable%20Use-informational)](LICENSE)
 
-**Contents** · [Install](#install) · [How it is used](#how-it-is-used) ·
+**Contents** · [Install](#install) · [k0 Cloud](#k0-cloud) · [How it is used](#how-it-is-used) ·
 [The backlog](#the-backlog) · [The ChangeLog](#the-changelog) · [What's New](#whats-new) ·
 [The files of a session](#the-files-of-a-session) · [What it costs](#what-it-costs) ·
 [Filling the board with what you have already done](#filling-the-board-with-what-you-have-already-done) ·
@@ -33,7 +33,7 @@ several over its life, one at a time, and it keeps all of them.
 [Shift+Enter starts a new line](#shiftenter-starts-a-new-line) ·
 [Pasting into the terminal](#pasting-into-the-terminal) ·
 [How it is put together](#how-it-is-put-together) · [Security](#security) ·
-[What is not here yet](#what-is-not-here-yet) · [Contributing](#contributing) · [Licence](#licence)
+[What is not here yet](#what-is-not-here-yet) · [Contributing](#contributing) · [License](#license)
 
 ---
 
@@ -71,7 +71,9 @@ that and went out from a laptop.)
 | `k0-board start` | run the server in the foreground, installing nothing |
 | `k0-board restart` | restart the service |
 | `k0-board status` | is it running? exits 0 if it is, 1 if it is not |
-| `k0-board doctor` | what this machine can and cannot do, and why |
+| `k0-board doctor` | what this machine can and cannot do, and why — and where k0 Cloud stands |
+| `k0-board login` | sign in to [k0 Cloud](#k0-cloud) with GitHub or Google: opens the board, where the buttons are |
+| `k0-board logout` | sign out; the board stays on this machine and stops syncing |
 
 `--yes` does not ask. `--from-source` points the service at the directory you are in instead of
 copying it, which is what you want while working on k0 itself. `--no-open` finishes without
@@ -149,13 +151,138 @@ That last one deserves a sentence of its own: a process with the Accessibility p
 send keystrokes to any application, and here it is granted to your `node`, not to a signed k0
 app. Skipping it breaks nothing — the prompt gets typed and the session starts by itself.
 
-k0 makes **exactly one network request**, and you can switch it off. Once a day it asks the public
-npm registry what the newest version of `k0-board` is, so the board can mention that there is one.
-The package name is in the address and nothing else is in the request: not the version you are
-running, not your repositories, not your commits, not your board, not an identifier of any kind.
-Nothing is downloaded and nothing is run — k0 cannot update itself. Set `"updateCheck": false` in `~/.k0/config.json` and and no
-socket is opened, ever. Everything else stays as it was: no fonts fetched, no telemetry, no
-`git fetch`.
+k0 needs **an account**, and it talks to **exactly two places**. You sign in with GitHub or Google,
+and your board is kept in sync with **k0 Cloud** — k0's own database, on Supabase, in the EU — so
+it survives a lost laptop and can be read from a browser. The board you work on is still the copy
+on this machine: without a connection k0 keeps working, and catches up when the connection is back.
+
+The second place is the public npm registry. Once a day k0 asks it what the newest version of
+`k0-board` is, so the board can mention that there is one. The package name is in the address and
+nothing else is in the request: not the version you are running, not your repositories, not your
+commits, not your board, not an identifier of any kind. Nothing is downloaded and nothing is run —
+k0 cannot update itself. Set `"updateCheck": false` in `~/.k0/config.json` and that socket is never
+opened. Everything else stays as it was: no fonts fetched, no telemetry, no analytics, no
+`git fetch`, and the models still run here, through your own Claude Code.
+
+---
+
+## k0 Cloud
+
+Your board lives on your machine and keeps working with no network at all. k0 Cloud holds a copy
+of it, so it survives a lost laptop, reaches your other machines, and — coming with the site — can
+be read from a browser at `k0-board.com/app/`.
+
+### Signing in
+
+The first time you open the board it shows **Connect your account**, with a button for GitHub and
+one for Google. Those are the only two ways in; there is no password of k0's own. The browser goes
+to the provider, you say yes there, and it comes back to the board on this machine —
+`http://k0.localhost:4319/auth/callback` — which finishes the sign-in by itself. k0 never sees a
+password, and the one-time code that comes back is worth nothing on its own: it only works
+together with a secret this machine made before sending the browser off (PKCE).
+
+What keeps you signed in is written to `~/.k0/cloud.json`, readable by you and nobody else.
+
+`k0-board login` from a terminal does the same thing: it opens the board, which is where the
+buttons are, or says who is already signed in.
+
+The screen only stands in front of the board when there is a way past it. If the cloud has no
+sign-in switched on yet, the board simply opens: blocking it for something you cannot do anything
+about would be k0's failure passed off as yours. Offline on the very first start, the screen says
+the cloud cannot be reached instead of offering buttons that would not work.
+
+### Early access
+
+Signing in is not the same as being let in. k0 is in early access: an account opens once it has
+been approved, by hand. Until then the board says **You are on the list**, nothing is sent
+anywhere, and the board goes on working exactly as before. It notices the approval by itself — no
+restart, no second sign-in. *Use another account* on that screen signs out and starts again.
+
+(Approving accounts is done from an admin page that is coming with the site.)
+
+### What goes up, and what never leaves the machine
+
+Every few seconds, while you are signed in and let in, k0 sends what changed and fetches what your
+other machines changed: epics, stories, tasks, decisions, rounds, checklists, dependencies, the
+Log, and the sessions a story has had. A repository is named in the cloud by its `origin` remote,
+cleaned of any password and of the difference between `git@` and `https://`, so the same
+repository checked out on two machines is one column; a repository with no remote stays a name
+known only to this machine.
+
+What never leaves: which terminal window a session is in, the folder it is working in, and the
+commit it started at. Nothing from your repositories either — not files, not diffs, not commits.
+
+Sessions go up but do not come down. A session is a terminal on the machine that opened it; the
+other machine has nothing to attach it to, so it would only be a ghost there. The cloud keeps
+their status so the web board can show it.
+
+When the same thing was changed in two places, a change made here and not yet sent wins over one
+arriving from the cloud — it is what the person at this machine just did — and in the cloud a later
+change wins over an older one that arrives late, so a laptop coming back after a day away does not
+put yesterday's version over this morning's.
+
+### Offline, and keys with a `~`
+
+A key is one number for your whole account: `K150` is the same story whichever repository it is in
+and whichever machine is looking at it. So the number comes from the cloud, which is the only place
+two machines can agree on what comes next. k0 asks for it the moment you create a story or an
+epic, and waits at most two and a half seconds.
+
+When the cloud does not answer, the story is made anyway, with a **provisional key**: `K~3`. It
+works everywhere a key does. As soon as the cloud is back the sync gives it its real number, oldest
+first, and renames its file in `.k0/`. Nothing is reserved in advance, so the numbers still run in
+the order the stories were made.
+
+### Moving a board you already had
+
+A board that existed before you signed in was numbered on this machine — per repository, if it is
+older than k0 Cloud — and the cloud's counter starts somewhere else. Using the cloud's numbers
+straight away would give your next story a `K1` the board already has. So the first time an
+account is linked on a machine whose board has stories, **nothing is sent and no number is taken
+from the cloud** until the board has been moved.
+
+The board offers it: **Move your board to k0 Cloud**. *Show me the new numbers* lists every story
+and epic, repository by repository, with its old key beside its new one, and says how many pieces
+of text — a plan, a prompt, a decision — mention a key and will be updated with it. Nothing has
+changed yet at that point. *Move it* then:
+
+1. copies the whole database to `~/.k0/backups/k0-before-cloud-<time>.db`, in one consistent file;
+2. renumbers every story and epic once, in the order they were made, starting from the cloud's
+   next number;
+3. rewrites the keys written inside the text — plans, prompts, bodies, decisions, rounds, the Log,
+   the checklist — within the same repository, since that is the only place a bare `K12` ever
+   meant anything;
+4. renames the files in `.k0/`;
+5. writes `~/.k0/backups/k0-before-cloud-<time>.keys.json`, every old key beside its new one;
+6. moves the cloud's counter past the board, and sends the whole board up.
+
+When it is done the board says how many it moved, from which number, and where the two files are,
+and stays on that page until you close it.
+
+*Not now* means not now: the board keeps its old numbers and keeps working, and the offer comes
+back the next time the board is opened.
+
+### The account chip
+
+At the end of the top bar, once you are signed in: your picture, and a dot. **Green**, everything
+is in the cloud. **Amber**, changes are waiting to go up — or a story still has a provisional key.
+**Grey**, the cloud cannot be reached and the board is carrying on by itself. Click it for who is
+signed in, **Sync now**, and **Sign out**.
+
+### Signing out
+
+**Sign out** in that menu, or `k0-board logout`. The board stays on this machine exactly as it is;
+it stops syncing, keys are counted on this machine again, and nothing is queued for later.
+
+`k0-board doctor` has a *k0 Cloud* section: who is signed in, whether they have been let in,
+whether the board still has to be moved, whether the cloud answers, and how many changes are
+waiting.
+
+### Switching it off
+
+`K0_CLOUD=off` in the server's environment switches the cloud off entirely: no sign-in screen, no
+chip, no socket. It is meant for working on k0 itself and for the tests. Without an account, keys
+are still one counter for the whole board rather than one per repository, kept on this machine.
 
 ---
 
@@ -357,8 +484,8 @@ that asked for it, close every session, restart k0 itself — the server stays u
 stays green. This is the whole reason it exists: a dev server started inside a session belongs to
 that session, and dies with it.
 
-**k0 never asks the server whether it is up.** Nothing here opens a socket — the one request k0
-makes goes to npm, and it is about versions, not about you. "Up" means the process is alive *and*
+**k0 never asks the server whether it is up.** Nothing here opens a socket to it — k0 talks to its
+own cloud and to npm, and to nothing it finds running on your machine. "Up" means the process is alive *and*
 the operating system says it is holding a TCP port
 open. That is stronger evidence than a reply would be, and it is where the port in the tooltip
 comes from — k0 never guesses a port, it reads the one your server actually chose.
@@ -599,12 +726,14 @@ the whole thing.
 
 ### The key, and where it sits
 
-Every epic, story and task gets a **key**: `K` plus a number, `K42`. It is counted per repository,
-shared between epics and stories, and it is **never reused and never reassigned** — not when the
-story moves under another epic, not when you delete it, not when the repository is renamed. Two
-repositories can both have a `K42`, and that is intended: a key means something inside its
-repository and nowhere else. Move a story to another repository and it is given a key from *that*
-repository, rather than carrying a number into a place that already has one.
+Every epic, story and task gets a **key**: `K` plus a number, `K42`. It is **one number for your
+whole account** — every repository, every machine — shared between epics and stories, and it is
+**never reused and never reassigned**: not when the story moves under another epic, not when you
+delete it, not when the repository is renamed, and not when the story moves to another repository,
+since there is no other `K42` there for it to collide with. The number comes from k0 Cloud's
+counter; a story made while the cloud cannot be reached gets a provisional key, `K~3`, until the
+sync gives it its real one — see [Offline, and keys with a `~`](#offline-and-keys-with-a-). Without
+an account the same single counter is kept on this machine.
 
 Beside it there is a **position**: `1.12.1`. The first epic, its twelfth story, that story's first
 task. The position is worked out fresh every time it is shown and never stored, so it cannot
@@ -874,10 +1003,10 @@ not believe the paragraph above it.
 
 ### Who writes it
 
-k0 does not. **Nothing about your work leaves this machine**, and that is worth more than a better
-paragraph: a model of its own would mean a key to keep, an account to configure, and your commit
-messages going out over a wire. The one request k0 makes is to the npm registry, asking after its
-own version; it carries no commits, no repository names and no identifier.
+k0 does not. **No model of k0's own reads your work**, and that is worth more than a better
+paragraph: a model of its own would mean a key to keep, a second account to configure, and your
+commit messages going out over a wire to somebody's model. The facts are gathered on this machine
+and written up here; what k0 Cloud keeps is your board, not your commits or your diffs.
 
 It does not need one. If you are running k0 you already have Claude Code installed, signed in and
 paid for — that is the whole point of the board — so the model is already here. k0 works out the
@@ -920,7 +1049,7 @@ they were written. While the prose is being written they are what there is to re
 are what you check it against.
 
 It is the same machinery as the ChangeLog, and it has the same shape: nothing is stored, no model
-of k0's own, no key and no account — the Claude Code you already pay for does the writing, on this
+of k0's own and no key of its own — the Claude Code you already pay for does the writing, on this
 machine. Nothing is downloaded either. k0 cannot update itself; the most it can do is say a newer
 version exists, and leave `npx k0-board@latest` to you.
 
@@ -1618,8 +1747,13 @@ server/
   worktree.js    a session working copy of its own: open it from the branch you are on, merge
                  it back, destroy it. Never a push, never a pull request, never a conflict
                  resolved for you, and it never runs tests or a build in there
-  update.js      the one request k0 makes — what npm says the newest version is — and the
-                 version jump that puts the mark next to k0 in the top bar
+  update.js      one of the two places k0 reaches outside — what npm says the newest version
+                 is — and the version jump that puts the mark next to k0 in the top bar
+  cloud.js       the other place k0 reaches outside, and the only door to k0 Cloud: signing
+                 in, the next K number, rows up and rows down. Plain fetch, no client library
+  sync.js        moves rows between the board and the cloud every five seconds, and the
+                 one-time move of a board that predates the account. Carries rows; decides
+                 nothing about what they mean
   paths.js       where the board, the logs, the settings and the cache live
   settings.js    the few things you can change, and the file that is the list of them —
                  ~/.k0/config.json, written out with everything in it and re-read when it changes
@@ -1667,6 +1801,8 @@ web/             the four pages (html, css, js served exactly as they are)
   whatsnew.html  what changed in k0 between the version you had and this one — whatsnew.js,
                  whatsnew.css. Reached from the mark next to k0, and never opened by itself
   base.css       colours, fonts and scale: the house variables, shared by all of them
+  account.js     the account on the board: the chip at the end of the top bar, and the screen
+                 in front of the board until you are signed in, let in and moved
   awake.js       the one place that repeats anything: a job that runs only while its tab is in
                  front of you, and takes a fresh reading the moment you come back to it. A page
                  nobody can see must not be asking the server anything — asking is also how the
@@ -1708,6 +1844,11 @@ web/             the four pages (html, css, js served exactly as they are)
   commit-push-deploy/
                  the road out: the documents, the tests, the commit, the push, and the tag that
                  publishes. Also for whoever works on k0, and also not in the package
+supabase/        k0 Cloud's own side: migrations/ is its database (accounts, workspaces, the
+                 rows of every board, the counter), config.toml its sign-in settings. The secrets
+                 are in ~/.config/k0-cloud/.env, never in the repository
+site/            k0-board.com: static pages, no build. app/ is the read-only web board and the
+                 page where accounts are approved — both coming with the site
 docs/
   database.md    the shape of the database as it is now, table by table, column by column
   method.md      why a decision has to be an object, what a round of questions is for, and
@@ -1716,6 +1857,35 @@ docs/
 test/            npm test — Node's own runner, no framework. See docs/testing.md
   harness.mjs    check(label, got, want), and the sections the labels are grouped under
 ```
+
+### How the board reaches the cloud
+
+The board's rules live on the machine, in SQLite, and they stay there: states, decisions, rounds,
+dependencies. The cloud does not model the board table by table. It keeps **one document per
+row**, keyed by a `uid` the machine gave that row, so a change to k0's own tables needs no change
+in the cloud. What the cloud does own is what a single machine cannot: who you are, whether you
+have been let in, which workspace your rows belong to — a personal one today, built so a team is a
+second kind of workspace and nothing else moves — and the one counter that numbers your stories.
+
+**Changes are noticed by triggers, not by the code that makes them.** Every synced table has
+triggers that write a line into an `outbox` table on insert, update and delete. About forty places
+in `db.js` write to those tables, and a list of "remember to tell the cloud" calls would be forty
+chances to forget one; a trigger cannot be forgotten. Two switches decide whether the triggers
+write anything: one that is off until an account is linked, so a board with no cloud does not grow
+a queue for ever, and one that is on while rows that came *from* the cloud are being written, so
+they are not sent straight back.
+
+A round, every five seconds, does three things in order: gives provisional keys their real
+numbers, oldest first; sends the outbox up as documents, with references to other rows written as
+`<column>_uid` because an integer id means nothing in another database; and fetches what other
+machines wrote since the last round, in the order that puts an epic before its stories and a story
+before its decisions. A row whose owner has not arrived yet is left for a later round rather than
+written pointing at nothing. A failed round never throws at the board: it says so in the chip and
+tries again.
+
+In the cloud every row is fenced off by the database's own row-level rules: only a member of the
+workspace, with an approved account, can read or write it. The address and the key in `cloud.js`
+are public on purpose — the key identifies the project and grants nothing by itself.
 
 ### What it reads, and what it never does
 
@@ -1762,8 +1932,8 @@ Windows.
 
 The ChangeLog and the What's New page run Claude Code a second way: `claude -p` on the skill that
 writes them, with the facts on standard input and no terminal at all. Those are the only times k0
-starts a model, and they still open no socket of k0's own — the request is Claude Code's, made
-with your own account, from your own machine. Both pages can be writing at once without either
+starts a model, and the model runs on Claude Code's own connection — the request is Claude Code's,
+made with your own Claude account, from your own machine, and it goes nowhere near k0 Cloud. Both pages can be writing at once without either
 cancelling the other. Those runs cannot come back as stories: `sessions.js` drops `claude -p` when it looks for
 sessions to import, which is also how it tells a hundred and forty real sessions from eight
 hundred automated ones.
@@ -1840,6 +2010,25 @@ Field notes the code takes for granted.
   XML, and with a `1b` byte inside, that XML is not even valid. And `killall cfprefsd` twice, not
   once: **before** writing, so the preferences daemon flushes what it still holds from the Terminal
   that just quit, and **after**, or nobody sees the change.
+- **The cloud's numbers cannot be used before the board has moved.** An old board was numbered on
+  the machine, and the cloud's counter starts at 1: the first story numbered by the cloud would
+  collide with a `K1` already on the board. So a linked machine with stories records nothing and
+  asks for no number until the move has run — and the move pushes the cloud's counter past the
+  whole board before the first sync.
+- **There is no way to look at the cloud's next number without using it.** A number asked for is a
+  number handed out. So the move's preview takes one, and the move then starts from exactly that
+  number; the gap it would otherwise leave never appears.
+- **`VACUUM INTO`, not a copy of `k0.db`.** With the write-ahead log on, the file alone is not the
+  board — the last changes may still be in `-wal`. The copy taken before the move is one consistent
+  file with all of it folded in.
+- **Keys inside text are rewritten in one pass, with the whole map.** One key after another would
+  turn a `K3` that became `K12` into whatever `K12` became.
+- **Supabase's new `sb_secret_…` keys cannot be sent as a Bearer token.** The admin API — creating
+  a throwaway account, approving one from a script — needs the `service_role` JWT instead. Both
+  live in `~/.config/k0-cloud/.env`.
+- **`supabase config push` fails on the storage part with CLI 2.106**, but the auth part — the
+  redirect addresses, the providers — has already been applied by then. Check the dashboard rather
+  than trusting the exit code.
 
 ### Where the repository list comes from
 
@@ -1868,14 +2057,17 @@ deleting**: the stories stay in the database, and if the directory comes back so
 
 The server listens on loopback only, and refuses requests that arrive with a `Host` or `Origin`
 it does not recognise — which is what stops a web page you happen to have open from talking to it.
-HTML files from your repositories are shown in a sandbox with no permissions. There is no account
-and no token: anything already running as you on this machine can reach the API, and that is worth
+HTML files from your repositories are shown in a sandbox with no permissions. The local API has no
+login of its own: anything already running as you on this machine can reach it, and that is worth
 knowing rather than glossing over.
 
-**One request leaves this machine, and it is about k0 rather than about you.** Once a day k0 asks
-the public npm registry what the newest version of `k0-board` is, so the board can say there is
-one. The package name is in the address and nothing else — nothing about you, your repositories,
-your commits or your board — nothing is downloaded, and `"updateCheck": false` in `~/.k0/config.json` switches it off entirely.
+**k0 talks to two places, and to nothing else.** The first is k0 Cloud, where your board is synced
+once you have signed in with GitHub or Google. The token that keeps you signed in sits in `~/.k0/`,
+readable by you alone, and in the cloud every workspace's rows are fenced off from every other's by
+the database itself. The second is the public npm registry, once a day, asking what the newest
+version of `k0-board` is. The package name is in the address and nothing else — nothing about you,
+your repositories, your commits or your board — nothing is downloaded, and `"updateCheck": false`
+in `~/.k0/config.json` switches it off entirely. No telemetry, no analytics, no fonts from anywhere.
 
 The full picture, and how to report a problem privately, is in [SECURITY.md](SECURITY.md).
 
@@ -1898,6 +2090,14 @@ Yes please — especially if you are on Linux or Windows, where nobody has tried
 [CONTRIBUTING.md](CONTRIBUTING.md); the fastest useful thing you can send is the output of
 `k0-board doctor`.
 
-## Licence
+## License
 
-[MIT](LICENSE) © Alessio Ragni · [alessioragni.com](https://alessioragni.com)
+k0 is source-available under the [Sustainable Use License](LICENSE) © Alessio Ragni ·
+[alessioragni.com](https://alessioragni.com). Every line of it is public, and you may use it, change
+it, and run it for yourself or inside your company, for your own work; you may also pass it on,
+free of charge, for non-commercial purposes. What it does not allow is offering k0 to other people
+as a paid or hosted service of your own. It is not an open source license in the OSI sense, and k0
+does not call itself one.
+
+Versions up to and including 0.5.0 were released under the MIT License, and they stay that way: a
+copy of one of those keeps every right MIT gave it.

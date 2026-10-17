@@ -105,6 +105,18 @@ replaces the global one with a function that throws, so a change that ignored th
 instead of going out over the wire. Same shape as `K0_CLAUDE`, same reason: **what reaches outside
 has to be provable without ever going there.**
 
+The same holds for k0 Cloud, the other place k0 reaches. `test/cloud.test.mjs` points
+`K0_CLOUD_URL` at an address that does not exist, `K0_CLOUD_KEY` at a made-up key and
+`K0_CLOUD_FILE` at its temporary home, all before the first import, and replaces the global
+`fetch` with one that throws. Every call then goes through `cloud.useFetch` to a stand-in Supabase
+written in the test itself, in memory: one user, one workspace, the counter, the records table and
+the handful of endpoints k0 uses. It can be switched "down" to play the network going away. What it
+proves is the behaviour around those calls — signing in with a code, waiting to be let in, moving
+an old board and the keys written inside its text, a number coming from the cloud, a provisional
+`K~` key made offline and then replaced, changes going up, other machines' changes coming down,
+signing out — and that none of it ever throws at the board. `K0_CLOUD=off` switches the cloud off
+entirely, for anything that should not even try.
+
 ## What is not tested, and why
 
 Everything that needs a real machine: opening a terminal, keeping a laptop awake, placing a

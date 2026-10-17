@@ -58,14 +58,15 @@ section('A key is handed out once')
   check('a deleted story does not give its number back', db.createStory({ project_path: REPO, title: 'Three' }).key,
     'K4')
 
-  // The number belongs to the repository, so a story that moves takes a new one — and leaves the
-  // old one behind for nobody. Two skills resolving K2 in two repositories must not meet.
+  // The number belongs to the account, not to the repository: a story that moves keeps it, and the
+  // next story anywhere is still the next number.
   db.patchStory(first.id, { project_path: OTHER })
-  check('a story that changes repository is renumbered', db.getStory(first.id).key, 'K1')
+  check('a story that changes repository keeps its number', db.getStory(first.id).key, 'K2')
   check('and the number it left is not handed out again',
     db.createStory({ project_path: REPO, title: 'Four' }).key, 'K5')
-  check('so two repositories can both have a K1', db.getStoryByKey(OTHER, 1).id, first.id)
-  check('and the other K1 is still the epic', db.getEpicByKey(REPO, 1).id, epic.id)
+  check('and it is found under its number in the repository it moved to', db.getStoryByKey(OTHER, 2).id, first.id)
+  check('and not in the one it left', db.getStoryByKey(REPO, 2), undefined)
+  check('K1 is still the epic', db.getEpicByKey(REPO, 1).id, epic.id)
 
   // Filing a story under an epic is where it sits changing, not what it is called: the key, which
   // is the name a skill was told and the name a branch is cut with, does not move with it.
@@ -506,29 +507,31 @@ section("An epic's own discussion is visible while it is happening")
 // cut on the wrong post-it and a plan written against work nobody asked for.
 section('A key names one thing in one repository')
 {
+  // Keys are counted across the whole account, so these are read off what was made rather than
+  // assumed to start at one in a repository of their own.
   const REPO = '/tmp/k0-backlog-bykey'
   const OTHER = '/tmp/k0-backlog-bykey-other'
   const epic = db.createEpic({ project_path: REPO, title: 'Invoicing' })
   const story = db.createStory({ project_path: REPO, title: 'The totals' })
-  db.createStory({ project_path: OTHER, title: 'Somewhere else' })
+  const elsewhere = db.createStory({ project_path: OTHER, title: 'Somewhere else' })
 
-  check('the key a user says out loud finds the story', backlog.storyByKey(REPO, 'K2').id, story.id)
-  check('and the bare number finds the same one', backlog.storyByKey(REPO, '2').id, story.id)
+  check('the key a user says out loud finds the story', backlog.storyByKey(REPO, story.key).id, story.id)
+  check('and the bare number finds the same one', backlog.storyByKey(REPO, String(story.key_num)).id, story.id)
   check('spaces round it are somebody typing and not part of the name',
-    backlog.storyByKey(REPO, ' K2 ').id, story.id)
+    backlog.storyByKey(REPO, ` ${story.key} `).id, story.id)
   check('a title is not a key and names nothing', backlog.storyByKey(REPO, 'The totals'), null)
   check('nor is half of one', backlog.storyByKey(REPO, 'K'), null)
   check('and neither is nothing at all', backlog.storyByKey(REPO, null), null)
-  check('a number nobody has been given yet names nothing', backlog.storyByKey(REPO, 'K99'), null)
+  check('a number nobody has been given yet names nothing', backlog.storyByKey(REPO, 'K99999'), null)
 
   // Epics and stories are numbered out of one sequence, so exactly one of them answers each key
   // and the other has to say no rather than reach for the number it does have.
-  check('an epic answers to the same kind of key', backlog.epicByKey(REPO, 'K1').id, epic.id)
+  check('an epic answers to the same kind of key', backlog.epicByKey(REPO, epic.key).id, epic.id)
   check('and refuses a word that is not one just as flatly', backlog.epicByKey(REPO, 'Invoicing'), null)
-  check('asking for an epic by a story\'s key finds no epic', backlog.epicByKey(REPO, 'K2'), null)
-  check('and asking for a story by an epic\'s key finds no story', backlog.storyByKey(REPO, 'K1'), null)
-  check('the same key in another repository is another thing entirely',
-    backlog.storyByKey(OTHER, 'K1').title, 'Somewhere else')
+  check('asking for an epic by a story\'s key finds no epic', backlog.epicByKey(REPO, story.key), null)
+  check('and asking for a story by an epic\'s key finds no story', backlog.storyByKey(REPO, epic.key), null)
+  check('a key in another repository is found there', backlog.storyByKey(OTHER, elsewhere.key).title, 'Somewhere else')
+  check('and not here', backlog.storyByKey(REPO, elsewhere.key), null)
 }
 
 // ── The listing one board is drawn from ──────────────────────────────────────

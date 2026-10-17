@@ -7,9 +7,9 @@ processes in your repositories. That is the whole point of it, and it is also th
 understand before installing it.
 
 **The server listens on the loopback interface only** (`127.0.0.1`). It is not reachable from
-your network, from your router, or from anywhere else. There is no account, no login and no
-token: anything already running as you on this machine can talk to it, and it is worth being
-plain about that rather than implying a boundary that is not there. A process running as you
+your network, from your router, or from anywhere else. The local API has no login of its own:
+anything already running as you on this machine can talk to it, and it is worth being plain
+about that rather than implying a boundary that is not there. A process running as you
 could start those terminals by itself anyway.
 
 **Requests from web pages are refused.** Any site you visit can make requests to `127.0.0.1`,
@@ -39,14 +39,32 @@ using the thing. It reads and writes `<repo>/.k0/` there and nothing else. It is
 repository k0 already knows", and the difference is worth stating here rather than leaving to be
 discovered.
 
-**One request goes out, and it is about k0.** Once a day k0 asks `registry.npmjs.org` what the
+**Two places are reached outside this machine, and no others.**
+
+The first is **k0 Cloud**, on Supabase, in the EU. k0 needs an account — you sign in with GitHub or
+Google — and once you have, your board is synced there, so it survives a lost laptop and can be
+read from a browser. The token that keeps you signed in is stored in `~/.k0/`, in a file with
+`0600` permissions, readable by you alone. In the cloud, every row belongs to a workspace and row
+level security in the database itself decides who can read or write it: a token for one workspace
+cannot see another's, whatever the request asks for. All of this goes through
+`server/cloud.js` and nowhere else. Models are not part of it: `claude -p` runs on your machine,
+with your own Claude Code, and its requests are Claude Code's.
+
+The second is the npm registry. Once a day k0 asks `registry.npmjs.org` what the
 newest published version of `k0-board` is, so the board can say that there is a newer one. The
 package name is in the address; there is no query string, no body, no cookie, and a fixed
 `user-agent` with no version in it, so two people asking look the same. Nothing about you, your
 repositories, your commits or your board is in the request, nothing is downloaded and nothing is
 run — k0 cannot update itself. It is off with one line in `~/.k0/config.json` — `"updateCheck": false` — and off means no
-socket is opened at all. It is written out in full at the top of `server/update.js`, which is the
-only file in k0 that reaches outside; every other outbound request in this codebase is a bug.
+socket is opened at all. It is written out in full at the top of `server/update.js`.
+
+Those two files are the only ones in k0 that reach outside; every other outbound request in this
+codebase is a bug. There is no telemetry, no analytics, no font fetched from anywhere, and no
+`git fetch`.
+
+**No secrets live in the repository.** The keys for the cloud project are kept outside it; the only
+one that may appear in the code is the publishable key, which is meant to be public and grants
+nothing that row level security does not already allow.
 
 ## What installing it changes
 

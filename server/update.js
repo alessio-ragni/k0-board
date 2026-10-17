@@ -4,9 +4,10 @@ import { getPref, setPref } from './db.js'
 import { ROOT } from './paths.js'
 import * as settings from './settings.js'
 
-// ── The one request k0 makes ─────────────────────────────────────────────────
+// ── One of the two places k0 reaches outside ─────────────────────────────────
 // Everywhere else in k0 the answer to "shall we ask the internet" is no: no fonts fetched, no
-// telemetry, no `git fetch`. This file is the single exception, and what it does is written out
+// telemetry, no `git fetch`. There are two exceptions — this file, and `server/cloud.js`, which
+// keeps the board in sync with k0 Cloud — and what this one does is written out
 // here rather than left in a commit message, because it is a promise a sceptical reader should
 // be able to check by reading one screen.
 //

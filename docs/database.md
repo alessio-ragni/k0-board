@@ -68,7 +68,8 @@ close is split, not turned into another species.
 | Column | Type | What it holds |
 |---|---|---|
 | `id` | INTEGER | The story, and what everything else points at |
-| `key_num` | INTEGER | The number in `K42`. Per repository, allocated on insert, never reused and never reassigned |
+| `uid` | TEXT | The name the row goes by in k0 Cloud and on every other machine. See [What the cloud has not heard yet](#what-the-cloud-has-not-heard-yet) |
+| `key_num` | INTEGER | The number in `K42`. One for the whole account, never reused and never reassigned. Negative while provisional |
 | `title` | TEXT | What the note says. Required |
 | `project_path` | TEXT | The repository it belongs to — the column. Required |
 | `epic_id` | INTEGER | The epic it sits under, or nothing. `ON DELETE SET NULL`: deleting an epic keeps its stories |
@@ -89,11 +90,16 @@ close is split, not turned into another species.
 
 Indexed by `(project_path, sort_hint, id)`.
 
-**The key.** `K` + `key_num`, e.g. `K42`, counted per repository and shared between epics and
-stories. Two repositories can both have a `K42`; that is intended, a key means something inside
-its repository and nowhere else. The counter lives in `key_seq` rather than being a `MAX()`, so a
-deleted `K42` is never handed out again. It is the only name a story has: there is no second
-number saying where it sits, because where it sits is the tree itself and the tree can be read.
+**The key.** `K` + `key_num`, e.g. `K42`, one number for the whole account — every repository,
+every machine — shared between epics and stories. A story that moves to another repository keeps
+it. With an account linked the number comes from k0 Cloud's counter, asked just before the row is
+made; when the cloud cannot be asked the row is made with a **provisional** key, a negative
+`key_num` printed `K~3`, which the sync replaces with a real one later. Every query that prints a
+key uses the same rule — negative is `K~` and the number, positive is `K` and the number — so a
+provisional key reads the same everywhere. Without an account the counter is the one in `key_seq`,
+which is not a `MAX()`, so a deleted `K42` is never handed out again. It is the only name a story
+has: there is no second number saying where it sits, because where it sits is the tree itself and
+the tree can be read.
 
 **What may be edited from outside.** Only `title`, `description`, `project_path`, `prompt`,
 `body`, `plan`, `starred`, `lang`, `color`, `sort_hint`, `epic_id` and `parent_story_id`. `state`
@@ -174,7 +180,8 @@ One repository's worth of work with a reason behind it. An epic never spans two 
 | Column | Type | What it holds |
 |---|---|---|
 | `id` | INTEGER | The epic |
-| `key_num` | INTEGER | Its number, from the same counter the stories draw on |
+| `uid` | TEXT | Its name in k0 Cloud |
+| `key_num` | INTEGER | Its number, from the same counter the stories draw on; negative while provisional |
 | `project_path` | TEXT | The repository. Required |
 | `title` | TEXT | Required |
 | `body` | TEXT | Why this epic exists, in the user's words |
@@ -295,10 +302,92 @@ What happened, in the words of whoever did it: one row per entry, appended and n
 
 ## `key_seq`
 
-The next key to hand out in each repository: `project_path` (the primary key) and `next`. It is a
-counter and not a `MAX()`, which is the whole point — deleting `K42` must not make the next story
-`K42` again. A repository the counter has never seen starts above whatever keys are already there,
-so a database rebuilt from the `.k0/` files cannot collide with the keys written in them.
+Counters: `project_path` (the primary key, which by now is only a name) and `next`. Two rows are
+used.
+
+- **`''`**, the empty name, is the account-wide counter on this machine. Without an account it is
+  what hands out keys; with one it is kept past every number the cloud has given, so nothing here
+  is ever handed a number twice. It is a counter and not a `MAX()`, which is the whole point —
+  deleting `K42` must not make the next story `K42` again — and it never starts below the highest
+  key already on the board, so a database rebuilt from the `.k0/` files cannot collide with the
+  keys written in them.
+- **`'~provisional'`** counts provisional keys: the `3` in `K~3`, stored as `-3`.
+
+The one-time move of a board to an account empties the table and leaves a single `''` row after
+the last number it handed out.
+
+## What the cloud has not heard yet
+
+Nine tables are copied to k0 Cloud: `epic`, `story`, `session`, `decision`, `decision_check`,
+`round`, `check_item`, `dependency` and `story_log`. Each has a **`uid`** column — a random UUID,
+unique, indexed — which is the name the row goes by in the cloud and on every other machine, where
+its integer `id` means nothing. A new row gets one from its insert trigger; a row that came from
+the cloud arrives with its own.
+
+Three columns of `session` never leave the machine — `terminal_window_id`, `work_path` and
+`head_at_start` — and `session` rows go up but are never written from the cloud: a session is a
+terminal on the machine that opened it. Columns a newer k0 on another machine sends and this one
+does not have are left out rather than failing the row.
+
+### `outbox`
+
+Every change to one of those nine tables not yet delivered to the cloud.
+
+| Column | Type | What it holds |
+|---|---|---|
+| `tbl` | TEXT | Which of the nine tables |
+| `row_id` | INTEGER | The row's `rowid` there |
+| `uid` | TEXT | The row's `uid`, kept here so a delete can still be named after the row is gone |
+| `op` | TEXT | `upsert` or `delete` |
+| `at` | INTEGER | Milliseconds. When the change was made; the cloud keeps the later of two |
+
+The primary key is `(tbl, row_id)`: a row changed five times before the sync comes round is one
+line, the latest. A line is removed only if its `at` is still the one that was sent, so a change
+made while the sync was sending stays queued.
+
+It is filled by **triggers**, three on each table — `sync_<table>_insert`, `_update`, `_delete` —
+and by nothing else. About forty places in `server/db.js` write to these tables; a trigger cannot
+be forgotten by any of them. Linking an account starts with every row there is queued at once, so
+the first sync sends the whole board; signing out empties the table.
+
+### `sync_flag`
+
+One row, `id = 1`, with two switches the triggers read before writing anything:
+
+- **`recording`** — `1` while an account is linked and the board has been moved to it. Off, the
+  triggers write nothing, so a board with no cloud does not grow a queue for ever.
+- **`applying`** — `1` while rows that came *from* the cloud are being written, so they are not
+  sent straight back. It is reset to `0` at every start: a server that died halfway through would
+  otherwise stop recording for good.
+
+Whether the board has been moved to the account is the `pref` row `cloud.moved`, holding the
+account's id.
+
+## k0 Cloud
+
+The cloud is a database too, PostgreSQL on Supabase, and its shape is in `supabase/migrations/`.
+It does not copy the board table by table: the board's rules stay on the machine, and the cloud
+keeps one document per row.
+
+| Table | What it holds |
+|---|---|
+| `accounts` | One row per person who has signed in, made on their first sign-in: email, name, picture, provider, `approved` (only an admin sets it), `is_admin` |
+| `workspaces` | Where rows belong. Everybody gets a `personal` one; `team` is allowed and not used yet. `next_key` is the account-wide K counter |
+| `memberships` | Who is in which workspace, as `owner` or `member` |
+| `records` | One row of a board: `workspace_id`, `kind` (the table it came from, or `project`), `uid`, `data` (the row as JSON, references as `<column>_uid`, the repository as `project_uid`, `project_name` and `project_remote`), `deleted`, `changed_at` (the machine's milliseconds), `machine`, and `seq` |
+| `access_requests` | An address, and a line about what for, from somebody asking for early access without signing in. Anyone may write one; only an admin may read them |
+
+`seq` moves forward on every write to `records`, and a machine asks for everything past the last
+one it read, leaving out its own. An update whose `changed_at` is older than the one already there
+is not written: two machines that changed the same row keep the later change, whichever arrives
+second. Nothing deletes a record — a delete on a machine is `deleted = true`, so the other machines
+hear about it.
+
+What k0 calls, besides reading and writing `records`: `k0_me()` (who this is, whether they are in,
+and their workspace), `k0_next_key(ws)` (the next number, handed out once), `k0_reserve_keys(ws,
+upto)` (moves the counter past numbers a machine already holds) and `k0_set_approved(account,
+yes)`, for admins only. Every table has row-level security: a row of `records` is readable and
+writable only by a member of its workspace whose account is approved.
 
 ## `pref`
 
