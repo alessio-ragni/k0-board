@@ -546,7 +546,9 @@ section('A repository with no .k0/ at all')
   // A delete matches on the key and nothing else, and `K1` is the front of `K10`: a rule that
   // matched the beginning of the name would throw away a story nobody asked it to.
   const REPO = repo()
-  for (let i = 1; i <= 10; i++) mirror.writeStory(db.createStory({ project_path: REPO, title: `Story ${i}` }).id)
+  // The numbers are given rather than handed out: keys are counted across the whole account now,
+  // and what is being tested is K1 next to K10, wherever the counter happens to be.
+  for (let i = 1; i <= 10; i++) mirror.writeStory(db.createStory({ project_path: REPO, title: `Story ${i}`, key_num: i }).id)
   check('ten stories, ten files', names(k0(REPO, 'stories')).length, 10)
   check('deleting the first says it found something', mirror.removeStory('K1', REPO).gone, true)
   check('and the other nine are still there', names(k0(REPO, 'stories')).length, 9)

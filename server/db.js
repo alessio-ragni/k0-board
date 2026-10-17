@@ -390,7 +390,6 @@ db.exec(`
 `)
 
 splitSessionsOut()
-allocateMissingKeys()
 
 // Said out loud although `node:sqlite` already does it: unlike the sqlite3 command line, it opens
 // every connection with foreign keys ON, which is the only reason the cascades declared above are
@@ -657,61 +656,336 @@ function splitSessionsOut() {
 }
 
 /**
- * Every story gets its key. In `created_at, id` order per repository, so the numbers run in the
- * order the work was thought of rather than in whatever order the rows happen to come back.
+ * Every story gets its key, in `created_at, id` order, so the numbers run in the order the work
+ * was thought of rather than in whatever order the rows happen to come back.
  */
 function allocateMissingKeys() {
-  const rows = db
-    .prepare('SELECT id, project_path FROM story WHERE key_num = 0 ORDER BY project_path, created_at, id')
-    .all()
+  const rows = db.prepare('SELECT id, project_path FROM story WHERE key_num = 0 ORDER BY created_at, id').all()
   for (const row of rows) {
     db.prepare('UPDATE story SET key_num = ? WHERE id = ?').run(allocateKey(row.project_path), row.id)
   }
 }
 
-/**
- * The next number in this repository, and never one that has been handed out before — not after
- * a delete, not after a story moves under another epic. A repository k0 has not counted yet
- * starts above whatever is already there, so a database rebuilt from `.k0/` cannot collide with
- * the keys written in those files.
- */
-// `except` is the story being moved into this repository, and it is already sitting in it by the
-// time the number is asked for: without leaving it out it counts itself, and the first story to
-// arrive in an empty repository is handed K3 instead of K1. Nothing is broken by the gap, but a
-// key is something the user reads out loud, and one that starts at three has to be explained.
-function allocateKey(projectPath, except = null) {
-  const seq = db.prepare('SELECT next FROM key_seq WHERE project_path = ?').get(projectPath)
-  const highest = db
-    .prepare(
-      `SELECT MAX(n) AS n FROM (
-         SELECT MAX(key_num) AS n FROM story WHERE project_path = ? AND id IS NOT ?
-         UNION ALL SELECT MAX(key_num) FROM epic WHERE project_path = ?
-       )`
-    )
-    .get(projectPath, except)
-  const next = Math.max(seq?.next ?? 1, (highest?.n ?? 0) + 1)
-  db.prepare(
-    `INSERT INTO key_seq (project_path, next) VALUES (?, ?)
-     ON CONFLICT(project_path) DO UPDATE SET next = excluded.next`
-  ).run(projectPath, next + 1)
-  return next
+// ── What the cloud has not heard yet ─────────────────────────────────────────
+// Every row the board is made of gets a `uid` — the name it goes by in the cloud and on every
+// other machine, where its integer id means nothing — and every change to one of those rows
+// leaves a line in `outbox` until the sync has delivered it.
+//
+// It is done with triggers, and that is the reason it can be trusted: forty-odd places in this
+// file write to these tables, and a list of "remember to tell the cloud" calls would be forty
+// chances to forget one. A trigger cannot be forgotten. Two switches in `sync_flag` decide whether
+// it writes anything: `recording`, off until an account is linked so a board with no cloud does
+// not grow a queue for ever, and `applying`, on while rows that came FROM the cloud are being
+// written, so they are not sent straight back.
+
+/** The tables the cloud keeps a copy of. Closed: nothing builds a table name out of a value. */
+export const SYNCED = ['epic', 'story', 'session', 'decision', 'decision_check', 'round', 'check_item', 'dependency', 'story_log']
+
+const UUID = `lower(hex(randomblob(4))) || '-' || lower(hex(randomblob(2))) || '-4' ||
+  substr(lower(hex(randomblob(2))), 2) || '-' || substr('89ab', 1 + (abs(random()) % 4), 1) ||
+  substr(lower(hex(randomblob(2))), 2) || '-' || lower(hex(randomblob(6)))`
+const MS = `CAST((julianday('now') - 2440587.5) * 86400000 AS INTEGER)`
+const RECORDING = `(SELECT recording = 1 AND applying = 0 FROM sync_flag WHERE id = 1)`
+
+function prepareSync() {
+  for (const t of SYNCED) addColumns(t, [['uid', 'TEXT']])
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS outbox (
+      tbl    TEXT NOT NULL,
+      row_id INTEGER NOT NULL,
+      uid    TEXT,
+      op     TEXT NOT NULL,
+      at     INTEGER NOT NULL,
+      PRIMARY KEY (tbl, row_id)
+    );
+    CREATE TABLE IF NOT EXISTS sync_flag (
+      id        INTEGER PRIMARY KEY CHECK (id = 1),
+      recording INTEGER NOT NULL DEFAULT 0,
+      applying  INTEGER NOT NULL DEFAULT 0
+    );
+    INSERT OR IGNORE INTO sync_flag (id) VALUES (1);
+    -- A server that died in the middle of applying would otherwise stop recording for good.
+    UPDATE sync_flag SET applying = 0;
+  `)
+  for (const t of SYNCED) {
+    db.exec(`UPDATE ${t} SET uid = ${UUID} WHERE uid IS NULL`)
+    db.exec(`CREATE UNIQUE INDEX IF NOT EXISTS idx_${t}_uid ON ${t}(uid)`)
+    db.exec(`
+      CREATE TRIGGER IF NOT EXISTS sync_${t}_insert AFTER INSERT ON ${t} BEGIN
+        UPDATE ${t} SET uid = ${UUID} WHERE rowid = NEW.rowid AND uid IS NULL;
+        INSERT OR REPLACE INTO outbox (tbl, row_id, uid, op, at)
+          SELECT '${t}', NEW.rowid, (SELECT uid FROM ${t} WHERE rowid = NEW.rowid), 'upsert', ${MS}
+          WHERE ${RECORDING};
+      END;
+      CREATE TRIGGER IF NOT EXISTS sync_${t}_update AFTER UPDATE ON ${t} BEGIN
+        INSERT OR REPLACE INTO outbox (tbl, row_id, uid, op, at)
+          SELECT '${t}', NEW.rowid, NEW.uid, 'upsert', ${MS}
+          WHERE ${RECORDING} AND NEW.uid IS NOT NULL;
+      END;
+      CREATE TRIGGER IF NOT EXISTS sync_${t}_delete AFTER DELETE ON ${t} BEGIN
+        INSERT OR REPLACE INTO outbox (tbl, row_id, uid, op, at)
+          SELECT '${t}', OLD.rowid, OLD.uid, 'delete', ${MS}
+          WHERE ${RECORDING} AND OLD.uid IS NOT NULL;
+      END;
+    `)
+  }
+}
+
+// Here and not with the migrations above: it reads the constants just above it, which a call
+// placed earlier in the file would reach before they exist.
+prepareSync()
+
+/** Whether changes are being written down for the cloud. */
+export function syncRecording() {
+  return !!db.prepare('SELECT recording FROM sync_flag WHERE id = 1').get()?.recording
 }
 
 /**
- * A key that came from outside — a `.k0/` file read back into an empty database — keeps the
- * number it was written with, and the counter is pushed past it so nothing is ever handed it
- * a second time.
+ * Start or stop writing changes down. Starting from nothing queues every row there is: the first
+ * sync after an account is linked sends the whole board, and after that only what moves.
  */
-function reserveKey(projectPath, keyNum) {
-  const n = Number(keyNum)
-  if (!Number.isInteger(n) || n < 1) return allocateKey(projectPath)
-  const seq = db.prepare('SELECT next FROM key_seq WHERE project_path = ?').get(projectPath)
+export function setSyncRecording(on, { snapshot = false } = {}) {
+  atomically(() => {
+    db.prepare('UPDATE sync_flag SET recording = ? WHERE id = 1').run(on ? 1 : 0)
+    if (on && snapshot) {
+      for (const t of SYNCED) {
+        db.exec(`INSERT OR REPLACE INTO outbox (tbl, row_id, uid, op, at)
+                 SELECT '${t}', rowid, uid, 'upsert', ${MS} FROM ${t} WHERE uid IS NOT NULL`)
+      }
+    }
+    if (!on) db.exec('DELETE FROM outbox')
+  })
+}
+
+/** The oldest changes not yet delivered. */
+export function outboxBatch(limit = 200) {
+  return db.prepare('SELECT tbl, row_id, uid, op, at FROM outbox ORDER BY at, tbl, row_id LIMIT ?').all(limit)
+}
+
+export function outboxSize() {
+  return db.prepare('SELECT COUNT(*) AS n FROM outbox').get().n
+}
+
+/** Delivered. Only the line as it was read: a change made since then stays queued. */
+export function outboxDone(entries) {
+  const del = db.prepare('DELETE FROM outbox WHERE tbl = ? AND row_id = ? AND at = ?')
+  for (const e of entries) del.run(e.tbl, e.row_id, e.at)
+}
+
+const syncedTable = (t) => (SYNCED.includes(t) ? t : null)
+
+/** One synced row exactly as it is stored, or null when it is gone. */
+export function syncRow(tbl, rowId) {
+  const t = syncedTable(tbl)
+  return t ? (db.prepare(`SELECT rowid AS _rowid, * FROM ${t} WHERE rowid = ?`).get(rowId) ?? null) : null
+}
+
+/** The uid of a row, from its id: how a reference leaves this machine. */
+export function uidOf(tbl, id) {
+  const t = syncedTable(tbl)
+  if (!t || id == null) return null
+  return db.prepare(`SELECT uid FROM ${t} WHERE rowid = ?`).get(id)?.uid ?? null
+}
+
+/** The id of a row, from its uid: how a reference arrives on this machine. */
+export function idOfUid(tbl, uid) {
+  const t = syncedTable(tbl)
+  if (!t || !uid) return null
+  return db.prepare(`SELECT rowid AS id FROM ${t} WHERE uid = ?`).get(uid)?.id ?? null
+}
+
+/**
+ * Writes rows that came from the cloud, without sending them back. `fn` gets `put(tbl, row)` and
+ * `drop(tbl, uid)`; `row` carries `uid` and plain columns, references already turned into ids.
+ * Columns this machine does not have are left out rather than failing the whole batch: a newer
+ * k0 on another machine may well know a column this one does not.
+ */
+export function applyRemote(fn) {
+  const columns = new Map(SYNCED.map((t) => [t, new Set(db.prepare('SELECT name FROM pragma_table_info(?)').all(t).map((r) => r.name))]))
+  const put = (tbl, row) => {
+    const t = syncedTable(tbl)
+    if (!t || !row.uid) return null
+    const known = columns.get(t)
+    const fields = Object.entries(row).filter(([k]) => known.has(k) && k !== 'id' && k !== 'rowid')
+    const existing = idOfUid(t, row.uid)
+    if (existing != null) {
+      const set = fields.filter(([k]) => k !== 'uid')
+      if (set.length) db.prepare(`UPDATE ${t} SET ${set.map(([k]) => `"${k}" = ?`).join(', ')} WHERE rowid = ?`).run(...set.map(([, v]) => v), existing)
+      return existing
+    }
+    const { lastInsertRowid } = db
+      .prepare(`INSERT OR IGNORE INTO ${t} (${fields.map(([k]) => `"${k}"`).join(', ')}) VALUES (${fields.map(() => '?').join(', ')})`)
+      .run(...fields.map(([, v]) => v))
+    return Number(lastInsertRowid) || idOfUid(t, row.uid)
+  }
+  const drop = (tbl, uid) => {
+    const t = syncedTable(tbl)
+    if (t && uid) db.prepare(`DELETE FROM ${t} WHERE uid = ?`).run(uid)
+  }
+  db.exec('UPDATE sync_flag SET applying = 1')
+  try {
+    let out
+    atomically(() => {
+      out = fn(put, drop)
+    })
+    return out
+  } finally {
+    db.exec('UPDATE sync_flag SET applying = 0')
+  }
+}
+
+// ── Keys ─────────────────────────────────────────────────────────────────────
+// A key is one number for the whole account, not one per repository: K150 is the same story
+// whichever repository it lives in and whichever machine is looking at it. So the number that
+// counts is the cloud's, which is the only place two machines can agree on what comes next.
+//
+// The cloud is asked by the server before it creates something (see `cloud.nextKey`), and the
+// number arrives here as `cloud_key`. When it cannot be asked — no network, the cloud down — the
+// story is still made, with a PROVISIONAL key: a negative number on disk, printed `K~3`, which
+// the sync gives a real one the moment the cloud is back (`assignKey`). Nothing is held back or
+// reserved in advance, so the numbers stay in the order the stories were made.
+//
+// Without an account linked — the tests, and somebody working on k0 itself with `K0_CLOUD=off` —
+// there is no cloud to ask, and the account-wide counter is kept here instead: the row of
+// `key_seq` whose `project_path` is empty.
+
+/** What a key looks like to anybody reading it. One rule, used by every query that prints one. */
+function keyText(col) {
+  return `CASE WHEN ${col} < 0 THEN 'K~' || (-${col}) ELSE 'K' || ${col} END`
+}
+
+const ACCOUNT = ''
+const PROVISIONAL = '~provisional'
+
+/** Whether keys come from the cloud. Set by `cloud.js` when an account is linked or unlinked. */
+let cloudKeys = false
+export function useCloudKeys(on) {
+  cloudKeys = !!on
+}
+
+function counter(name) {
+  return db.prepare('SELECT next FROM key_seq WHERE project_path = ?').get(name)?.next ?? 1
+}
+
+function setCounter(name, next) {
   db.prepare(
     `INSERT INTO key_seq (project_path, next) VALUES (?, ?)
      ON CONFLICT(project_path) DO UPDATE SET next = excluded.next`
-  ).run(projectPath, Math.max(seq?.next ?? 1, n + 1))
+  ).run(name, next)
+}
+
+/** The highest real number anything carries, anywhere on this machine. */
+function highestKey(except = null) {
+  return (
+    db
+      .prepare(
+        `SELECT MAX(n) AS n FROM (
+           SELECT MAX(key_num) AS n FROM story WHERE id IS NOT ?
+           UNION ALL SELECT MAX(key_num) FROM epic
+         )`
+      )
+      .get(except)?.n ?? 0
+  )
+}
+
+/**
+ * The next number, and never one handed out before — not after a delete either. With an account
+ * linked it is a provisional one, because a real one can only come from the cloud.
+ *
+ * `projectPath` is kept in the signature for the callers that still pass it: a number used to be
+ * per repository, and it is not any more.
+ */
+function allocateKey(_projectPath = null, except = null) {
+  if (cloudKeys) return provisionalKey()
+  const next = Math.max(counter(ACCOUNT), highestKey(except) + 1)
+  setCounter(ACCOUNT, next + 1)
+  return next
+}
+
+function provisionalKey() {
+  const n = counter(PROVISIONAL)
+  setCounter(PROVISIONAL, n + 1)
+  return -n
+}
+
+/**
+ * A key that came from outside — the cloud, or a `.k0/` file read back into an empty database —
+ * keeps its number, and the local counter is pushed past it so nothing is ever handed it twice.
+ */
+function reserveKey(_projectPath, keyNum) {
+  const n = Number(keyNum)
+  if (!Number.isInteger(n) || n < 1) return allocateKey()
+  setCounter(ACCOUNT, Math.max(counter(ACCOUNT), n + 1))
   return n
 }
+
+/** Which key a new row is born with: the cloud's, a number it was told to keep, or the next one. */
+const keyFor = (projectPath, cloudKey, keyNum) =>
+  Number.isInteger(cloudKey) && cloudKey > 0
+    ? reserveKey(projectPath, cloudKey)
+    : keyNum == null
+      ? allocateKey(projectPath)
+      : reserveKey(projectPath, keyNum)
+
+/** The rows still carrying a provisional key, oldest first: the order the cloud numbers them in. */
+export function provisionalKeys() {
+  return db
+    .prepare(
+      `SELECT 'story' AS kind, id, key_num, project_path, created_at FROM story WHERE key_num < 0
+       UNION ALL
+       SELECT 'epic', id, key_num, project_path, created_at FROM epic WHERE key_num < 0
+       ORDER BY created_at, id`
+    )
+    .all()
+}
+
+/** A provisional key becomes a real one. Returns the key text it had, so `.k0/` can let it go. */
+export function assignKey(kind, id, keyNum) {
+  const table = kind === 'epic' ? 'epic' : kind === 'story' ? 'story' : null
+  const n = Number(keyNum)
+  if (!table || !Number.isInteger(n) || n < 1) return null
+  const row = db.prepare(`SELECT key_num FROM ${table} WHERE id = ?`).get(id)
+  if (!row || row.key_num > 0) return null
+  db.prepare(`UPDATE ${table} SET key_num = ? WHERE id = ?`).run(n, id)
+  setCounter(ACCOUNT, Math.max(counter(ACCOUNT), n + 1))
+  return `K~${-row.key_num}`
+}
+
+/**
+ * The one-time move to account-wide numbers: every story and epic on this machine, in the order
+ * it was made, numbered from `start`. Returns the old and the new key of each, which is what the
+ * person moving their board reads before saying yes. With `apply` false nothing is written.
+ */
+export function renumberAll({ start = 1, apply = false } = {}) {
+  const rows = db
+    .prepare(
+      `SELECT 'story' AS kind, id, key_num, project_path, title, created_at FROM story
+       UNION ALL
+       SELECT 'epic', id, key_num, project_path, title, created_at FROM epic
+       ORDER BY created_at, kind, id`
+    )
+    .all()
+  const plan = rows.map((r, i) => ({
+    kind: r.kind,
+    id: r.id,
+    project_path: r.project_path,
+    title: r.title,
+    old: r.key_num < 0 ? `K~${-r.key_num}` : `K${r.key_num}`,
+    key_num: start + i,
+    new: `K${start + i}`,
+  }))
+  if (apply) {
+    atomically(() => {
+      for (const p of plan) db.prepare(`UPDATE ${p.kind} SET key_num = ? WHERE id = ?`).run(p.key_num, p.id)
+      db.prepare('DELETE FROM key_seq').run()
+      setCounter(ACCOUNT, start + plan.length)
+    })
+  }
+  return plan
+}
+
+// After the keys section and not with the migrations above it, for the same reason as `prepareSync`.
+allocateMissingKeys()
 
 const now = () => Date.now()
 
@@ -748,7 +1022,7 @@ const PATCHABLE = [
  * the two axes are put back together here, in one place, and only here.
  */
 const STORY_COLUMNS = `
-  s.id, s.key_num, 'K' || s.key_num AS "key", s.project_path, s.epic_id, s.parent_story_id,
+  s.id, s.key_num, ${keyText('s.key_num')} AS "key", s.project_path, s.epic_id, s.parent_story_id,
   s.title, s.description, s.body, s.prompt, s.plan, s.state, s.starred, s.lang, s.color,
   s.sort_hint, s.completed_at, s.imported_at, s.created_at, s.updated_at,
   v.id AS session_row_id, v.session_id, COALESCE(v.alive, 0) AS session_alive,
@@ -881,10 +1155,11 @@ export function createStory({
   parent_story_id = null,
   sort_hint = 0,
   key_num = null,
+  cloud_key = null,
   auto_send = false,
 }) {
   const t = now()
-  const key = key_num == null ? allocateKey(project_path) : reserveKey(project_path, key_num)
+  const key = keyFor(project_path, cloud_key, key_num)
   const { lastInsertRowid } = q(`
     INSERT INTO story (key_num, title, description, project_path, epic_id, parent_story_id, prompt, body,
                        color, lang, state, sort_hint, created_at, updated_at)
@@ -913,14 +1188,14 @@ export function sessionIds() {
  * at the bottom of the post-it comes from: importing must not make everything look like today.
  * The state is `Working` and not `Backlog` for the same reason: this is work that has started.
  */
-export function importStory({ title, description = '', project_path, session_id, started_at, ended_at }) {
+export function importStory({ title, description = '', project_path, session_id, started_at, ended_at, cloud_key = null }) {
   const t = now()
   const born = Number(started_at) || t
   const last = Number(ended_at) || born
   const { lastInsertRowid } = q(`
     INSERT INTO story (key_num, title, description, project_path, prompt, state, imported_at, created_at, updated_at)
     VALUES (?, ?, ?, ?, '', 'Working', ?, ?, ?)
-  `).run(allocateKey(project_path), title, description || '', project_path, t, born, last)
+  `).run(keyFor(project_path, cloud_key, null), title, description || '', project_path, t, born, last)
   const id = Number(lastInsertRowid)
   q(`
     INSERT INTO session (story_id, session_id, alive, status, started_at, ended_at) VALUES (?, ?, 0, 'IDLE', ?, ?)
@@ -951,8 +1226,6 @@ export function patchStory(id, fields) {
   const wanted = { ...fields }
   if (wanted.parent_story_id != null && wouldCycle(id, wanted.parent_story_id)) delete wanted.parent_story_id
 
-  const wasIn = q('SELECT project_path FROM story WHERE id = ?').get(id)?.project_path ?? null
-
   const entries = Object.entries(wanted).filter(([k]) => PATCHABLE.includes(k))
   if (entries.length) {
     const set = entries.map(([k]) => `${k} = ?`).join(', ')
@@ -960,15 +1233,8 @@ export function patchStory(id, fields) {
       .run(...entries.map(([, v]) => (typeof v === 'boolean' ? Number(v) : v)), now(), id)
   }
 
-  // A key is a number inside one repository, so a story that moves to another repository cannot
-  // keep it: the repository it lands in has a K3 of its own, and two of them make `getStoryByKey`
-  // answer with whichever sorts first, while every skill that resolves a key addresses the wrong
-  // story and `wt-K3` collides on the branch. It is given the next number where it now lives; the
-  // one it left behind is not handed out again, because `allocateKey` only ever counts forwards.
-  const nowIn = q('SELECT project_path FROM story WHERE id = ?').get(id)?.project_path ?? null
-  if (nowIn && nowIn !== wasIn) {
-    q('UPDATE story SET key_num = ? WHERE id = ?').run(allocateKey(nowIn, id), id)
-  }
+  // A key is one number for the whole account, so a story that moves to another repository keeps
+  // it: there is no K3 of the other repository's for it to collide with any more.
 
   // Two fields that are not columns of `story` any more, and must not silently go nowhere:
   // `state` writes a line in the diary, `auto_send` belongs to the session that will run next.
@@ -1318,7 +1584,7 @@ const EPIC_PATCHABLE = ['title', 'body', 'state', 'lang', 'sort_hint']
 /** An epic is open or it is done. There is no third thing an epic can be. */
 export const EPIC_STATES = ['Open', 'Done']
 
-const epicRow = `SELECT id, key_num, 'K' || key_num AS "key", project_path, title, body, state, lang,
+const epicRow = `SELECT id, key_num, ${keyText('key_num')} AS "key", project_path, title, body, state, lang,
                         sort_hint, created_at, updated_at FROM epic`
 
 export function listEpics(projectPath = null) {
@@ -1335,9 +1601,9 @@ export function getEpicByKey(projectPath, keyNum) {
   return q(`${epicRow} WHERE project_path = ? AND key_num = ?`).get(projectPath, Number(keyNum))
 }
 
-export function createEpic({ project_path, title, body = '', lang = '', sort_hint = 0, key_num = null }) {
+export function createEpic({ project_path, title, body = '', lang = '', sort_hint = 0, key_num = null, cloud_key = null }) {
   const t = now()
-  const key = key_num == null ? allocateKey(project_path) : reserveKey(project_path, key_num)
+  const key = keyFor(project_path, cloud_key, key_num)
   const { lastInsertRowid } = q(`
     INSERT INTO epic (key_num, project_path, title, body, lang, sort_hint, created_at, updated_at)
     VALUES (?, ?, ?, ?, ?, ?, ?, ?)
@@ -1707,7 +1973,7 @@ export function patchCheckItem(id, fields) {
 /** The stories this one is waiting for, with enough of each to say so on the post-it. */
 export function dependenciesOf(storyId) {
   return q(`
-    SELECT s.id, s.key_num, 'K' || s.key_num AS "key", s.title, s.state
+    SELECT s.id, s.key_num, ${keyText('s.key_num')} AS "key", s.title, s.state
     FROM dependency d JOIN story s ON s.id = d.depends_on
     WHERE d.story_id = ? ORDER BY s.sort_hint, s.id
   `).all(storyId)
@@ -1725,7 +1991,7 @@ export function dependenciesOf(storyId) {
  */
 export function dependenciesByStory() {
   const rows = q(`
-    SELECT d.story_id, s.id, 'K' || s.key_num AS "key", s.title, s.state
+    SELECT d.story_id, s.id, ${keyText('s.key_num')} AS "key", s.title, s.state
     FROM dependency d JOIN story s ON s.id = d.depends_on
     ORDER BY s.sort_hint, s.id
   `).all()
@@ -1741,7 +2007,7 @@ export function dependenciesByStory() {
 /** And the ones waiting for it, which is what makes finishing this one worth doing first. */
 export function dependentsOf(storyId) {
   return q(`
-    SELECT s.id, s.key_num, 'K' || s.key_num AS "key", s.title, s.state
+    SELECT s.id, s.key_num, ${keyText('s.key_num')} AS "key", s.title, s.state
     FROM dependency d JOIN story s ON s.id = d.story_id
     WHERE d.depends_on = ? ORDER BY s.sort_hint, s.id
   `).all(storyId)
@@ -1963,7 +2229,7 @@ export function usageAccounts() {
 export function usageSessions(from, to) {
   return q(`
     SELECT us.session_id, us.project_path, us.cwd, us.title, us.first_at, us.last_at,
-           st.id AS story_id, 'K' || st.key_num AS story_key, st.title AS story_title
+           st.id AS story_id, ${keyText('st.key_num')} AS story_key, st.title AS story_title
       FROM usage_session us
       LEFT JOIN session se ON se.id = (
         SELECT id FROM session WHERE session_id = us.session_id ORDER BY started_at DESC LIMIT 1)
