@@ -168,6 +168,8 @@ additional_redirect_urls = [
   "http://127.0.0.1:*/auth/callback",
   "https://k0-board.com/**",
   "http://localhost:*/app/**",
+  # The AWS Amplify address the site is served from until k0-board.com points at it.
+  "https://main.d2a5vvbyu1rsx6.amplifyapp.com/**",
 ]
 # How long tokens are valid for, in seconds. Defaults to 3600 (1 hour), maximum 604,800 (1 week).
 jwt_expiry = 3600

@@ -16,6 +16,7 @@ again where a key lives or how somebody is let in.
 | Secrets for development | `~/.config/k0-cloud/.env`, mode 600, never in a repository | the machine |
 | The board's own copy of a sign-in | `~/.k0/cloud.json`, mode 600 | each user's machine |
 | Read-only board and admin page | `site/app/`, static, deployed with the site at `k0-board.com/app/` | this repository |
+| The site's hosting | AWS Amplify app **k0-board** (`d2a5vvbyu1rsx6`, eu-west-1, AWS CLI profile `raypath`), branch `main`, served at `https://main.d2a5vvbyu1rsx6.amplifyapp.com` until `k0-board.com` points at it | the personal AWS account |
 
 Both OAuth apps send people back to the same place: `https://pegjzrbsogextluajmjm.supabase.co/auth/v1/callback`.
 Supabase then sends them on to k0 on their own machine (`http://k0.localhost:4319/auth/callback`)
@@ -56,10 +57,21 @@ reliable way is the Management API with the CLI's token (`~/.supabase/access-tok
 Supabase dashboard), put it in `~/.config/k0-cloud/.env`, and push it to Supabase's Auth settings
 the same way. Nothing in the repository changes.
 
+**Putting the site online.** The Amplify app is not connected to GitHub: it takes a zip of `site/`.
+
+```bash
+export AWS_PROFILE=raypath AWS_REGION=eu-west-1 APP=d2a5vvbyu1rsx6
+(cd site && rm -f /tmp/k0-site.zip && zip -qr /tmp/k0-site.zip . -x README.md)
+read JOB URL < <(aws amplify create-deployment --app-id $APP --branch-name main --query '[jobId,zipUploadUrl]' --output text)
+curl -sS -X PUT -T /tmp/k0-site.zip "$URL" && aws amplify start-deployment --app-id $APP --branch-name main --job-id $JOB
+```
+
+A page that does not exist is answered with `404.html` (a rewrite rule on the app).
+
 ## Not done yet
 
 - **Google sign-in is in "Testing".** Only the test users listed in Google Auth Platform → Audience
   can sign in with Google (the owner's address is one), up to 100. Publishing it needs the
   branding page completed — home page, privacy policy and terms on `k0-board.com` — which waits for
   the site and the domain. GitHub has no such limit.
-- **The read-only board and the admin page are not online.** They go up with the site.
+- **k0-board.com is not bought yet.** When it is, add it as a custom domain on the Amplify app and keep `https://k0-board.com/**` in the redirect allow-list (it is already there).
