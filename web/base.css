@@ -225,6 +225,7 @@ body.gated { overflow: hidden; }
 .auth-page main { max-width: 520px; margin: 15vh auto; padding: 0 16px; font-family: var(--sans); }
 .gate-card.wide { max-width: 860px; max-height: calc(100vh - 32px); overflow: auto; }
 .move-table h3 { margin: 18px 0 6px; font-size: 1rem; }
-.move-table table { width: 100%; border-collapse: collapse; font-size: 0.9rem; }
+.move-table table { width: 100%; border-collapse: collapse; font-size: 0.9rem; table-layout: fixed; }
+.move-table th:first-child, .move-table th:nth-child(2) { width: 90px; }
 .move-table th, .move-table td { text-align: left; padding: 4px 8px; border-bottom: 1px solid var(--line); vertical-align: top; }
 .move-table td:first-child, .move-table td:nth-child(2) { font-family: var(--mono); white-space: nowrap; }

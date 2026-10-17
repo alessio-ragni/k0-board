@@ -49,6 +49,8 @@ let later = false
 
 function gate(s) {
   let box = $('#account-gate')
+  // The page that says the move is done stays until it is read and closed.
+  if (box?.dataset.kind === 'done') return
   const signIn = s.enabled && (!s.linked || !s.approved) && (s.providers?.length || (!s.linked && s.online === false))
   // The move is offered, not imposed: the board keeps working on its own numbers until its owner
   // has looked at the new ones and said yes, and "Not now" really means not now.
@@ -103,6 +105,8 @@ function move(s) {
       go.disabled = true
       try {
         const done = await post('move')
+        const box = $('#account-gate')
+        if (box) box.dataset.kind = 'done'
         card.replaceChildren(
           el('h2', {}, 'Moved'),
           el('p', {}, `${done.moved} stories and epics now carry their account-wide numbers, starting at K${done.start}.`),

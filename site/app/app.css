@@ -194,7 +194,13 @@ main.gate p { margin: 0 0 16px; }
 .panel[hidden] { display: none; }
 .panel .head { display: flex; align-items: flex-start; gap: 12px; margin-bottom: 4px; }
 .panel h2 { margin: 0; font-size: 1.25rem; flex: 1; overflow-wrap: anywhere; }
-.panel h3 { font-size: .8rem; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); margin: 22px 0 8px; }
+.panel h3 {
+  font-size: .8rem;
+  text-transform: uppercase;
+  letter-spacing: .06em;
+  color: var(--muted);
+  margin: 22px 0 8px;
+}
 .panel .meta { color: var(--muted); font-size: .85rem; }
 .panel pre {
   margin: 0;
@@ -214,9 +220,21 @@ main.gate p { margin: 0 0 16px; }
 /* ── Admin ──────────────────────────────────────────────────────────────── */
 main.admin { padding: 20px 24px 40px; }
 main.admin h2 { font-size: 1.1rem; margin: 18px 0 10px; }
-table.list { width: 100%; border-collapse: collapse; background: var(--paper); border: 1px solid var(--line); border-radius: 10px; }
-table.list th, table.list td { text-align: left; padding: 9px 12px; border-bottom: 1px solid var(--line); font-size: .88rem; vertical-align: top; }
-table.list th { color: var(--muted); font-weight: 600; font-size: .75rem; text-transform: uppercase; letter-spacing: .05em; }
+table.list { width: 100%; border-collapse: collapse; background: var(--paper); border: 1px solid var(--line); }
+table.list th, table.list td {
+  text-align: left;
+  padding: 9px 12px;
+  border-bottom: 1px solid var(--line);
+  font-size: .88rem;
+  vertical-align: top;
+}
+table.list th {
+  color: var(--muted);
+  font-weight: 600;
+  font-size: .75rem;
+  text-transform: uppercase;
+  letter-spacing: .05em;
+}
 table.list td { overflow-wrap: anywhere; }
 .tag { font-size: .72rem; font-weight: 700; padding: 1px 8px; border-radius: 999px; color: var(--pill-ink); }
 .tag.pending { background: var(--PLANNED); }

@@ -6,7 +6,48 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+### Added
+
+- **k0 Cloud: your board keeps a copy of itself, and you sign in with GitHub or Google.** The board
+  still lives on your machine and works with no network at all; every few seconds it sends what
+  changed and fetches what your other machines changed, so it survives a lost laptop and reaches a
+  second one. Which terminal a session is in, the folder it works in and the commit it started at
+  never leave the machine, and nothing from your repositories goes up — not files, not commits.
+  k0 is in early access: once you are signed in the board says *You are on the list* and sends
+  nothing until your account has been approved, and it notices the approval by itself. The
+  sign-in screen only stands in front of the board when there is a way past it. A read-only board
+  on the web, and the page where accounts are approved, are coming with the site.
+- **A key is one number for your whole account.** `K150` is the same story in every repository and
+  on every machine, and the number comes from the cloud the moment the story is made. Without a
+  connection the story is made anyway with a provisional key, `K~3`, which becomes a real one —
+  file in `.k0/` renamed with it — as soon as the cloud answers again. Without an account the same
+  single counter is kept on your machine.
+- **Moving a board you already had to the account, once, when you say so.** The first time you
+  sign in on a machine whose board has stories, nothing is sent until the board has been moved:
+  the board shows every old key beside its new one, repository by repository, and how many plans,
+  prompts and decisions mention a key. On yes it keeps a copy of the whole board first, renumbers
+  everything in the order it was made, updates the keys written inside the text, renames the
+  files in `.k0/`, and leaves a list of every old key and its new one beside the copy. *Not now*
+  leaves the board exactly as it was.
+- **Who is signed in, and whether the cloud has everything, at the end of the top bar.** Your
+  picture and a dot: green when everything is in the cloud, amber while changes are waiting, grey
+  when the cloud cannot be reached and the board is carrying on by itself. Its menu has *Sync now*
+  and *Sign out*.
+- **`k0-board login` and `k0-board logout`**, and a *k0 Cloud* section in `k0-board doctor` saying
+  who is signed in, whether they have been let in, whether the board still has to be moved, and
+  how many changes are waiting.
+
+How far this has been tried: the whole road was run against the real cloud with a throwaway
+account — signing in, waiting to be let in, the move, a new story numbered by the cloud, and its
+rows arriving there — and the move was rehearsed on a copy of a real board of 938 stories across
+25 repositories. Signing in with GitHub or Google for real has not been tried yet, because neither
+is switched on in the cloud.
+
 ### Changed
+
+- **A story moved to another repository keeps its key.** It used to be given a new one from the
+  repository it moved to; now that a key is one number for the whole account, there is nothing
+  there for it to collide with.
 
 - **k0 is now under the Sustainable Use License instead of MIT.** The code stays public, all of it,
   and you can still use it, change it, and run it for yourself or inside your company; what the
