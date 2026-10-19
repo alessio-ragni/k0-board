@@ -6,6 +6,13 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+
+## [0.7.0]
+
+k0 gets a public home at k0-board.com, where you can read what it does and ask for an early-access
+account, and asking now sends you an email that says you are on the list. On your own machine, the
+terminals k0 opens keep a margin at the edge of the screen in every mode again, Driving included.
+
 ### Added
 
 - **k0-board.com has a home page.** What k0 does, how to start, the plans it is heading for —
@@ -782,7 +789,8 @@ here is everything that had to change for it to be somebody else's tool as well.
 - The personal fixtures k0 grew up on. `test/clean.test.mjs` now fails the build if any of them
   come back.
 
-[Unreleased]: https://github.com/alessio-ragni/k0-board/compare/v0.6.0...HEAD
+[Unreleased]: https://github.com/alessio-ragni/k0-board/compare/v0.7.0...HEAD
+[0.7.0]: https://github.com/alessio-ragni/k0-board/compare/v0.6.0...v0.7.0
 [0.6.0]: https://github.com/alessio-ragni/k0-board/compare/v0.5.0...v0.6.0
 [0.5.0]: https://github.com/alessio-ragni/k0-board/compare/v0.4.0...v0.5.0
 [0.4.0]: https://github.com/alessio-ragni/k0-board/compare/v0.3.0...v0.4.0
