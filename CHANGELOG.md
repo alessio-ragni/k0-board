@@ -17,6 +17,15 @@ All notable changes to this project are documented here. The format follows
   let in. Mail to the address on the site reaches a person. Tried for real: the notice and a
   forwarded message both arrived.
 
+### Changed
+
+- **Terminals keep a margin in every mode, Driving included.** A terminal k0 opens or rearranges
+  takes 90% of the free screen, centred, so there is always a strip at the edge to click on. Driving
+  still makes the text large, but no longer stretches the window across the whole screen.
+- **The last Italian leftovers are gone.** The board no longer answers to `#nuovo` (`#new` still
+  opens a new story), and a document's title is read from `title` or `name` only, no longer from
+  `titolo` or `nome`.
+
 
 ## [0.6.0]
 

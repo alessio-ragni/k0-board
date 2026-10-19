@@ -956,7 +956,7 @@ function plate(data) {
   </div>`
 }
 
-const TITLE_KEYS = new Set(['title', 'titolo', 'name', 'nome'])
+const TITLE_KEYS = new Set(['title', 'name'])
 
 /**
  * Hand a path to the file manager. The same call for a file and for a folder: which of the two

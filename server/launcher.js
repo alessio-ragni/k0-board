@@ -100,14 +100,12 @@ export async function renameLive(story) {
 /** In driving mode the terminal has to be readable from across the room. */
 const DRIVING_FONT_SIZE = 22
 
-/** And a window worth glancing at from there takes the whole screen, not its usual share of it. */
-const DRIVING_COVERAGE = 1
-
-/** How big the text has to be right now: it depends only on the mode in force. */
+/**
+ * How big the text has to be right now: it depends only on the mode in force. The window does
+ * not: it keeps its usual share of the screen in every mode, because the margin around it is
+ * where you click to get past it.
+ */
 const fontSize = () => (isDriving() ? Promise.resolve(DRIVING_FONT_SIZE) : terminal.defaultFontSize())
-
-/** And how much screen the window takes. Undefined means "your usual share", whatever it is. */
-const coverage = () => (isDriving() ? DRIVING_COVERAGE : undefined)
 
 /**
  * Puts every window k0 owns the way the mode in force wants it, text and size in one gesture.
@@ -115,10 +113,10 @@ const coverage = () => (isDriving() ? DRIVING_COVERAGE : undefined)
  * server restart left behind at the wrong size.
  */
 export async function applyModeToWindows(handles) {
-  return terminal.applyMode(handles, { fontSize: await fontSize(), coverage: coverage() })
+  return terminal.applyMode(handles, { fontSize: await fontSize() })
 }
 
-export const relayoutWindows = (handles) => terminal.relayout(handles, { coverage: coverage() })
+export const relayoutWindows = (handles) => terminal.relayout(handles)
 export const setWindowTitle = (handle, title) => terminal.setTitle(handle, title)
 export const focusWindow = (handle, title) => terminal.focus(handle, title)
 export const closeTerminal = ({ winId, pid }) => terminal.close({ handle: winId, pid })
@@ -209,7 +207,7 @@ export async function launch({ story, sessionId, mode = 'start' }) {
   if (autoSend) args.push(story.prompt.trim())
 
   const command = terminal.buildCommand({ cwd: story.project_path, bin, args, env: SESSION_ENV })
-  const winId = await terminal.open({ command, title: name, fontSize: await fontSize(), coverage: coverage() })
+  const winId = await terminal.open({ command, title: name, fontSize: await fontSize() })
   const up = await waitForSession(sessionId)
 
   if (autoSend) return { name, up, winId, pasted: true, autoSent: true }

@@ -346,8 +346,8 @@ are still one counter for the whole board rather than one per repository, kept o
   work and check keep a task per step — so without it they would be asking for a tool that is not
   there.
 
-  The window is born **centred on the screen you are using**, at 86% of the free space: the same
-  margin on all four sides, never under a menu bar or a dock. Open more than one and they stack
+  The window is born **centred on the screen you are using**, at 90% of the free space, in every mode:
+  the same margin on all four sides, never under a menu bar or a dock. Open more than one and they stack
   in the middle — double click brings the one underneath back.
 
   **If the screen changes** — you plug a monitor in or out, or change resolution — the windows put
@@ -1521,7 +1521,7 @@ one again does nothing — you leave a mode, you do not switch it off.
 | two **z** | **Sleep** | sleeps as it normally would | goes off | normal |
 | a **palm tree** | **Away** | does not sleep, not even with the lid closed | may sleep and lock | normal |
 | a **nerd face** with glasses | **Nerd** | does not sleep | **stays on** | normal |
-| a **car** | **Driving** | does not sleep | **stays on** | **large**: the text here and in the terminals, and the terminals fill the screen |
+| a **car** | **Driving** | does not sleep | **stays on** | **large**: the text here and in the terminals |
 
 The four icons do not describe the machine: they describe **where you are**. Asleep, away, at the
 desk, watching from across the room. That is where the order comes from, and it is why the second
@@ -1569,17 +1569,22 @@ they reorder by urgency, reddest to the left. On a screen you glance at, two or 
 visible at a time and the most urgent one has to come to you. Full screen you have them all in
 front of you already, and a board that reshuffles itself while you work only loses your place.
 
-**The windows grow with the text.** In Driving a terminal takes the whole free screen; leave
-Driving and it goes back to the usual 86% centred, with the text back at the profile's size. It is
-one gesture and not two, and it lands on the terminals **already open**, not only on the ones you
-open next.
+**The windows keep their margin.** In every mode, Driving included, a terminal takes 90% of the
+free screen, centred, with the same strip left free on all four sides — that strip is where you
+click to reach whatever is behind it. Driving changes the text, not the share: switch it on and the
+terminals get 22 point text and are put back at 90% centred; switch it off and the text goes back
+to the profile's size. It is one gesture and not two, and it lands on the terminals **already
+open**, not only on the ones you open next.
+
+For a while Driving took the whole free screen instead, which left nothing at the edge to click on;
+the margin is worth more than the last tenth of the screen.
 
 It used to be the opposite, and the reason is worth keeping in mind: Terminal.app holds rows and
 columns when the font changes and resizes the window to match — going from 12 to 22 turns a 700×500
 window into 1378×856, measured — so k0 read each window's own bounds first and put them back, and
 nothing moved. What that left behind was a window holding 22 point text in a box measured for 12.
-Half a gesture is worse than none, so the size of the text and the size of the window now travel
-together, and the price is said plainly: **a window you had dragged onto another screen comes back
+Half a gesture is worse than none, so the text is set first and the window put back at its share
+right after, and the price is said plainly: **a window you had dragged onto another screen comes back
 to the middle of the main one.**
 
 **All of them, every time.** k0 asks Terminal once for the windows it has open and changes those

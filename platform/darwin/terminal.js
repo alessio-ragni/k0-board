@@ -17,8 +17,11 @@ const PBPASTE = () => which('pbpaste', ['/usr/bin/pbpaste'])
 /** Escape for an AppleScript string literal. */
 const asq = (s) => String(s).replace(/\\/g, '\\\\').replace(/"/g, '\\"')
 
-/** How much of the free screen area a window takes unless somebody asks for more. */
-const COVERAGE = 0.86
+/**
+ * How much of the free screen area a window takes, in every mode: the rest is margin, and the
+ * margin is where you click to reach whatever is behind it.
+ */
+const COVERAGE = 0.9
 
 /**
  * How long a pass over the open windows may take. The five seconds `run` gives every other
@@ -27,9 +30,6 @@ const COVERAGE = 0.86
  * precisely the failure this file used to have.
  */
 const PASS_TIMEOUT = 20000
-
-/** In driving mode the terminal has to be readable from across the room. */
-export const DRIVING_FONT_SIZE = 22
 
 /**
  * The profile's font size, asked once and then remembered. It is what we go back to when
@@ -51,8 +51,7 @@ export async function defaultFontSize() {
  * same for all of them: otherwise the first time a monitor is unplugged every window would
  * change size for no reason.
  *
- * `coverage` is how much of the free area the window takes: the usual share, or all of it when
- * the mode wants windows readable from across the room.
+ * `coverage` is how much of the free area the window takes; left out, it is the usual share.
  *
  * Leaves `x1`, `y1`, `w` and `h` behind, which is what `bounds` needs.
  */

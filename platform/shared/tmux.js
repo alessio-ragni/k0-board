@@ -36,8 +36,8 @@ const EMULATORS = [
   { bin: 'xterm', args: (cmd) => ['-e', ...cmd] },
 ]
 
-/** How much of the work area a window takes unless the mode asks for more. */
-const COVERAGE = 0.86
+/** How much of the work area a window takes, in every mode: the rest is margin. */
+const COVERAGE = 0.9
 
 /**
  * Which emulator to open. `K0_TERMINAL` wins, because no list of ours will ever cover every

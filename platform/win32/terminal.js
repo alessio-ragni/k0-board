@@ -26,8 +26,8 @@ import { ps, psJson, psq } from './powershell.js'
 const WT = () => which('wt')
 const POWERSHELL_BIN = () => which('pwsh') || which('powershell')
 
-/** How much of the work area a window takes unless the mode asks for more. */
-const COVERAGE = 0.86
+/** How much of the work area a window takes, in every mode: the rest is margin. */
+const COVERAGE = 0.9
 
 /** The user32 declarations every window operation here needs, added once per PowerShell run. */
 const USER32 = `

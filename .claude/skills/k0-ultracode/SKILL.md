@@ -240,12 +240,12 @@ the Log records as merged is ever done twice.
 
 ## 10. Close
 
-To the user, in his language, and nothing after it:
+To the user, in his language — the two headings too — and nothing after it:
 
-**Cosa ho fatto** — what is different now, story by story: whether the tests were green, what the
+**What I did** — what is different now, story by story: whether the tests were green, what the
 fresh pair of eyes said, how the counter-check came out.
 
-**Cosa resta a te** — the assumptions taken alone, so he can overturn any of them with
+**What is left for you** — the assumptions taken alone, so he can overturn any of them with
 `/k0-discuss`; the assignments left out and what they needed; whatever the repairs did not fix; and
 that the stories are sitting in `Review` waiting for him to press `Done`, which is his and nobody
 else's.
