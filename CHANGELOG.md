@@ -6,6 +6,23 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+### Added
+
+- **A dictation trial, before k0 gets a dictation of its own.** On a Mac with macOS 26, open
+  `k0.localhost/dictate.html` and dictate with Wispr Flow as usual, holding Control: k0 Dictate, a
+  small app of k0's own, listens to the same microphone at the same moment and hands the phrase to
+  two engines that run on the Mac, Apple's and Whisper. Each phrase shows the three texts side by
+  side with how long each took, and the recording to play back. Holding Control while pressing any
+  other key throws the recording away, so Control+C in a terminal is left alone. Elsewhere the page
+  says it needs macOS 26 and stays off.
+
+### Changed
+
+- **k0 can reach a third place, and only when you ask.** The Whisper model the trial needs is
+  downloaded once, about 1.6 GB, when you press the button that shows where it comes from — and not
+  at all if a copy is already on the Mac. Only the model comes in: what you dictate and its
+  recordings stay on the Mac, outside the board's database, and one button throws them away.
+
 
 ## [0.7.0]
 

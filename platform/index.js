@@ -82,12 +82,17 @@ const unsupported = {
     describe: () => [],
   },
   extras: [],
+  dictate: {
+    launch: async () => {
+      throw new Error(`k0 Dictate does not run on ${process.platform}.`)
+    },
+  },
 }
 
 const platform = load ? { ...unsupported, ...(await load()) } : unsupported
 
 export default platform
-export const { name, capabilities, notes, terminal, power, metrics, servers, shell, service, extras } =
+export const { name, capabilities, notes, terminal, power, metrics, servers, shell, service, extras, dictate } =
   platform
 
 /**

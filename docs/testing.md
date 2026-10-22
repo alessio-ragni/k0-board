@@ -105,7 +105,15 @@ replaces the global one with a function that throws, so a change that ignored th
 instead of going out over the wire. Same shape as `K0_CLAUDE`, same reason: **what reaches outside
 has to be provable without ever going there.**
 
-The same holds for k0 Cloud, the other place k0 reaches. `test/cloud.test.mjs` points
+The same holds for the Whisper model of the dictation trial. `test/dictate.test.mjs` replaces the
+global `fetch` with one that throws, hands `downloadModel` and the transcription their own `fetch`
+instead, and checks that the download asks exactly the address the page shows and that every
+request to Whisper goes to `127.0.0.1`. `whisper-server` itself is a three-line shell script put
+first on `PATH`, so no model is loaded and no microphone is involved. The Swift app is not tested
+here: what it does is listen to a microphone and a keyboard, and the trial itself is how it is
+checked.
+
+The same holds for k0 Cloud, another place k0 reaches. `test/cloud.test.mjs` points
 `K0_CLOUD_URL` at an address that does not exist, `K0_CLOUD_KEY` at a made-up key and
 `K0_CLOUD_FILE` at its temporary home, all before the first import, and replaces the global
 `fetch` with one that throws. Every call then goes through `cloud.useFetch` to a stand-in Supabase
