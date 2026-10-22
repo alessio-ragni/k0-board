@@ -13,12 +13,12 @@
   <key>CFBundlePackageType</key>
   <string>APPL</string>
   <key>CFBundleShortVersionString</key>
-  <string>0.1.0</string>
+  <string>0.2.0</string>
   <key>CFBundleVersion</key>
-  <string>1</string>
+  <string>2</string>
   <key>LSMinimumSystemVersion</key>
   <string>26.0</string>
-  <!-- No Dock icon, no windows: it listens for Control and nothing else is on screen. -->
+  <!-- No Dock icon and no windows: the pill at the bottom of the screen is all there is of it. -->
   <key>LSUIElement</key>
   <true/>
   <key>NSMicrophoneUsageDescription</key>

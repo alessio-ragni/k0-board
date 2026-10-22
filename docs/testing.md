@@ -109,9 +109,11 @@ The same holds for the Whisper model of the dictation trial. `test/dictate.test.
 global `fetch` with one that throws, hands `downloadModel` and the transcription their own `fetch`
 instead, and checks that the download asks exactly the address the page shows and that every
 request to Whisper goes to `127.0.0.1`. `whisper-server` itself is a three-line shell script put
-first on `PATH`, so no model is loaded and no microphone is involved. The Swift app is not tested
-here: what it does is listen to a microphone and a keyboard, and the trial itself is how it is
-checked.
+first on `PATH`, so no model is loaded and no microphone is involved. The same file covers the
+dictation's server side: the switch cannot be turned on before an engine is kept, the settings file
+keeps lines written by hand, a live phrase is refused outside its folder and deleted once heard, and
+the history never holds more than ten. The Swift app is not tested here: what it does is listen to a
+microphone and a keyboard and paste into another app, and trying it by hand is how it is checked.
 
 The same holds for k0 Cloud, another place k0 reaches. `test/cloud.test.mjs` points
 `K0_CLOUD_URL` at an address that does not exist, `K0_CLOUD_KEY` at a made-up key and

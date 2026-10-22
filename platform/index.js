@@ -86,6 +86,10 @@ const unsupported = {
     launch: async () => {
       throw new Error(`k0 Dictate does not run on ${process.platform}.`)
     },
+    enable: async () => {
+      throw new Error(`k0 Dictate does not run on ${process.platform}.`)
+    },
+    disable: async () => {},
   },
 }
 

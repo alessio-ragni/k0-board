@@ -5,7 +5,7 @@ import crypto from 'node:crypto'
 import zlib from 'node:zlib'
 import * as db from './db.js'
 import { allowed } from './guard.js'
-import { ROOT } from './paths.js'
+import { ROOT, LOG_DIR } from './paths.js'
 import { readLiveSessions, deriveStatus, forgetSession, forgetDeadSessions, renameSession, busy } from './watcher.js'
 import {
   launch,
@@ -1804,9 +1804,11 @@ async function api(req, res, url) {
 
 // ── k0 Cloud ─────────────────────────────────────────────────────────────────
 
-// ── The dictation trial ──────────────────────────────────────────────────────
+// ── Dictation, and the trial that chose its engine ───────────────────────────
 // The app (dictate/) says hello and posts each phrase; the page reads the lot and adds Wispr's
-// answer. Everything stays on this Mac — see the top of server/dictate.js for the one download.
+// answer. Once an engine is chosen and dictation switched on, the app asks here for Whisper's
+// text and keeps its last ten phrases here. Everything stays on this Mac — see the top of
+// server/dictate.js for the one download.
 async function dictateApi(req, res, seg) {
   const [, , what, id, extra] = seg
   const available = capabilities.dictation === true
@@ -1836,6 +1838,37 @@ async function dictateApi(req, res, seg) {
   if (what === 'model' && req.method === 'POST') {
     dictate.downloadModel()
     return send(res, 200, dictate.state().whisper)
+  }
+  // The verdict of the trial, and the switch it unlocks.
+  if (what === 'engine' && req.method === 'POST') {
+    const done = dictate.choose((await readBody(req)).engine)
+    return done.error ? send(res, 400, done) : send(res, 200, dictate.state().dictation)
+  }
+  if (what === 'switch' && req.method === 'POST') {
+    const on = (await readBody(req)).on === true
+    try {
+      if (on) {
+        const reason = dictate.whyNotOn(settings.read().dictationEngine)
+        if (reason) return send(res, 400, { error: reason })
+        settings.write({ dictation: true })
+        await dictateApp.enable({ source: path.join(ROOT, 'dictate'), out: dictate.DIR, port: PORT, logDir: LOG_DIR })
+      } else {
+        settings.write({ dictation: false })
+        await dictateApp.disable()
+      }
+    } catch (err) {
+      return send(res, 500, { error: `k0 Dictate did not start: ${String(err.stderr || err.message || err).trim()}` })
+    }
+    return send(res, 200, dictate.state().dictation)
+  }
+  if (what === 'transcribe' && req.method === 'POST') {
+    const heard = await dictate.transcribeLive(await readBody(req))
+    return send(res, heard.error ? 400 : 200, heard)
+  }
+  if (what === 'history' && req.method === 'GET') return send(res, 200, dictate.history())
+  if (what === 'history' && req.method === 'POST') {
+    const list = dictate.remember(await readBody(req))
+    return send(res, list.error ? 400 : 200, list)
   }
   if (what === 'app' && req.method === 'POST') {
     try {
