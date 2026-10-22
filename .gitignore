@@ -2,6 +2,7 @@ k0.db
 k0.db-wal
 k0.db-shm
 menubar/k0.app/
+dictate/k0 Dictate.app/
 node_modules/
 .DS_Store
 

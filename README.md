@@ -151,7 +151,7 @@ That last one deserves a sentence of its own: a process with the Accessibility p
 send keystrokes to any application, and here it is granted to your `node`, not to a signed k0
 app. Skipping it breaks nothing — the prompt gets typed and the session starts by itself.
 
-k0 needs **an account**, and it talks to **exactly two places**. You sign in with GitHub or Google,
+k0 needs **an account**, and it talks to **exactly three places**, the third only if you ask. You sign in with GitHub or Google,
 and your board is kept in sync with **k0 Cloud** — k0's own database, on Supabase, in the EU — so
 it survives a lost laptop and can be read from a browser. The board you work on is still the copy
 on this machine: without a connection k0 keeps working, and catches up when the connection is back.
@@ -161,8 +161,14 @@ The second place is the public npm registry. Once a day k0 asks it what the newe
 nothing else is in the request: not the version you are running, not your repositories, not your
 commits, not your board, not an identifier of any kind. Nothing is downloaded and nothing is run —
 k0 cannot update itself. Set `"updateCheck": false` in `~/.k0/config.json` and that socket is never
-opened. Everything else stays as it was: no fonts fetched, no telemetry, no analytics, no
-`git fetch`, and the models still run here, through your own Claude Code.
+opened.
+
+The third place is there only for the dictation trial, on a Mac with macOS 26: when you press
+**Download the model** on its page, and only if no copy is on the Mac already, k0 fetches the
+Whisper speech model from `https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-large-v3-turbo.bin`,
+once, into `~/.k0/dictate/models/`. The model comes here; nothing you say goes there. Everything
+else stays as it was: no fonts fetched, no telemetry, no analytics, no `git fetch`, and the models
+still run here, through your own Claude Code.
 
 ---
 
@@ -1629,6 +1635,38 @@ the power is back.
 
 ---
 
+## Dictation: the trial
+
+k0 is getting a dictation of its own, offline, to replace Wispr Flow: hold Control, speak, let go,
+and the text lands wherever the cursor is. Before it is built, one question gets answered on your
+own Mac with your own voice — is an offline engine good enough? — and that is what this page is
+for. It needs macOS 26; elsewhere it says so and stays switched off.
+
+Open **`http://k0.localhost/dictate.html`**. The page walks you through what is missing:
+
+- **Start k0 Dictate.** A small app of k0's own, built on your Mac the first time (a few seconds)
+  into `~/.k0/dictate/`. macOS asks for the **Microphone** and for **Accessibility** — the second
+  is what lets it notice Control being held. It is an app apart from the menu bar icon on purpose:
+  macOS ties both permissions to the app, and this one is rebuilt only when its own code changes,
+  so updating k0 does not make you grant them again.
+- **Whisper.** `brew install whisper-cpp`, then the model, once — about 1.6 GB, from the address
+  the page shows. A model already in `~/.cache/whisper-models/` is used as it is.
+- **Apple's engine** needs nothing: macOS fetches its Italian and English models by itself.
+
+Then click in the box and dictate with **Wispr, as you always do**: hold Control, say a phrase,
+let go. Wispr writes it in the box; at the same moment k0 Dictate has recorded the same
+microphone and given it to Apple's engine and to Whisper. Each phrase shows the three texts side
+by side, with how long each took from the instant you let go, the recording to play back, and —
+for Apple, which listens in one language at a time — what the other language heard. The tiles at
+the top keep the typical time of each.
+
+Holding Control while pressing anything else — Control+C in a terminal, Control+Space for Wispr's
+hands-free mode — throws the recording away. Nothing goes into the board's database, which is
+synced to k0 Cloud: phrases and recordings stay in `~/.k0/dictate/`, and **Throw away all**
+deletes them.
+
+The verdict is yours, and the dictation itself is built only after it.
+
 ## Shift+Enter starts a new line
 
 *(macOS only. On Linux tmux already does this; on Windows, Windows Terminal does.)*
@@ -1734,7 +1772,8 @@ platform/
   contract.js    the line between k0 and the operating system, and what an adapter must fill in
   index.js       picks the adapter, and reports what this machine can and cannot do
   darwin/        AppleScript and Terminal.app, pmset and caffeinate, launchd, the Swift icon
-                 (menubar/, which is also what posts the notifications and reads the permission)
+                 (menubar/, which is also what posts the notifications and reads the permission),
+                 and building and opening k0 Dictate
   linux/         tmux and any emulator, systemd-inhibit, systemd user units, a GTK tray
   win32/         PowerShell and Windows Terminal, execution state, Task Scheduler, a WinForms tray
   shared/        what more than one of them needs: tmux, running commands, reading a process
@@ -1754,13 +1793,17 @@ server/
   worktree.js    a session working copy of its own: open it from the branch you are on, merge
                  it back, destroy it. Never a push, never a pull request, never a conflict
                  resolved for you, and it never runs tests or a build in there
-  update.js      one of the two places k0 reaches outside — what npm says the newest version
+  update.js      one of the places k0 reaches outside — what npm says the newest version
                  is — and the version jump that puts the mark next to k0 in the top bar
-  cloud.js       the other place k0 reaches outside, and the only door to k0 Cloud: signing
+  cloud.js       another place k0 reaches outside, and the only door to k0 Cloud: signing
                  in, the next K number, rows up and rows down. Plain fetch, no client library
   sync.js        moves rows between the board and the cloud every five seconds, and the
                  one-time move of a board that predates the account. Carries rows; decides
                  nothing about what they mean
+  dictate.js     the dictation trial: the phrases and their recordings in ~/.k0/dictate/, never in
+                 the database; Whisper run as whisper-server on the loopback interface, kept warm
+                 while the app is alive; and the third place k0 reaches outside, the Whisper
+                 model, fetched once and only when you press the button
   paths.js       where the board, the logs, the settings and the cache live
   settings.js    the few things you can change, and the file that is the list of them —
                  ~/.k0/config.json, written out with everything in it and re-read when it changes
@@ -1794,7 +1837,7 @@ server/
                  costing it — k0's own process included, which is the only honest way to publish
                  a number like that
   pdf.js         the document on paper, printed by a headless browser
-web/             the four pages (html, css, js served exactly as they are)
+web/             the pages (html, css, js served exactly as they are)
   index.html     the board — board.js, board.css, view.js. A note is never taller than it is
                  wide: the title, the age and the buttons always show, the text in the middle is
                  what gets clipped
@@ -1807,6 +1850,8 @@ web/             the four pages (html, css, js served exactly as they are)
                  instead of looked at, so it is one of the three pages that scroll
   whatsnew.html  what changed in k0 between the version you had and this one — whatsnew.js,
                  whatsnew.css. Reached from the mark next to k0, and never opened by itself
+  dictate.html   the dictation trial — dictate.js, dictate.css. The one thing it does that the
+                 server cannot: notice when Wispr writes into its box, and when
   base.css       colours, fonts and scale: the house variables, shared by all of them
   account.js     the account on the board: the chip at the end of the top bar, and the screen
                  in front of the board until you are signed in, let in and moved
@@ -1851,6 +1896,9 @@ web/             the four pages (html, css, js served exactly as they are)
   commit-push-deploy/
                  the road out: the documents, the tests, the commit, the push, and the tag that
                  publishes. Also for whoever works on k0, and also not in the package
+dictate/         k0 Dictate, the Swift app of the dictation trial: listens while Control is held on
+                 its own, runs Apple's engine, posts the phrase. Built by build.sh into ~/.k0/dictate/,
+                 and only when its own code changed, so its permissions survive updates of k0
 supabase/        k0 Cloud's own side: migrations/ is its database (accounts, workspaces, the
                  rows of every board, the counter), config.toml its sign-in settings. The secrets
                  are in ~/.config/k0-cloud/.env, never in the repository
@@ -2075,13 +2123,15 @@ HTML files from your repositories are shown in a sandbox with no permissions. Th
 login of its own: anything already running as you on this machine can reach it, and that is worth
 knowing rather than glossing over.
 
-**k0 talks to two places, and to nothing else.** The first is k0 Cloud, where your board is synced
+**k0 talks to three places, and to nothing else.** The first is k0 Cloud, where your board is synced
 once you have signed in with GitHub or Google. The token that keeps you signed in sits in `~/.k0/`,
 readable by you alone, and in the cloud every workspace's rows are fenced off from every other's by
 the database itself. The second is the public npm registry, once a day, asking what the newest
 version of `k0-board` is. The package name is in the address and nothing else — nothing about you,
 your repositories, your commits or your board — nothing is downloaded, and `"updateCheck": false`
-in `~/.k0/config.json` switches it off entirely. No telemetry, no analytics, no fonts from anywhere.
+in `~/.k0/config.json` switches it off entirely. The third is Hugging Face, for the Whisper model of
+the dictation trial — once, only when you press the button that shows the address, and only the
+model comes back: your voice never leaves the Mac. No telemetry, no analytics, no fonts from anywhere.
 
 The full picture, and how to report a problem privately, is in [SECURITY.md](SECURITY.md).
 

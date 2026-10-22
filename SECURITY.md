@@ -39,7 +39,7 @@ using the thing. It reads and writes `<repo>/.k0/` there and nothing else. It is
 repository k0 already knows", and the difference is worth stating here rather than leaving to be
 discovered.
 
-**Two places are reached outside this machine, and no others.**
+**Three places are reached outside this machine, and no others — the third only on request.**
 
 The first is **k0 Cloud**, on Supabase, in the EU. k0 needs an account — you sign in with GitHub or
 Google — and once you have, your board is synced there, so it survives a lost laptop and can be
@@ -57,6 +57,16 @@ package name is in the address; there is no query string, no body, no cookie, an
 repositories, your commits or your board is in the request, nothing is downloaded and nothing is
 run — k0 cannot update itself. It is off with one line in `~/.k0/config.json` — `"updateCheck": false` — and off means no
 socket is opened at all. It is written out in full at the top of `server/update.js`.
+
+The third is Hugging Face, and only for the dictation trial on macOS 26. When you press **Download
+the model** on the trial page — which shows the address — and only if no copy is on the Mac
+already, k0 fetches the Whisper speech model from
+`https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-large-v3-turbo.bin`, once, into
+`~/.k0/dictate/models/`, with the same fixed `user-agent` and nothing else in the request. Only the
+model comes here: what you dictate, and its recordings, stay in `~/.k0/dictate/`, are never put in
+the database that is synced to k0 Cloud, and are transcribed on this Mac. Whisper runs as
+`whisper-server` bound to the loopback interface. It is written out in full at the top of
+`server/dictate.js`.
 
 Those two files are the only ones in k0 that reach outside; every other outbound request in this
 codebase is a bug. There is no telemetry, no analytics, no font fetched from anywhere, and no

@@ -32,6 +32,8 @@
     "web",
     "menubar",
     "!menubar/k0.app",
+    "dictate",
+    "!dictate/k0 Dictate.app",
     ".claude/skills/k0-import",
     ".claude/skills/k0-changelog",
     ".claude/skills/k0-epic",

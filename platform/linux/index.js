@@ -28,6 +28,9 @@ export const capabilities = {
 }
 
 export const notes = {
+  dictation:
+    'Dictation is macOS only for now: it relies on the speech engine built into macOS 26, and Linux ' +
+    'has no equivalent k0 can use without adding a dependency.',
   ...power.notes,
   ...metrics.notes,
   ...service.notes,

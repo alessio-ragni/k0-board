@@ -38,7 +38,8 @@ import * as update from './update.js'
 import * as usage from './usage.js'
 import * as cloud from './cloud.js'
 import * as sync from './sync.js'
-import { report as platformReport, capabilities, why } from '../platform/index.js'
+import * as dictate from './dictate.js'
+import { report as platformReport, capabilities, why, dictate as dictateApp } from '../platform/index.js'
 // The same front-matter reader the viewer uses: the PDF has to be called what the page is
 // called, and two different readings of the same header would give two different names.
 import { matter, titleOf } from '../web/md.js'
@@ -1372,6 +1373,9 @@ async function api(req, res, url) {
 
   // ── k0 Cloud: who is signed in, and the way in and out ─────────────────────
   if (resource === 'cloud') return cloudApi(req, res, url, idRaw)
+
+  // ── The dictation trial: Apple and Whisper against Wispr Flow ──────────────
+  if (resource === 'dictate') return dictateApi(req, res, seg)
   if (resource === 'projects' && req.method === 'GET') return send(res, 200, listProjects())
 
   // ── What you have been doing ───────────────────────────────────────────────
@@ -1799,6 +1803,49 @@ async function api(req, res, url) {
 }
 
 // ── k0 Cloud ─────────────────────────────────────────────────────────────────
+
+// ── The dictation trial ──────────────────────────────────────────────────────
+// The app (dictate/) says hello and posts each phrase; the page reads the lot and adds Wispr's
+// answer. Everything stays on this Mac — see the top of server/dictate.js for the one download.
+async function dictateApi(req, res, seg) {
+  const [, , what, id, extra] = seg
+  const available = capabilities.dictation === true
+  if (!what && req.method === 'GET') return send(res, 200, { available, why: why('dictation'), ...dictate.state() })
+  if (!available) return send(res, 400, { error: why('dictation') || 'Dictation is not available on this machine.' })
+
+  if (what === 'hello' && req.method === 'POST') return send(res, 200, dictate.hello(await readBody(req)))
+  if (what === 'trial' && !id && req.method === 'POST') {
+    const trial = dictate.addTrial(await readBody(req))
+    return send(res, trial.error ? 400 : 200, trial)
+  }
+  if (what === 'trial' && !id && req.method === 'DELETE') {
+    dictate.clear()
+    return send(res, 200, { ok: true })
+  }
+  if (what === 'trial' && id && !extra && req.method === 'POST') {
+    const trial = dictate.update(id, await readBody(req))
+    return trial ? send(res, 200, trial) : send(res, 404, { error: 'No such trial.' })
+  }
+  if (what === 'trial' && id && extra === 'audio' && req.method === 'GET') {
+    const file = dictate.audio(id)
+    if (!file) return send(res, 404, { error: 'No recording for that trial.' })
+    res.writeHead(200, { 'content-type': 'audio/wav', 'cache-control': 'no-store' })
+    return fs.createReadStream(file).pipe(res)
+  }
+  // Not awaited: the page asks again every second and shows how far it has got.
+  if (what === 'model' && req.method === 'POST') {
+    dictate.downloadModel()
+    return send(res, 200, dictate.state().whisper)
+  }
+  if (what === 'app' && req.method === 'POST') {
+    try {
+      return send(res, 200, await dictateApp.launch({ source: path.join(ROOT, 'dictate'), out: dictate.DIR }))
+    } catch (err) {
+      return send(res, 500, { error: `k0 Dictate did not start: ${String(err.stderr || err.message || err).trim()}` })
+    }
+  }
+  return send(res, 404, { error: 'No such endpoint' })
+}
 
 /** Where the browser comes back to after signing in: this machine, on the name it used to get here. */
 const callbackFor = (req) => `http://${req.headers.host}/auth/callback`

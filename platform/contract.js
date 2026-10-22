@@ -43,6 +43,7 @@
  * @property {boolean} tray                          a menu bar / system tray icon is available
  * @property {boolean} revealInFileManager           can show a file selected in the file manager
  * @property {boolean} openInFileManager             can open a directory in the file manager
+ * @property {boolean} dictation                     can run k0 Dictate: offline speech to text
  */
 
 /**
@@ -65,6 +66,7 @@ export const NO_CAPABILITIES = {
   tray: false,
   revealInFileManager: false,
   openInFileManager: false,
+  dictation: false,
 }
 
 /**

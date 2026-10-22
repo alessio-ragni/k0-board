@@ -5,6 +5,7 @@ import * as servers from './servers.js'
 import * as shell from './shell.js'
 import * as service from './service.js'
 import { extras } from './extras.js'
+import * as dictate from './dictate.js'
 import { NO_CAPABILITIES } from '../contract.js'
 
 export const name = 'macOS'
@@ -19,6 +20,7 @@ export const capabilities = {
   tray: true,
   revealInFileManager: true,
   openInFileManager: true,
+  dictation: dictate.capabilities.dictation,
 }
 
 /**
@@ -27,6 +29,7 @@ export const capabilities = {
  * away k0 says what it can no longer see rather than showing every dev server as off.
  */
 export const notes = {
+  ...dictate.notes,
   ...(capabilities.servers.ports
     ? {}
     : {
@@ -37,4 +40,4 @@ export const notes = {
       }),
 }
 
-export { terminal, power, metrics, servers, shell, service, extras }
+export { terminal, power, metrics, servers, shell, service, extras, dictate }
