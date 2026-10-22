@@ -3,19 +3,30 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>k0 — Dictation trial</title>
+  <title>k0 — Dictation</title>
   <link rel="icon" type="image/svg+xml" href="/favicon.svg">
   <link rel="stylesheet" href="/dictate.css">
 </head>
 <body>
   <header class="topbar">
     <a class="home" href="/" title="Back to the dashboard">k0</a>
-    <h1>Dictation trial</h1>
+    <h1>Dictation</h1>
     <button type="button" id="clear" title="Throw away every phrase and its recording">Throw away all</button>
   </header>
 
   <main class="sheet">
     <div class="notes" id="notes"></div>
+
+    <section class="panel" id="verdict">
+      <h2>Your verdict, and the switch</h2>
+      <p class="caption">When the trial has told you enough, keep one engine. Then switch dictation on: k0 Dictate
+        starts now and at every login, pastes what you say where the cursor is, and the trial below stops — quit
+        Wispr Flow first, or both will paste. Hold Control for a quick phrase; Control+Space or a double tap of
+        Control for hands-free, and Control again to finish. Right-click the pill for the microphone, the last ten
+        phrases and <i>Paste last transcript</i>.</p>
+      <div class="choice" id="choice"></div>
+      <p class="caption why" id="why"></p>
+    </section>
 
     <section class="panel">
       <h2>Dictate here, with Wispr Flow, as you always do</h2>

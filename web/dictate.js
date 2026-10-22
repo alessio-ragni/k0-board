@@ -85,6 +85,47 @@ function button(label, action) {
   return b
 }
 
+async function post(url, body) {
+  const res = await fetch(url, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify(body),
+  })
+  const answer = await res.json().catch(() => ({}))
+  if (!res.ok) alert(answer.error || 'That did not work.')
+}
+
+/** The verdict is two buttons; the switch is a third, greyed out with the reason until it can work. */
+function drawVerdict(s) {
+  const d = s.dictation
+  const keep = (engine, label) => {
+    const b = document.createElement('button')
+    b.type = 'button'
+    b.textContent = d.engine === engine ? `${label} ✓` : `Keep ${label}`
+    b.className = d.engine === engine ? 'chosen' : ''
+    b.disabled = d.on
+    b.title = d.on ? 'Switch dictation off to change the engine' : ''
+    b.addEventListener('click', async () => {
+      await post('/api/dictate/engine', { engine })
+      refresh()
+    })
+    return b
+  }
+  const toggle = document.createElement('button')
+  toggle.type = 'button'
+  toggle.className = d.on ? 'switch on' : 'switch'
+  toggle.textContent = d.on ? 'Dictation is on — switch off' : 'Switch dictation on'
+  toggle.disabled = !d.on && !!d.why
+  toggle.addEventListener('click', async () => {
+    toggle.disabled = true
+    toggle.textContent = d.on ? 'Switching off…' : 'Building and starting k0 Dictate…'
+    await post('/api/dictate/switch', { on: !d.on })
+    refresh()
+  })
+  $('choice').replaceChildren(keep('apple', 'Apple'), keep('whisper', 'Whisper'), toggle)
+  $('why').textContent = !d.on && d.why ? d.why : ''
+}
+
 function drawNotes(s) {
   const out = []
   if (!s.available) {
@@ -110,7 +151,9 @@ function drawNotes(s) {
         ? note('bad', `<b>k0 Dictate needs ${missing.join(' and ')}.</b> System Settings → Privacy &amp; Security → ` +
             `${missing.join(', ')} → switch on <b>k0 Dictate</b>, then quit it and press Start again.`,
             button('Start k0 Dictate', '/api/dictate/app'))
-        : note('good', '<b>k0 Dictate is listening.</b> Hold Control on its own to dictate; any other key cancels.')
+        : s.dictation.on
+          ? note('good', '<b>Dictation is on.</b> k0 Dictate pastes what you say; the trial below is paused.')
+          : note('good', '<b>k0 Dictate is listening.</b> Hold Control on its own to dictate; any other key cancels.')
     )
     if (!s.app.apple) {
       out.push(
@@ -244,6 +287,7 @@ async function refresh() {
   try {
     const s = await fetch('/api/dictate').then((r) => r.json())
     if (!drawNotes(s)) return
+    drawVerdict(s)
     await matchWispr(s.trials)
     drawTiles(s.trials)
     drawTrials(s.trials)

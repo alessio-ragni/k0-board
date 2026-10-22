@@ -31,7 +31,12 @@ export const DEFAULTS = {
   closeIdleTerminalsAfterHours: 12,
   backlog: true,
   updateCheck: true,
+  dictation: false,
+  dictationEngine: '',
 }
+
+/** The engines the dictation trial compares; the empty string is "not chosen yet". */
+export const ENGINES = ['apple', 'whisper']
 
 /**
  * The shortest timeout that is still a timeout. The sweep goes round once a minute, and a
@@ -47,7 +52,8 @@ const NOTE =
   'k0 wrote this file and reads it again by itself whenever it changes — nothing to restart. ' +
   'Delete a line to go back to its default. Hours at 0 switch that closing off entirely, and ' +
   '"backlog": false puts the board back to what it was before epics and stories existed, and ' +
-  '"updateCheck": false stops the one question k0 asks npm. ' +
+  '"updateCheck": false stops the one question k0 asks npm, and the two dictation lines are set ' +
+  'from the dictation page. ' +
   'See Settings in the README.'
 
 /**
@@ -71,6 +77,10 @@ export function normalise(raw) {
     closeIdleTerminalsAfterHours: idleHours(o.closeIdleTerminalsAfterHours),
     backlog: onOff(o.backlog, DEFAULTS.backlog),
     updateCheck: onOff(o.updateCheck, DEFAULTS.updateCheck),
+    // Off unless plainly on: switching it on asks macOS for the microphone, which nobody should
+    // be asked for because of a typo.
+    dictation: o.dictation === true || o.dictation === 'true' || o.dictation === 'on',
+    dictationEngine: ENGINES.includes(o.dictationEngine) ? o.dictationEngine : DEFAULTS.dictationEngine,
   }
 }
 
@@ -135,6 +145,24 @@ export function ensure() {
   fs.mkdirSync(path.dirname(PATH), { recursive: true })
   fs.writeFileSync(PATH, JSON.stringify({ '//': NOTE, ...DEFAULTS }, null, 2) + '\n')
   return true
+}
+
+/**
+ * Changes a few settings and leaves everything else in the file as it was — a line somebody wrote
+ * by hand, the note at the top, a key this version does not know. Only the dictation page calls
+ * it: everything else here is still a file you edit.
+ */
+export function write(patch) {
+  let current = {}
+  try {
+    current = JSON.parse(fs.readFileSync(PATH, 'utf8')) || {}
+  } catch {
+    current = { '//': NOTE, ...DEFAULTS }
+  }
+  fs.mkdirSync(path.dirname(PATH), { recursive: true })
+  fs.writeFileSync(PATH, JSON.stringify({ ...current, ...patch }, null, 2) + '\n')
+  cached = null
+  return read()
 }
 
 /** What the doctor prints: where the file is, whether it could be read, and what is in force. */

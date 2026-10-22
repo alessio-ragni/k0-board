@@ -16,6 +16,7 @@ const AGENTS = path.join(os.homedir(), 'Library', 'LaunchAgents')
 
 export const SERVER_LABEL = 'com.k0.server'
 export const TRAY_LABEL = 'com.k0.menubar'
+export const DICTATE_LABEL = 'com.k0.dictate'
 
 const plistPath = (label) => path.join(AGENTS, `${label}.plist`)
 const domain = () => `gui/${process.getuid()}`
@@ -23,7 +24,7 @@ const domain = () => `gui/${process.getuid()}`
 const escapeXml = (s) =>
   String(s).replace(/[<>&'"]/g, (c) => ({ '<': '&lt;', '>': '&gt;', '&': '&amp;', "'": '&apos;', '"': '&quot;' })[c])
 
-function plist({ label, argv, port, logDir, workingDirectory, env = {} }) {
+function plist({ label, argv, port, logDir, workingDirectory, env = {}, keepAlive = true }) {
   const args = argv.map((a) => `    <string>${escapeXml(a)}</string>`).join('\n')
   const wd = workingDirectory
     ? `  <key>WorkingDirectory</key>\n  <string>${escapeXml(workingDirectory)}</string>\n`
@@ -50,7 +51,7 @@ ${extraEnv}
 ${wd}  <key>RunAtLoad</key>
   <true/>
   <key>KeepAlive</key>
-  <true/>
+  ${keepAlive ? '<true/>' : '<dict>\n    <key>SuccessfulExit</key>\n    <false/>\n  </dict>'}
   <key>StandardOutPath</key>
   <string>${escapeXml(path.join(logDir, label + '.out.log'))}</string>
   <key>StandardErrorPath</key>
@@ -115,7 +116,33 @@ export async function install({ node, entry, port, logDir, tray, appDir }) {
   }
 }
 
+/**
+ * k0 Dictate, started at login once dictation is switched on. It restarts if it crashes but not
+ * when it leaves on purpose — which it does when another copy is already running, opened from the
+ * trial page, and an agent that relaunched it would loop.
+ */
+export async function startDictate({ binary, port, logDir }) {
+  fs.mkdirSync(AGENTS, { recursive: true })
+  fs.mkdirSync(logDir, { recursive: true })
+  fs.writeFileSync(
+    plistPath(DICTATE_LABEL),
+    plist({ label: DICTATE_LABEL, argv: [binary], port, logDir, keepAlive: false })
+  )
+  await unload(DICTATE_LABEL)
+  await load(plistPath(DICTATE_LABEL))
+}
+
+export async function stopDictate() {
+  await unload(DICTATE_LABEL)
+  try {
+    fs.unlinkSync(plistPath(DICTATE_LABEL))
+  } catch {
+    /* it was not switched on: nothing to remove */
+  }
+}
+
 export async function uninstall() {
+  await stopDictate()
   for (const label of [SERVER_LABEL, TRAY_LABEL]) {
     await unload(label)
     try {
@@ -138,6 +165,7 @@ export async function status() {
 export const describe = () => [
   { path: plistPath(SERVER_LABEL), what: 'a background service that starts k0 when you log in' },
   { path: plistPath(TRAY_LABEL), what: 'a background service for the menu bar icon' },
+  { path: plistPath(DICTATE_LABEL), what: 'a background service for k0 Dictate, only once dictation is switched on' },
 ]
 
 export const capabilities = { autostart: true }

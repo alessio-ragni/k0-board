@@ -16,6 +16,15 @@ All notable changes to this project are documented here. The format follows
   other key throws the recording away, so Control+C in a terminal is left alone. Elsewhere the page
   says it needs macOS 26 and stays off.
 
+- **Dictation, offline, in place of Wispr Flow.** On the dictation page, keep the engine the trial
+  convinced you of — Apple's or Whisper — and switch dictation on: k0 Dictate starts now and at
+  every login. Hold Control on its own for a quick phrase, or press Control+Space or tap Control
+  twice for hands-free and Control again to finish; a pill at the bottom of the screen shows it is
+  listening, and the text is pasted where the cursor is, with your clipboard put back afterwards.
+  Right-click the pill to choose the microphone, see the last ten phrases, or paste the last one
+  again. Nothing you say leaves the Mac, and dictation stays off until you switch it on. While it is
+  on, the trial pauses, so k0 and Wispr do not both paste.
+
 ### Changed
 
 - **k0 can reach a third place, and only when you ask.** The Whisper model the trial needs is

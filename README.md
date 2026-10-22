@@ -1635,12 +1635,14 @@ the power is back.
 
 ---
 
-## Dictation: the trial
+## Dictation
 
-k0 is getting a dictation of its own, offline, to replace Wispr Flow: hold Control, speak, let go,
-and the text lands wherever the cursor is. Before it is built, one question gets answered on your
-own Mac with your own voice — is an offline engine good enough? — and that is what this page is
-for. It needs macOS 26; elsewhere it says so and stays switched off.
+k0 has a dictation of its own, offline, to replace Wispr Flow: hold Control, speak, let go, and
+the text lands wherever the cursor is. It needs macOS 26; elsewhere the page says so and the switch
+stays grey. It starts with a trial — is an offline engine good enough, and which one? — answered on
+your own Mac with your own voice, and the dictation uses the engine you keep.
+
+### The trial
 
 Open **`http://k0.localhost/dictate.html`**. The page walks you through what is missing:
 
@@ -1665,7 +1667,35 @@ hands-free mode — throws the recording away. Nothing goes into the board's dat
 synced to k0 Cloud: phrases and recordings stay in `~/.k0/dictate/`, and **Throw away all**
 deletes them.
 
-The verdict is yours, and the dictation itself is built only after it.
+### The verdict, and switching it on
+
+At the top of the page, **Keep Apple** or **Keep Whisper** is the verdict. Until one is kept,
+**Switch dictation on** stays grey and says why; it says why as well when Whisper is kept but
+`whisper-server` or its model is missing. Switching on builds k0 Dictate if it has to and starts
+it now and at every login; switching off stops it. Both lines live in `~/.k0/config.json`
+(`dictation`, `dictationEngine`), and dictation is off for anybody who never presses the button.
+**Quit Wispr Flow first**: with both running, both paste. While dictation is on the trial pauses,
+for the same reason.
+
+### Dictating
+
+- **Hold Control on its own** for a quick phrase: a small pill at the bottom of the screen shows a
+  wave while you speak, and when you let go the text is pasted where the cursor is. Press any other
+  key while Control is down — Control+C, Control+A — and nothing happens: that was a shortcut.
+- **Control+Space, or Control tapped twice**, is hands-free: the pill shows cancel, the wave and
+  done. **Control on its own** again, or done, finishes and pastes; cancel throws it away.
+  Control+Space is kept from the app in front; every other key reaches it as usual.
+- The text arrives all at once when you finish, not while you speak. It is pasted through the
+  clipboard, and whatever was on the clipboard is put back a moment later.
+- **Right-click the pill** for the **Microphone**, the **Transcript history** — the last ten
+  phrases, click one to paste it again — and **Paste last transcript**, which is what you want
+  when a paste went nowhere. Each phrase goes into those ten before it is pasted.
+- Nobody chooses a language. Whisper hears which one you speak; Apple's engine listens in Italian
+  and English at once and keeps the surer of the two.
+- Nothing you say leaves the Mac. The recording of a phrase is deleted once transcribed; the last
+  ten texts live in `~/.k0/dictate/history.json`, never in the board's database, which is synced to
+  k0 Cloud.
+
 
 ## Shift+Enter starts a new line
 
@@ -1751,6 +1781,8 @@ itself on the next round: nothing to restart.
 | | |
 |---|---|
 | `closeIdleTerminalsAfterHours` | How long a yellow story's terminal may sit there before k0 closes it and gives the memory back. `12` if you say nothing. **`0` switches it off.** Anything under an hour is treated as an hour — below that this stops being a tidy-up and starts closing windows while you are using them. |
+| `dictation` | Whether k0 Dictate dictates. `false` if you say nothing, and only a plain `true` switches it on. Normally set by the switch on the dictation page, which also starts and stops the app — see *Dictation*. |
+| `dictationEngine` | `"apple"` or `"whisper"`: the verdict of the dictation trial, set by the *Keep* buttons on that page. Empty until you choose, and dictation cannot be switched on while it is. |
 
 Delete a line to go back to its default; a file k0 cannot read is ignored altogether and the
 defaults hold, rather than k0 refusing to start over a stray comma.
@@ -1800,10 +1832,12 @@ server/
   sync.js        moves rows between the board and the cloud every five seconds, and the
                  one-time move of a board that predates the account. Carries rows; decides
                  nothing about what they mean
-  dictate.js     the dictation trial: the phrases and their recordings in ~/.k0/dictate/, never in
+  dictate.js     dictation and its trial: the phrases and their recordings in ~/.k0/dictate/, never in
                  the database; Whisper run as whisper-server on the loopback interface, kept warm
                  while the app is alive; and the third place k0 reaches outside, the Whisper
-                 model, fetched once and only when you press the button
+                 model, fetched once and only when you press the button. Also the switch (the
+                 verdict and on/off, kept in ~/.k0/config.json), Whisper's text for a live phrase,
+                 and the last ten phrases in ~/.k0/dictate/history.json
   paths.js       where the board, the logs, the settings and the cache live
   settings.js    the few things you can change, and the file that is the list of them —
                  ~/.k0/config.json, written out with everything in it and re-read when it changes
@@ -1850,8 +1884,9 @@ web/             the pages (html, css, js served exactly as they are)
                  instead of looked at, so it is one of the three pages that scroll
   whatsnew.html  what changed in k0 between the version you had and this one — whatsnew.js,
                  whatsnew.css. Reached from the mark next to k0, and never opened by itself
-  dictate.html   the dictation trial — dictate.js, dictate.css. The one thing it does that the
-                 server cannot: notice when Wispr writes into its box, and when
+  dictate.html   dictation and its trial — dictate.js, dictate.css. The verdict buttons and the
+                 switch, and the one thing it does that the server cannot: notice when Wispr writes
+                 into its box, and when
   base.css       colours, fonts and scale: the house variables, shared by all of them
   account.js     the account on the board: the chip at the end of the top bar, and the screen
                  in front of the board until you are signed in, let in and moved
@@ -1896,9 +1931,12 @@ web/             the pages (html, css, js served exactly as they are)
   commit-push-deploy/
                  the road out: the documents, the tests, the commit, the push, and the tag that
                  publishes. Also for whoever works on k0, and also not in the package
-dictate/         k0 Dictate, the Swift app of the dictation trial: listens while Control is held on
-                 its own, runs Apple's engine, posts the phrase. Built by build.sh into ~/.k0/dictate/,
-                 and only when its own code changed, so its permissions survive updates of k0
+dictate/         k0 Dictate, the Swift app: the trial (listens beside Wispr, never keeps a key) or
+                 dictation (an event tap for Control and Control+Space, the pill, Apple's engine or
+                 Whisper through the server, the paste, the pill's menu) — the server says which on
+                 every hello. Built by build.sh into ~/.k0/dictate/, and only when its own code
+                 changed, so its permissions survive updates of k0. Started at login by the
+                 com.k0.dictate launchd agent once dictation is switched on
 supabase/        k0 Cloud's own side: migrations/ is its database (accounts, workspaces, the
                  rows of every board, the counter), config.toml its sign-in settings. The secrets
                  are in ~/.config/k0-cloud/.env, never in the repository

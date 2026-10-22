@@ -128,3 +128,10 @@ textarea:focus { outline: 2px solid var(--WORKING); }
 .engine .text.error { color: var(--alert); font-size: .85rem; }
 .engine .fastest { color: var(--calm); }
 .engine .alt { margin-top: 6px; font-size: .78rem; color: var(--muted); }
+
+.choice { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+.choice .chosen { border-color: var(--calm); color: var(--calm); }
+.choice .switch { margin-left: auto; }
+.choice .switch.on { background: var(--calm); border-color: var(--calm); color: var(--paper); }
+.why:empty { display: none; }
+.why { margin: 8px 0 0; }

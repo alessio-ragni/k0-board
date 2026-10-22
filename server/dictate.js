@@ -6,6 +6,7 @@ import { spawn } from 'node:child_process'
 import { Readable, Transform } from 'node:stream'
 import { pipeline } from 'node:stream/promises'
 import { HOME } from './paths.js'
+import * as settings from './settings.js'
 
 // ── The dictation trial ──────────────────────────────────────────────────────
 // Before k0 gets a dictation of its own, one question has to be answered on a real Mac with a
@@ -38,6 +39,12 @@ export const DIR = path.join(HOME, 'dictate')
 export const TRIAL_DIR = path.join(DIR, 'trial')
 const MODEL_DIR = path.join(DIR, 'models')
 const TRIALS_FILE = path.join(DIR, 'trials.json')
+// Dictation proper. The recording of a phrase lives here only until it has been transcribed; the
+// text lives in the history, ten phrases and no more, so "paste the last one" works when a paste
+// went wrong and nothing piles up.
+export const LIVE_DIR = path.join(DIR, 'live')
+const HISTORY_FILE = path.join(DIR, 'history.json')
+export const HISTORY = 10
 const KEEP = 200
 const ALIVE = 15_000
 const IDLE = 15 * 60_000
@@ -117,7 +124,11 @@ const clean = (answer) =>
 
 let app = { seenAt: 0, accessibility: false, microphone: false, apple: false }
 
-/** The app says it is alive, and is told where to put the recordings. */
+/**
+ * The app says it is alive, and is told what to be: the trial, which only listens beside Wispr,
+ * or dictation, which pastes. Never both — with dictation on, k0 and Wispr would paste the same
+ * phrase twice — and dictation only once somebody has chosen the engine the trial was for.
+ */
 export function hello(body = {}) {
   app = {
     seenAt: Date.now(),
@@ -125,8 +136,10 @@ export function hello(body = {}) {
     microphone: body.microphone === true,
     apple: body.apple === true,
   }
-  warm()
-  return { dir: TRIAL_DIR }
+  const { dictation, dictationEngine } = settings.read()
+  const on = dictation && !!dictationEngine
+  if (!on || dictationEngine === 'whisper') warm()
+  return { dir: TRIAL_DIR, liveDir: LIVE_DIR, mode: on ? 'dictate' : 'trial', engine: dictationEngine }
 }
 
 /**
@@ -261,6 +274,73 @@ async function transcribe(trial, { fetch = globalThis.fetch, run } = {}) {
   }
 }
 
+/**
+ * One phrase of real dictation, for Whisper. Awaited, unlike the trial: the app is waiting for the
+ * text to paste it. The recording is deleted once heard, whatever happened to it.
+ */
+export async function transcribeLive(body = {}, { fetch = globalThis.fetch, run } = {}) {
+  const wav = path.resolve(String(body.wav ?? ''))
+  if (path.dirname(wav) !== LIVE_DIR || !/^\d{1,16}\.wav$/.test(path.basename(wav))) {
+    return { error: 'The recording must be in the folder k0 handed out.' }
+  }
+  const started = Date.now()
+  try {
+    if (run) return { ...(await run(wav)), ms: Date.now() - started }
+    const w = warm({ fetch })
+    if (!w) return { error: whyNoWhisper() }
+    if (!(await w.ready)) return { error: 'whisper-server did not start.' }
+    const form = new FormData()
+    form.append('file', new Blob([fs.readFileSync(wav)]), 'audio.wav')
+    form.append('response_format', 'verbose_json')
+    form.append('temperature', '0')
+    const reply = await fetch(`http://127.0.0.1:${w.port}/inference`, { method: 'POST', body: form })
+    const json = await reply.json()
+    return { text: String(json.text ?? '').trim(), lang: json.language ?? '', ms: Date.now() - started }
+  } catch (err) {
+    return { error: String(err.message || err) }
+  } finally {
+    fs.rmSync(wav, { force: true })
+  }
+}
+
+// ── The history ──────────────────────────────────────────────────────────────
+
+export function history() {
+  try {
+    const list = JSON.parse(fs.readFileSync(HISTORY_FILE, 'utf8'))
+    return Array.isArray(list) ? list.slice(0, HISTORY) : []
+  } catch {
+    return []
+  }
+}
+
+/** Newest first, ten at most. Written before the paste is tried, so a paste that fails loses nothing. */
+export function remember(body = {}) {
+  const text = String(body.text ?? '').trim().slice(0, 20_000)
+  if (!text) return { error: 'Nothing was said.' }
+  const list = [{ text, at: Date.now() }, ...history()].slice(0, HISTORY)
+  fs.mkdirSync(DIR, { recursive: true })
+  fs.writeFileSync(HISTORY_FILE, JSON.stringify(list))
+  return list
+}
+
+// ── The switch ───────────────────────────────────────────────────────────────
+
+/** Why dictation cannot be switched on with this engine, in a sentence for the page; null if it can. */
+export function whyNotOn(engine) {
+  if (!settings.ENGINES.includes(engine)) {
+    return 'Choose the engine first: try both on this page, then press the one you want to keep.'
+  }
+  if (engine === 'whisper') return whyNoWhisper()
+  return null
+}
+
+/** The engine is the verdict of the trial, and only somebody looking at it can give it. */
+export function choose(engine) {
+  if (!settings.ENGINES.includes(engine)) return { error: `The engine is one of: ${settings.ENGINES.join(', ')}.` }
+  return settings.write({ dictationEngine: engine })
+}
+
 function whyNoWhisper() {
   if (!findWhisper()) return 'whisper-server was not found. Install it with `brew install whisper-cpp`.'
   if (!findModel()) return 'The Whisper model is not on this Mac yet: download it from the trial page.'
@@ -305,7 +385,10 @@ export async function downloadModel({ fetch = globalThis.fetch } = {}) {
 // ── What the page reads ──────────────────────────────────────────────────────
 
 export function state() {
+  const { dictation, dictationEngine } = settings.read()
   return {
+    dictation: { on: dictation, engine: dictationEngine, why: dictation ? null : whyNotOn(dictationEngine) },
+    history: history(),
     app: { ...app, alive: Date.now() - app.seenAt < ALIVE },
     whisper: {
       binary: findWhisper(),
