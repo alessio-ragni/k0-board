@@ -122,6 +122,10 @@ check('it is not downloaded a second time', (await dictate.downloadModel({ fetch
 section('The verdict and the switch')
 
 const settings = await import('../server/settings.js')
+// Every hello keeps Whisper warm, and with a model on disk that would start whisper-server — the
+// stand-in on PATH, or a real one Homebrew put on this Mac. The models step aside for the hellos.
+const models = [model, cached].filter((f) => fs.existsSync(f))
+for (const f of models) fs.renameSync(f, `${f}.aside`)
 check('dictation starts off', settings.read().dictation, false)
 check('no engine is chosen to begin with', settings.read().dictationEngine, '')
 check('the app is told to be the trial', dictate.hello({}).mode, 'trial')
@@ -141,6 +145,7 @@ check('the page sees it on', dictate.state().dictation.on, true)
 check('a typo in the file does not switch it on', settings.normalise({ dictation: 'yes please' }).dictation, false)
 check('an unknown engine in the file counts as none', settings.normalise({ dictationEngine: 'x' }).dictationEngine, '')
 settings.write({ dictation: false })
+for (const f of models) fs.renameSync(`${f}.aside`, f)
 
 section('A phrase of real dictation')
 
