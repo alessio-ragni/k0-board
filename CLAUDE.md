@@ -50,10 +50,10 @@ rules about tone live. It ships with the repository, not with the package.
 - **k0 talks to three places only.** Its cloud (k0 Cloud, on Supabase), and only through
   `server/cloud.js`; the Whisper model on Hugging Face, through `server/dictate.js`, fetched once
   and only when somebody presses the button on the dictation trial page that shows the address —
-  only the model comes in, nothing anybody says goes out; and the public npm registry, through `server/update.js`, once a day, asking
-  what the newest version of `k0-board` is — the package name is in the address and nothing else
-  is in the request, nothing is downloaded, and `"updateCheck": false` stops it opening a socket
-  at all. Everywhere else the answer is still no: no telemetry, no fonts fetched, no `git fetch`.
+  only the model comes in, nothing anybody says goes out; and the public npm registry, through
+  `server/update.js`, once a day, asking what the newest version of `k0-board` is — the package
+  name is in the address and nothing else is in the request, nothing is downloaded, and
+  `"updateCheck": false` stops it opening a socket at all. Everywhere else the answer is still no: no telemetry, no fonts fetched, no `git fetch`.
   If a change would open a socket to a fourth destination, it is the wrong change.
 - **No secrets in the repository.** Supabase keys live in `~/.config/k0-cloud/.env` for
   development; the only key that may appear in code is the publishable one.

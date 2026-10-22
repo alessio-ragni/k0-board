@@ -49,7 +49,8 @@ const IDLE = 15 * 60_000
  * the 1.6 GB file should not be made to download it a second time.
  */
 export function findModel() {
-  const places = [MODEL_DIR, path.join(os.homedir(), '.cache', 'whisper-models'), path.join(os.homedir(), '.cache', 'whisper')]
+  const cache = path.join(os.homedir(), '.cache')
+  const places = [MODEL_DIR, path.join(cache, 'whisper-models'), path.join(cache, 'whisper')]
   for (const dir of places) {
     const file = path.join(dir, MODEL)
     if (fs.existsSync(file) && fs.statSync(file).size > 0) return file
@@ -240,7 +241,7 @@ process.on('exit', () => whisper?.child?.kill())
 
 async function transcribe(trial, { fetch = globalThis.fetch, run } = {}) {
   const done = (answer) => {
-    trial.whisper = clean({ ...answer, ms: Date.now() - trial.releasedAt })
+    trial.whisper = clean({ ...answer, text: String(answer.text ?? '').trim(), ms: Date.now() - trial.releasedAt })
     save()
   }
   try {
@@ -254,7 +255,7 @@ async function transcribe(trial, { fetch = globalThis.fetch, run } = {}) {
     form.append('temperature', '0')
     const reply = await fetch(`http://127.0.0.1:${w.port}/inference`, { method: 'POST', body: form })
     const json = await reply.json()
-    done({ text: String(json.text ?? '').trim(), lang: json.language ?? '' })
+    done({ text: json.text, lang: json.language ?? '' })
   } catch (err) {
     done({ error: String(err.message || err) })
   }

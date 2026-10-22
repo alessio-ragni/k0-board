@@ -29,7 +29,7 @@ section('Where a phrase may be')
 const { dir } = dictate.hello({ accessibility: true, microphone: true, apple: true })
 check('the app is told the trial folder inside k0 home', dir, path.join(FAKE_HOME, 'dictate', 'trial'))
 check('after hello the app counts as alive', dictate.state().app.alive, true)
-check('a trial needs a numeric id', dictate.addTrial({ id: '../x', wav: path.join(dir, 'x.wav') }).error !== undefined, true)
+check('a trial needs a numeric id', 'error' in dictate.addTrial({ id: '../x', wav: path.join(dir, 'x.wav') }), true)
 check(
   'a recording outside the trial folder is refused',
   dictate.addTrial({ id: '1', wav: path.join(FAKE_HOME, '1.wav') }).error !== undefined,
@@ -58,7 +58,8 @@ check('the language is kept', trial.whisper.lang, 'it')
 check('the length of the phrase is whole milliseconds', trial.durationMs, 1234)
 check('the same phrase twice is one trial', dictate.addTrial({ id: '100', wav: path.join(dir, '100.wav') }), trial)
 
-dictate.update('100', { apple: { text: 'x'.repeat(6000), ms: 812.7, lang: 'it-IT', candidates: [{ lang: 'en-US', text: 'chow' }] } })
+const candidates = [{ lang: 'en-US', text: 'chow' }]
+dictate.update('100', { apple: { text: 'x'.repeat(6000), ms: 812.7, lang: 'it-IT', candidates } })
 check('a text is cut to 5000 characters', trial.apple.text.length, 5000)
 check('a time is whole milliseconds', trial.apple.ms, 813)
 check('what the other language heard is kept', trial.apple.candidates[0].text, 'chow')
@@ -68,7 +69,8 @@ check('fields nobody asked for are dropped', 'extra' in trial.wispr, false)
 check('an unknown trial is not updated', dictate.update('999', { wispr: { text: 'x' } }), null)
 check('its recording can be played back', dictate.audio('100'), path.join(dir, '100.wav'))
 check('an unknown trial has no recording', dictate.audio('999'), null)
-check('the trials are written to k0 home, not the database', fs.existsSync(path.join(FAKE_HOME, 'dictate', 'trials.json')), true)
+const written = fs.existsSync(path.join(FAKE_HOME, 'dictate', 'trials.json'))
+check('the trials are written to k0 home, not the database', written, true)
 check('the newest comes first', dictate.state().trials[0].id, '100')
 
 section('Whisper, on the loopback interface')
@@ -77,9 +79,10 @@ const bin = path.join(FAKE_HOME, 'bin')
 fs.mkdirSync(bin)
 fs.writeFileSync(path.join(bin, 'whisper-server'), '#!/bin/sh\nsleep 30\n', { mode: 0o755 })
 process.env.PATH = `${bin}${path.delimiter}${process.env.PATH}`
-fs.mkdirSync(path.join(FAKE_HOME, '.cache', 'whisper-models'), { recursive: true })
-fs.writeFileSync(path.join(FAKE_HOME, '.cache', 'whisper-models', 'ggml-large-v3-turbo.bin'), 'model')
-check('a model already on the Mac is used, not downloaded again', dictate.findModel(), path.join(FAKE_HOME, '.cache', 'whisper-models', 'ggml-large-v3-turbo.bin'))
+const cached = path.join(FAKE_HOME, '.cache', 'whisper-models', 'ggml-large-v3-turbo.bin')
+fs.mkdirSync(path.dirname(cached), { recursive: true })
+fs.writeFileSync(cached, 'model')
+check('a model already on the Mac is used, not downloaded again', dictate.findModel(), cached)
 check('whisper-server is found on PATH', dictate.findWhisper(), path.join(bin, 'whisper-server'))
 
 const asked = []
@@ -88,10 +91,13 @@ const local = async (url, init) => {
   return { json: async () => ({ text: 'hello there', language: 'en' }) }
 }
 fs.writeFileSync(path.join(dir, '200.wav'), 'RIFF')
-const second = dictate.addTrial({ id: '200', releasedAt: Date.now(), wav: path.join(dir, '200.wav') }, { fetch: local })
+const second = dictate.addTrial({ id: '200', releasedAt: Date.now(), wav: path.join(dir, '200.wav') }, {
+  fetch: local,
+})
 for (let i = 0; i < 50 && !second.whisper; i++) await tick()
 check('Whisper answers through whisper-server', second.whisper?.text, 'hello there')
-check('every request stays on 127.0.0.1', asked.length > 0 && asked.every((u) => u.startsWith('http://127.0.0.1:')), true)
+const loopback = asked.length > 0 && asked.every((u) => u.startsWith('http://127.0.0.1:'))
+check('every request stays on 127.0.0.1', loopback, true)
 check('the phrase goes to /inference', asked.some((u) => u.endsWith('/inference')), true)
 dictate.stop()
 

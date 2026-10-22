@@ -64,7 +64,8 @@ function note(kind, html, button) {
   return p
 }
 
-const escape = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c])
+const ENTITIES = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }
+const escape = (s) => String(s).replace(/[&<>"]/g, (c) => ENTITIES[c])
 
 function button(label, action) {
   const b = document.createElement('button')
@@ -112,8 +113,10 @@ function drawNotes(s) {
         : note('good', '<b>k0 Dictate is listening.</b> Hold Control on its own to dictate; any other key cancels.')
     )
     if (!s.app.apple) {
-      out.push(note('', '<b>Apple\'s engine is still getting ready.</b> macOS downloads its Italian and English models ' +
-        'the first time; it does that by itself, not k0.'))
+      out.push(
+        note('', "<b>Apple's engine is still getting ready.</b> macOS downloads its Italian and English " +
+          'models the first time; it does that by itself, not k0.')
+      )
     }
   }
   const w = s.whisper
@@ -162,8 +165,11 @@ function drawTiles(trials) {
       const times = trials.map((t) => t[key]).filter((a) => a && !a.error && a.text).map((a) => a.ms)
       const tile = document.createElement('div')
       tile.className = 'tile'
-      tile.innerHTML = `<div class="k">${label}, typical time</div><div class="v">${times.length ? seconds(median(times)) : '—'}</div>` +
-        `<div class="s">${times.length} phrase${times.length === 1 ? '' : 's'} · slowest ${times.length ? seconds(Math.max(...times)) : '—'}</div>`
+      const typical = times.length ? seconds(median(times)) : '—'
+      const slowest = times.length ? seconds(Math.max(...times)) : '—'
+      const count = `${times.length} phrase${times.length === 1 ? '' : 's'}`
+      tile.innerHTML = `<div class="k">${label}, typical time</div><div class="v">${typical}</div>` +
+        `<div class="s">${count} · slowest ${slowest}</div>`
       return tile
     })
   )
@@ -176,7 +182,8 @@ function engineBox(trial, key, label) {
   const times = ENGINES.map(([k]) => trial[k]).filter((x) => x && !x.error && x.text).map((x) => x.ms)
   const fastest = a && !a.error && a.text && a.ms === Math.min(...times) && times.length > 1
   const lang = a?.lang ? ` · ${escape(a.lang)}` : ''
-  box.innerHTML = `<div class="name"><span>${label}${lang}</span><span class="${fastest ? 'fastest' : ''}">${a ? seconds(a.ms) : ''}</span></div>`
+  const time = `<span class="${fastest ? 'fastest' : ''}">${a ? seconds(a.ms) : ''}</span>`
+  box.innerHTML = `<div class="name"><span>${label}${lang}</span>${time}</div>`
   const text = document.createElement('div')
   if (!a) {
     text.className = 'text waiting'
