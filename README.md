@@ -1682,11 +1682,14 @@ for the same reason.
 - **Hold Control on its own** for a quick phrase: a small pill at the bottom of the screen shows a
   wave while you speak, and when you let go the text is pasted where the cursor is. Press any other
   key while Control is down — Control+C, Control+A — and nothing happens: that was a shortcut.
+- The pill is coloured, so it is never taken for Wispr Flow's: **green** while it waits, **red**
+  while it listens, **orange** while the words are being worked out.
 - **Control+Space, or Control tapped twice**, is hands-free: the pill shows cancel, the wave and
   done. **Control on its own** again, or done, finishes and pastes; cancel throws it away.
   Control+Space is kept from the app in front; every other key reaches it as usual.
 - The text arrives all at once when you finish, not while you speak. It is pasted through the
-  clipboard, and whatever was on the clipboard is put back a moment later.
+  clipboard, and whatever was on the clipboard is put back a moment later — unless you copied
+  something else in the meantime, which stays.
 - **Right-click the pill** for the **Microphone**, the **Transcript history** — the last ten
   phrases, click one to paste it again — and **Paste last transcript**, which is what you want
   when a paste went nowhere. Each phrase goes into those ten before it is pasted.

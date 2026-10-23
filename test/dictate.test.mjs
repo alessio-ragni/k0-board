@@ -159,6 +159,12 @@ const live = await dictate.transcribeLive({ wav: phrase }, { run: async () => ({
 check('Whisper gives back the text', live.text, 'ciao')
 check('and the recording is gone once heard', fs.existsSync(phrase), false)
 
+check('a word cut between two segments is put back together',
+  dictate.spoken({ text: 'si mu\noveva e l\'\nultima\n volta' }), "si muoveva e l'ultima volta")
+check('the segments win over the text when they are there',
+  dictate.spoken({ text: 'x', segments: [{ text: ' Ciao,' }, { text: ' come va' }] }), 'Ciao, come va')
+check('nothing heard is an empty phrase', dictate.spoken({}), '')
+
 section('The last ten')
 
 check('nothing said, nothing kept', 'error' in dictate.remember({ text: '   ' }), true)

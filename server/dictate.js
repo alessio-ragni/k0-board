@@ -252,6 +252,19 @@ export function stop() {
 
 process.on('exit', () => whisper?.child?.kill())
 
+/**
+ * The text of a whisper-server answer, as one phrase. Its `text` puts each segment on a line of its
+ * own, and a segment can end in the middle of a word ("si mu" / "oveva"): pasted as it came, every
+ * break landed in the document. A segment that starts a new word starts with a space, so the
+ * segments are simply put back together.
+ */
+export function spoken(json = {}) {
+  const parts = Array.isArray(json.segments) && json.segments.length
+    ? json.segments.map((s) => String(s?.text ?? ''))
+    : String(json.text ?? '').split('\n')
+  return parts.join('').replace(/\s+/g, ' ').trim()
+}
+
 async function transcribe(trial, { fetch = globalThis.fetch, run } = {}) {
   const done = (answer) => {
     trial.whisper = clean({ ...answer, text: String(answer.text ?? '').trim(), ms: Date.now() - trial.releasedAt })
@@ -268,7 +281,7 @@ async function transcribe(trial, { fetch = globalThis.fetch, run } = {}) {
     form.append('temperature', '0')
     const reply = await fetch(`http://127.0.0.1:${w.port}/inference`, { method: 'POST', body: form })
     const json = await reply.json()
-    done({ text: json.text, lang: json.language ?? '' })
+    done({ text: spoken(json), lang: json.language ?? '' })
   } catch (err) {
     done({ error: String(err.message || err) })
   }
@@ -295,7 +308,7 @@ export async function transcribeLive(body = {}, { fetch = globalThis.fetch, run 
     form.append('temperature', '0')
     const reply = await fetch(`http://127.0.0.1:${w.port}/inference`, { method: 'POST', body: form })
     const json = await reply.json()
-    return { text: String(json.text ?? '').trim(), lang: json.language ?? '', ms: Date.now() - started }
+    return { text: spoken(json), lang: json.language ?? '', ms: Date.now() - started }
   } catch (err) {
     return { error: String(err.message || err) }
   } finally {

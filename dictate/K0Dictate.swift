@@ -336,9 +336,12 @@ final class PillPanel: NSPanel {
 
 final class PillView: NSView {
     weak var owner: Dictation?
+    /// Coloured, not black like Wispr Flow's, so the two are never mistaken for each other: green
+    /// while it waits, red while it listens, orange while the words are being worked out.
+    var colour = NSColor.systemGreen
 
     override func draw(_ dirtyRect: NSRect) {
-        NSColor.black.withAlphaComponent(0.82).setFill()
+        colour.withAlphaComponent(0.9).setFill()
         NSBezierPath(roundedRect: bounds, xRadius: bounds.height / 2, yRadius: bounds.height / 2).fill()
         NSColor.white.withAlphaComponent(0.25).setStroke()
         let edge = NSBezierPath(roundedRect: bounds.insetBy(dx: 0.5, dy: 0.5), xRadius: bounds.height / 2,
@@ -365,7 +368,7 @@ final class Pill {
     let done: Round
 
     init(owner: Dictation) {
-        panel = PillPanel(contentRect: NSRect(x: 0, y: 0, width: 44, height: 10),
+        panel = PillPanel(contentRect: NSRect(x: 0, y: 0, width: 56, height: 14),
                           styleMask: [.borderless, .nonactivatingPanel], backing: .buffered, defer: false)
         panel.isOpaque = false
         panel.backgroundColor = .clear
@@ -375,7 +378,8 @@ final class Pill {
         panel.collectionBehavior = [.canJoinAllSpaces, .stationary, .fullScreenAuxiliary, .ignoresCycle]
         cancel = Round("xmark", tint: NSColor.white.withAlphaComponent(0.2), target: owner,
                        action: #selector(Dictation.cancelPressed))
-        done = Round("checkmark", tint: .systemRed, target: owner, action: #selector(Dictation.donePressed))
+        done = Round("checkmark", tint: NSColor.black.withAlphaComponent(0.3), target: owner,
+                     action: #selector(Dictation.donePressed))
         view.owner = owner
         view.addSubview(wave)
         view.addSubview(cancel)
@@ -387,7 +391,7 @@ final class Pill {
     func show(_ look: Look) {
         let size: NSSize
         switch look {
-        case .idle: size = NSSize(width: 44, height: 10)
+        case .idle: size = NSSize(width: 56, height: 14)
         case .quick, .working: size = NSSize(width: 86, height: 30)
         case .handsFree: size = NSSize(width: 140, height: 34)
         }
@@ -396,6 +400,7 @@ final class Pill {
         panel.setFrame(NSRect(x: area.midX - size.width / 2, y: area.minY + 10, width: size.width, height: size.height),
                        display: true)
         view.frame = NSRect(origin: .zero, size: size)
+        view.colour = look == .idle ? .systemGreen : look == .working ? .systemOrange : .systemRed
         wave.isHidden = look == .idle
         wave.dim = look == .working
         cancel.isHidden = look != .handsFree
@@ -650,6 +655,7 @@ final class Dictation: NSObject, NSApplicationDelegate {
         let engine = self.engine
         Task {
             let text = await Dictation.transcribe(url, engine: engine)
+            if text.isEmpty { NSLog("k0 Dictate: \(engine) heard nothing in \(url.lastPathComponent)") }
             await MainActor.run {
                 self.phase = .idle
                 self.drawIdle()
@@ -661,6 +667,7 @@ final class Dictation: NSObject, NSApplicationDelegate {
     static func transcribe(_ url: URL, engine: String) async -> String {
         if engine == "whisper" {
             let answer = await ask("/api/dictate/transcribe", ["wav": url.path]) as? [String: Any]
+            if let error = answer?["error"] as? String { NSLog("k0 Dictate: Whisper said \(error)") }
             return (answer?["text"] as? String ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
         }
         let (best, _) = await AppleEngine.best(url)
@@ -686,14 +693,22 @@ final class Dictation: NSObject, NSApplicationDelegate {
         }
         board.clearContents()
         board.setString(text, forType: .string)
-        let source = CGEventSource(stateID: .combinedSessionState)
+        let ours = board.changeCount
+        // Command pressed, V, Command let go — the whole gesture, from a source of our own, so the
+        // keys somebody may still be holding do not mix in. A bare V carrying the Command flag was
+        // ignored often enough by Chrome and the Terminal to look like a paste that never happened.
+        let source = CGEventSource(stateID: .privateState)
         source?.userData = 0x6b30
-        for down in [true, false] {
-            let key = CGEvent(keyboardEventSource: source, virtualKey: 9, keyDown: down)
-            key?.flags = .maskCommand
-            key?.post(tap: .cgSessionEventTap)
+        for (code, down) in [(CGKeyCode(55), true), (9, true), (9, false), (55, false)] {
+            let key = CGEvent(keyboardEventSource: source, virtualKey: code, keyDown: down)
+            key?.flags = down || code == 9 ? .maskCommand : []
+            key?.post(tap: .cghidEventTap)
+            usleep(8_000)
         }
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+        // An app reads the clipboard when it gets round to the paste, which can take more than half a
+        // second; and if somebody copied something meanwhile, that is theirs and stays.
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
+            guard board.changeCount == ours else { return }
             board.clearContents()
             let items = saved.map { copy -> NSPasteboardItem in
                 let item = NSPasteboardItem()

@@ -33,11 +33,20 @@ All notable changes to this project are documented here. The format follows
   recordings stay on the Mac, outside the board's database, and one button throws them away.
 - The dictation tests never start Whisper, even on a Mac where Homebrew installed it. Nothing changes
   for anybody using k0.
+- The dictation pill is green while it waits, red while it listens and orange while it works out
+  the words, and a little bigger at rest, so it is easy to tell from Wispr Flow's and to right-click.
 
 ### Fixed
 
 - The manual sends you to the dictation page at the address that answers, with the port in it:
   `k0.localhost:4319/dictate.html`. Without it the browser said the site could not be reached.
+- Dictation pastes every time: Chrome and the Terminal sometimes let the paste go by, and the
+  clipboard came back before they had read it. Paste last transcript, in the pill's menu, works for
+  the same reason.
+- Whisper's text arrives as one phrase. It used to carry a line break wherever Whisper cut its
+  segments, sometimes in the middle of a word.
+- Switching dictation off stops k0 Dictate even when the trial page opened it, and switching it on
+  after an update starts the new version instead of leaving the old one running.
 
 
 ## [0.7.0]

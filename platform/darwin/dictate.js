@@ -1,6 +1,6 @@
 import os from 'node:os'
 import path from 'node:path'
-import { run } from '../shared/run.js'
+import { run, runQuiet } from '../shared/run.js'
 import { startDictate, stopDictate } from './service.js'
 
 // k0 Dictate is a small Swift app of its own (dictate/), built on this Mac like the menu bar icon.
@@ -39,6 +39,7 @@ async function build({ source, out }) {
 /** Dictation switched on: built if it has to be, then started now and at every login. */
 export async function enable({ source, out, port, logDir }) {
   const app = await build({ source, out })
+  await quit()
   await startDictate({ binary: path.join(app, 'Contents', 'MacOS', 'k0-dictate'), port, logDir })
   return { app }
 }
@@ -46,4 +47,12 @@ export async function enable({ source, out, port, logDir }) {
 /** Switched off: the login agent goes, and with it the copy it started. */
 export async function disable() {
   await stopDictate()
+  await quit()
+}
+
+// The copy the trial page opened is not launchd's, and it would outlive both a switch-off and a
+// rebuild: an old app left running keeps pasting with the old code, and a new one refuses to start
+// beside it.
+async function quit() {
+  await runQuiet('/usr/bin/pkill', ['-x', 'k0-dictate'])
 }
