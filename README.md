@@ -1682,7 +1682,7 @@ for the same reason.
 - **Hold Control on its own** for a quick phrase: a small pill at the bottom of the screen shows a
   wave while you speak, and when you let go the text is pasted where the cursor is. Press any other
   key while Control is down — Control+C, Control+A — and nothing happens: that was a shortcut.
-- The pill is coloured, so it is never taken for Wispr Flow's: **green** while it waits, **red**
+- The pill is coloured, so it is never taken for Wispr Flow's: a muted **green** while it waits, **red**
   while it listens, **orange** while the words are being worked out.
 - **Control+Space, or Control tapped twice**, is hands-free: the pill shows cancel, the wave and
   done. **Control on its own** again, or done, finishes and pastes; cancel throws it away.

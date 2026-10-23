@@ -32,7 +32,10 @@ export async function launch({ source, out }) {
 }
 
 async function build({ source, out }) {
-  await run('/bin/bash', [path.join(source, 'build.sh'), out], { timeout: 180_000 })
+  const said = await run('/bin/bash', [path.join(source, 'build.sh'), out], { timeout: 180_000 })
+  // A new build is a new signature, and macOS keeps the old approval on show: the switch in System
+  // Settings stays on, the app is refused anyway, and it never asks. Cleared, it asks again, once.
+  if (!/already up to date/.test(said)) await runQuiet('/usr/bin/tccutil', ['reset', 'Accessibility', 'com.k0.dictate'])
   return path.join(out, 'k0 Dictate.app')
 }
 

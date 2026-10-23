@@ -33,7 +33,7 @@ All notable changes to this project are documented here. The format follows
   recordings stay on the Mac, outside the board's database, and one button throws them away.
 - The dictation tests never start Whisper, even on a Mac where Homebrew installed it. Nothing changes
   for anybody using k0.
-- The dictation pill is green while it waits, red while it listens and orange while it works out
+- The dictation pill is a muted green while it waits, red while it listens and orange while it works out
   the words, and a little bigger at rest, so it is easy to tell from Wispr Flow's and to right-click.
 
 ### Fixed
@@ -47,6 +47,9 @@ All notable changes to this project are documented here. The format follows
   segments, sometimes in the middle of a word.
 - Switching dictation off stops k0 Dictate even when the trial page opened it, and switching it on
   after an update starts the new version instead of leaving the old one running.
+- Control starts dictation again after k0 Dictate is rebuilt. The rebuilt app was refused
+  Accessibility while System Settings still showed its switch on, for the copy before, so it never
+  heard the key; now the old approval is cleared and macOS asks again, once.
 
 
 ## [0.7.0]

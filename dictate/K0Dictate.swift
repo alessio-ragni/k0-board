@@ -338,7 +338,9 @@ final class PillView: NSView {
     weak var owner: Dictation?
     /// Coloured, not black like Wispr Flow's, so the two are never mistaken for each other: green
     /// while it waits, red while it listens, orange while the words are being worked out.
-    var colour = NSColor.systemGreen
+    /// A muted sage, not the system's bright green: it sits on screen all day.
+    static let resting = NSColor(srgbRed: 0.36, green: 0.53, blue: 0.42, alpha: 1)
+    var colour = PillView.resting
 
     override func draw(_ dirtyRect: NSRect) {
         colour.withAlphaComponent(0.9).setFill()
@@ -400,7 +402,7 @@ final class Pill {
         panel.setFrame(NSRect(x: area.midX - size.width / 2, y: area.minY + 10, width: size.width, height: size.height),
                        display: true)
         view.frame = NSRect(origin: .zero, size: size)
-        view.colour = look == .idle ? .systemGreen : look == .working ? .systemOrange : .systemRed
+        view.colour = look == .idle ? PillView.resting : look == .working ? .systemOrange : .systemRed
         wave.isHidden = look == .idle
         wave.dim = look == .working
         cancel.isHidden = look != .handsFree
