@@ -78,7 +78,7 @@ final class Recorder {
                                    commonFormat: .pcmFormatFloat32, interleaved: false)
         self.file = file
         self.url = url
-        input.installTap(onBus: 0, bufferSize: 4096, format: inFormat) { buffer, _ in
+        input.installTap(onBus: 0, bufferSize: 1024, format: inFormat) { buffer, _ in
             let capacity = AVAudioFrameCount(Double(buffer.frameLength) * 16000 / inFormat.sampleRate) + 32
             guard let out = AVAudioPCMBuffer(pcmFormat: outFormat, frameCapacity: capacity) else { return }
             var fed = false
@@ -96,7 +96,10 @@ final class Recorder {
             if let samples = buffer.floatChannelData?[0], buffer.frameLength > 0 {
                 var sum: Float = 0
                 for i in 0..<Int(buffer.frameLength) { sum += samples[i] * samples[i] }
-                let level = min(1, sqrt(sum / Float(buffer.frameLength)) * 8)
+                // In decibels, not raw amplitude: a voice at a normal distance is a few hundredths of
+                // full scale, which on a straight line left the bars lying flat whatever you said.
+                let rms = sqrt(sum / Float(buffer.frameLength))
+                let level = max(0, min(1, (20 * log10(max(rms, 1e-6)) + 55) / 40))
                 DispatchQueue.main.async { self.onLevel?(level) }
             }
         }
@@ -338,8 +341,11 @@ final class PillView: NSView {
     weak var owner: Dictation?
     /// Coloured, not black like Wispr Flow's, so the two are never mistaken for each other: green
     /// while it waits, red while it listens, orange while the words are being worked out.
-    /// A muted sage, not the system's bright green: it sits on screen all day.
-    static let resting = NSColor(srgbRed: 0.36, green: 0.53, blue: 0.42, alpha: 1)
+    /// Soft tones, the kind a terminal status line uses, not the system's loud ones: the pill sits
+    /// on screen all day.
+    static let resting = NSColor(srgbRed: 0.42, green: 0.64, blue: 0.47, alpha: 1)
+    static let listening = NSColor(srgbRed: 0.85, green: 0.42, blue: 0.43, alpha: 1)
+    static let working = NSColor(srgbRed: 0.84, green: 0.63, blue: 0.38, alpha: 1)
     var colour = PillView.resting
 
     override func draw(_ dirtyRect: NSRect) {
@@ -402,7 +408,7 @@ final class Pill {
         panel.setFrame(NSRect(x: area.midX - size.width / 2, y: area.minY + 10, width: size.width, height: size.height),
                        display: true)
         view.frame = NSRect(origin: .zero, size: size)
-        view.colour = look == .idle ? PillView.resting : look == .working ? .systemOrange : .systemRed
+        view.colour = look == .idle ? PillView.resting : look == .working ? PillView.working : PillView.listening
         wave.isHidden = look == .idle
         wave.dim = look == .working
         cancel.isHidden = look != .handsFree
@@ -460,10 +466,14 @@ final class Dictation: NSObject, NSApplicationDelegate {
             .contains(where: { $0.processIdentifier != mine }) {
             exit(0)
         }
-        // Asks once; System Settings lists the app afterwards whatever the answer was.
-        let prompt = kAXTrustedCheckOptionPrompt.takeUnretainedValue() as String
-        _ = AXIsProcessTrustedWithOptions([prompt: true] as CFDictionary)
-        AVCaptureDevice.requestAccess(for: .audio) { _ in }
+        // One question at a time: the microphone, then Accessibility once that is answered. Asked
+        // together, the two windows opened on top of each other and the first click closed the other.
+        AVCaptureDevice.requestAccess(for: .audio) { _ in
+            DispatchQueue.main.async {
+                let prompt = kAXTrustedCheckOptionPrompt.takeUnretainedValue() as String
+                _ = AXIsProcessTrustedWithOptions([prompt: true] as CFDictionary)
+            }
+        }
 
         recorder.onLevel = { [weak self] level in self?.pill?.wave.push(level) }
 
