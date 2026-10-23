@@ -1644,7 +1644,7 @@ your own Mac with your own voice, and the dictation uses the engine you keep.
 
 ### The trial
 
-Open **`http://k0.localhost/dictate.html`**. The page walks you through what is missing:
+Open **`http://k0.localhost:4319/dictate.html`**. The page walks you through what is missing:
 
 - **Start k0 Dictate.** A small app of k0's own, built on your Mac the first time (a few seconds)
   into `~/.k0/dictate/`. macOS asks for the **Microphone** and for **Accessibility** — the second

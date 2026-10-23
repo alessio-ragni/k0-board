@@ -9,7 +9,7 @@ All notable changes to this project are documented here. The format follows
 ### Added
 
 - **A dictation trial, before k0 gets a dictation of its own.** On a Mac with macOS 26, open
-  `k0.localhost/dictate.html` and dictate with Wispr Flow as usual, holding Control: k0 Dictate, a
+  `k0.localhost:4319/dictate.html` and dictate with Wispr Flow as usual, holding Control: k0 Dictate, a
   small app of k0's own, listens to the same microphone at the same moment and hands the phrase to
   two engines that run on the Mac, Apple's and Whisper. Each phrase shows the three texts side by
   side with how long each took, and the recording to play back. Holding Control while pressing any
@@ -33,6 +33,11 @@ All notable changes to this project are documented here. The format follows
   recordings stay on the Mac, outside the board's database, and one button throws them away.
 - The dictation tests never start Whisper, even on a Mac where Homebrew installed it. Nothing changes
   for anybody using k0.
+
+### Fixed
+
+- The manual sends you to the dictation page at the address that answers, with the port in it:
+  `k0.localhost:4319/dictate.html`. Without it the browser said the site could not be reached.
 
 
 ## [0.7.0]
