@@ -165,6 +165,19 @@ check('the segments win over the text when they are there',
   dictate.spoken({ text: 'x', segments: [{ text: ' Ciao,' }, { text: ' come va' }] }), 'Ciao, come va')
 check('nothing heard is an empty phrase', dictate.spoken({}), '')
 
+section('What Whisper invents over silence')
+
+check('"Thank you." on its own is invented', dictate.invented('Thank you.'), true)
+check('so is a lone full stop', dictate.invented('.'), true)
+check('and the subtitle credits', dictate.invented('Sottotitoli creati dalla comunità Amara.org'), true)
+check('a real sentence with thanks in it is not', dictate.invented('Thank you for the review, ship it.'), false)
+check('nor is a word somebody said', dictate.invented('Allora.'), false)
+const silentWav = path.join(liveDir, '301.wav')
+fs.writeFileSync(silentWav, 'RIFF')
+const silent = await dictate.transcribeLive({ wav: silentWav }, { run: async () => ({ text: ' Thank you.' }) })
+check('an invented phrase comes back empty, so nothing is pasted', silent.text, '')
+check('and says what was thrown away', silent.dropped, 'Thank you.')
+
 section('The last ten')
 
 check('nothing said, nothing kept', 'error' in dictate.remember({ text: '   ' }), true)

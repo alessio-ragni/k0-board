@@ -53,6 +53,10 @@ final class Recorder {
     private(set) var url: URL?
     /// How loud the last moment was, 0…1, for the wave in the pill. Called on the main thread.
     var onLevel: ((Float) -> Void)?
+    /// The loudest moment of this recording, on the same scale, and when it began: a phrase that
+    /// never got loud is silence, and Whisper fills silence with words nobody said.
+    private(set) var peak: Float = 0
+    private(set) var startedAt = Date()
 
     func start(into url: URL) throws {
         let input = engine.inputNode
@@ -78,6 +82,8 @@ final class Recorder {
                                    commonFormat: .pcmFormatFloat32, interleaved: false)
         self.file = file
         self.url = url
+        peak = 0
+        startedAt = Date()
         input.installTap(onBus: 0, bufferSize: 1024, format: inFormat) { buffer, _ in
             let capacity = AVAudioFrameCount(Double(buffer.frameLength) * 16000 / inFormat.sampleRate) + 32
             guard let out = AVAudioPCMBuffer(pcmFormat: outFormat, frameCapacity: capacity) else { return }
@@ -100,7 +106,10 @@ final class Recorder {
                 // full scale, which on a straight line left the bars lying flat whatever you said.
                 let rms = sqrt(sum / Float(buffer.frameLength))
                 let level = max(0, min(1, (20 * log10(max(rms, 1e-6)) + 55) / 40))
-                DispatchQueue.main.async { self.onLevel?(level) }
+                DispatchQueue.main.async {
+                    self.peak = max(self.peak, level)
+                    self.onLevel?(level)
+                }
             }
         }
         engine.prepare()
@@ -114,6 +123,27 @@ final class Recorder {
         file = nil
     }
 }
+
+// MARK: - The log
+
+/// One line per phrase in ~/.k0/logs/dictate.log, on this Mac only: what was heard, where it was
+/// meant to go and where it went. Without it a paste that went nowhere left no trace at all.
+func note(_ line: String) {
+    let dir = FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent(".k0/logs")
+    let file = dir.appendingPathComponent("dictate.log")
+    try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+    let stamp = ISO8601DateFormatter().string(from: Date())
+    let data = Data("\(stamp) \(line)\n".utf8)
+    if let handle = try? FileHandle(forWritingTo: file) {
+        handle.seekToEndOfFile()
+        handle.write(data)
+        try? handle.close()
+    } else {
+        try? data.write(to: file)
+    }
+}
+
+func name(_ app: NSRunningApplication?) -> String { app?.localizedName ?? "nothing" }
 
 // MARK: - Apple's engine
 
@@ -339,13 +369,13 @@ final class PillPanel: NSPanel {
 
 final class PillView: NSView {
     weak var owner: Dictation?
-    /// Coloured, not black like Wispr Flow's, so the two are never mistaken for each other: green
-    /// while it waits, red while it listens, orange while the words are being worked out.
-    /// Soft tones, the kind a terminal status line uses, not the system's loud ones: the pill sits
-    /// on screen all day.
-    static let resting = NSColor(srgbRed: 0.42, green: 0.64, blue: 0.47, alpha: 1)
-    static let listening = NSColor(srgbRed: 0.85, green: 0.42, blue: 0.43, alpha: 1)
-    static let working = NSColor(srgbRed: 0.84, green: 0.63, blue: 0.38, alpha: 1)
+    /// Coloured, not black like Wispr Flow's, so the two are never mistaken for each other: a light
+    /// blue while it waits and while it listens, orange while the words are being worked out, and red
+    /// only when something went wrong — red means an error, and nothing else. Soft tones, the kind a
+    /// terminal status line uses: the pill sits on screen all day.
+    static let resting = NSColor(srgbRed: 0.40, green: 0.66, blue: 0.86, alpha: 1)
+    static let working = NSColor(srgbRed: 0.88, green: 0.62, blue: 0.36, alpha: 1)
+    static let failed = NSColor(srgbRed: 0.85, green: 0.42, blue: 0.43, alpha: 1)
     var colour = PillView.resting
 
     override func draw(_ dirtyRect: NSRect) {
@@ -358,16 +388,13 @@ final class PillView: NSView {
         edge.stroke()
     }
 
-    override func rightMouseDown(with event: NSEvent) {
-        guard let menu = owner?.menu() else { return }
-        NSMenu.popUpContextMenu(menu, with: event, for: self)
-    }
+    override func rightMouseDown(with event: NSEvent) { owner?.openMenu() }
 }
 
 /// Always at the bottom of the screen while dictation is on: small when idle, the wave alone for a
 /// quick phrase, cancel / wave / done when hands-free — the shapes Wispr Flow taught.
 final class Pill {
-    enum Look { case idle, quick, handsFree, working }
+    enum Look { case idle, quick, handsFree, working, failed }
 
     let panel: PillPanel
     let view = PillView()
@@ -400,7 +427,7 @@ final class Pill {
         let size: NSSize
         switch look {
         case .idle: size = NSSize(width: 56, height: 14)
-        case .quick, .working: size = NSSize(width: 86, height: 30)
+        case .quick, .working, .failed: size = NSSize(width: 86, height: 30)
         case .handsFree: size = NSSize(width: 140, height: 34)
         }
         let screen = NSScreen.screens.first { NSMouseInRect(NSEvent.mouseLocation, $0.frame, false) } ?? NSScreen.main
@@ -408,9 +435,9 @@ final class Pill {
         panel.setFrame(NSRect(x: area.midX - size.width / 2, y: area.minY + 10, width: size.width, height: size.height),
                        display: true)
         view.frame = NSRect(origin: .zero, size: size)
-        view.colour = look == .idle ? PillView.resting : look == .working ? PillView.working : PillView.listening
+        view.colour = look == .working ? PillView.working : look == .failed ? PillView.failed : PillView.resting
         wave.isHidden = look == .idle
-        wave.dim = look == .working
+        wave.dim = look == .working || look == .failed
         cancel.isHidden = look != .handsFree
         done.isHidden = look != .handsFree
         if look == .handsFree {
@@ -427,6 +454,203 @@ final class Pill {
     }
 
     func hide() { panel.orderOut(nil) }
+
+    /// Red for a second, then back to waiting: the phrase is not lost, it is in the menu's list when
+    /// there was one to keep.
+    func flashError() {
+        show(.failed)
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1.2) { [weak self] in
+            if self?.view.colour == PillView.failed { self?.show(.idle) }
+        }
+    }
+}
+
+// MARK: - The pill's menu
+
+/// A view whose origin is at the top, so the menu can be laid out the way it is read.
+final class Flipped: NSView {
+    override var isFlipped: Bool { true }
+}
+
+/// One line of the menu that does something: lit under the mouse, like a menu item, but drawn here so
+/// it can hold two lines of a phrase and the time it was said.
+final class MenuRow: NSView {
+    let action: () -> Void
+    var lit = false { didSet { needsDisplay = true } }
+
+    init(frame: NSRect, action: @escaping () -> Void) {
+        self.action = action
+        super.init(frame: frame)
+    }
+
+    required init?(coder: NSCoder) { nil }
+
+    override var isFlipped: Bool { true }
+    override func acceptsFirstMouse(for event: NSEvent?) -> Bool { true }
+
+    override func updateTrackingAreas() {
+        trackingAreas.forEach(removeTrackingArea)
+        addTrackingArea(NSTrackingArea(rect: .zero, options: [.mouseEnteredAndExited, .activeAlways, .inVisibleRect],
+                                       owner: self))
+    }
+
+    override func mouseEntered(with event: NSEvent) { lit = true }
+    override func mouseExited(with event: NSEvent) { lit = false }
+    override func mouseUp(with event: NSEvent) { if lit { action() } }
+
+    override func draw(_ dirtyRect: NSRect) {
+        guard lit else { return }
+        PillView.resting.withAlphaComponent(0.35).setFill()
+        NSBezierPath(roundedRect: bounds, xRadius: 7, yRadius: 7).fill()
+    }
+}
+
+/// What a right-click on the pill opens, in place of the system's menu: dark and rounded like the pill,
+/// above it, and — a panel that never takes the focus — leaving the cursor where it was, so a phrase
+/// clicked here is pasted where you were typing. A click anywhere else, or Escape, closes it.
+final class MenuPanel {
+    let panel: PillPanel
+    var outside: Any?
+    var onClose: (() -> Void)?
+
+    static let width: CGFloat = 360
+
+    init(history: [(text: String, at: Double)], microphones: [(uid: String, name: String)], chosen: String?,
+         paste: @escaping (String) -> Void, choose: @escaping (String?) -> Void) {
+        panel = PillPanel(contentRect: .zero, styleMask: [.borderless, .nonactivatingPanel], backing: .buffered,
+                          defer: false)
+        panel.isOpaque = false
+        panel.backgroundColor = .clear
+        panel.hasShadow = true
+        panel.level = .popUpMenu
+        panel.hidesOnDeactivate = false
+        panel.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary, .ignoresCycle]
+
+        let inner = MenuPanel.width - 12
+        let list = Flipped()
+        var y: CGFloat = 6
+
+        func header(_ title: String) {
+            let label = NSTextField(labelWithString: title.uppercased())
+            label.font = .systemFont(ofSize: 10, weight: .semibold)
+            label.textColor = NSColor.white.withAlphaComponent(0.45)
+            label.frame = NSRect(x: 18, y: y + 6, width: inner - 24, height: 14)
+            list.addSubview(label)
+            y += 24
+        }
+        func line() {
+            let rule = NSBox(frame: NSRect(x: 18, y: y + 4, width: inner - 24, height: 1))
+            rule.boxType = .custom
+            rule.borderWidth = 0
+            rule.fillColor = NSColor.white.withAlphaComponent(0.12)
+            list.addSubview(rule)
+            y += 9
+        }
+        func row(_ title: String, detail: String? = nil, mark: Bool = false, lines: Int = 1,
+                 action: @escaping () -> Void) {
+            let height: CGFloat = lines > 1 ? 46 : 28
+            let item = MenuRow(frame: NSRect(x: 6, y: y, width: inner, height: height), action: action)
+            let text = NSTextField(wrappingLabelWithString: title)
+            text.font = .systemFont(ofSize: 13)
+            text.textColor = NSColor.white.withAlphaComponent(0.92)
+            text.maximumNumberOfLines = lines
+            text.lineBreakMode = .byTruncatingTail
+            text.cell?.truncatesLastVisibleLine = true
+            let right: CGFloat = detail == nil ? 12 : 70
+            text.frame = NSRect(x: 26, y: 5, width: inner - 26 - right, height: height - 10)
+            item.addSubview(text)
+            if mark {
+                let tick = NSTextField(labelWithString: "✓")
+                tick.font = .systemFont(ofSize: 12, weight: .semibold)
+                tick.textColor = PillView.resting
+                tick.frame = NSRect(x: 8, y: 6, width: 14, height: 16)
+                item.addSubview(tick)
+            }
+            if let detail {
+                let when = NSTextField(labelWithString: detail)
+                when.font = .systemFont(ofSize: 11)
+                when.textColor = NSColor.white.withAlphaComponent(0.45)
+                when.alignment = .right
+                when.frame = NSRect(x: inner - 66, y: 6, width: 58, height: 14)
+                item.addSubview(when)
+            }
+            list.addSubview(item)
+            y += height + 2
+        }
+
+        header("Transcript history")
+        if history.isEmpty {
+            let none = NSTextField(labelWithString: "Nothing dictated yet")
+            none.font = .systemFont(ofSize: 13)
+            none.textColor = NSColor.white.withAlphaComponent(0.45)
+            none.frame = NSRect(x: 32, y: y + 4, width: inner - 40, height: 18)
+            list.addSubview(none)
+            y += 28
+        }
+        for entry in history {
+            let long = entry.text.count > 48
+            row(entry.text, detail: MenuPanel.ago(entry.at), lines: long ? 2 : 1) { paste(entry.text) }
+        }
+        line()
+        if let last = history.first {
+            row("Paste last transcript") { paste(last.text) }
+            line()
+        }
+        header("Microphone")
+        row("System default", mark: chosen == nil) { choose(nil) }
+        for mic in microphones {
+            row(mic.name, mark: mic.uid == chosen) { choose(mic.uid) }
+        }
+        y += 6
+
+        let glass = NSVisualEffectView()
+        glass.material = .hudWindow
+        glass.blendingMode = .behindWindow
+        glass.state = .active
+        glass.appearance = NSAppearance(named: .darkAqua)
+        glass.wantsLayer = true
+        glass.layer?.cornerRadius = 14
+        glass.layer?.masksToBounds = true
+        glass.layer?.borderWidth = 1
+        glass.layer?.borderColor = NSColor.white.withAlphaComponent(0.12).cgColor
+        list.frame = NSRect(x: 0, y: 0, width: MenuPanel.width, height: y)
+        glass.frame = list.frame
+        glass.addSubview(list)
+        panel.contentView = glass
+        panel.setContentSize(list.frame.size)
+    }
+
+    /// Above the pill, centred on it, kept on the screen.
+    func show(above pill: NSRect) {
+        let screen = NSScreen.screens.first { $0.frame.intersects(pill) } ?? NSScreen.main
+        let area = screen?.visibleFrame ?? .zero
+        let size = panel.frame.size
+        let height = min(size.height, area.height - 40)
+        let x = min(max(pill.midX - size.width / 2, area.minX + 8), area.maxX - size.width - 8)
+        panel.setFrame(NSRect(x: x, y: pill.maxY + 8, width: size.width, height: height), display: true)
+        panel.orderFrontRegardless()
+        outside = NSEvent.addGlobalMonitorForEvents(matching: [.leftMouseDown, .rightMouseDown]) { [weak self] _ in
+            self?.close()
+        }
+    }
+
+    func close() {
+        if let outside { NSEvent.removeMonitor(outside) }
+        outside = nil
+        panel.orderOut(nil)
+        onClose?()
+        onClose = nil
+    }
+
+    static func ago(_ at: Double) -> String {
+        let seconds = Date().timeIntervalSince1970 - at / 1000
+        if seconds < 60 { return "just now" }
+        if seconds < 3600 { return "\(Int(seconds / 60)) min ago" }
+        if seconds < 86400 { return "\(Int(seconds / 3600)) h ago" }
+        let format = DateFormatter()
+        format.dateFormat = "d MMM"
+        return format.string(from: Date(timeIntervalSince1970: at / 1000))
+    }
 }
 
 // MARK: - Dictation, and the trial beside it
@@ -553,6 +777,10 @@ final class Dictation: NSObject, NSApplicationDelegate {
         let flags = event.flags.intersection([.maskControl, .maskShift, .maskAlternate, .maskCommand,
                                               .maskSecondaryFn])
         if type == .keyDown {
+            if let menuPanel, event.getIntegerValueField(.keyboardEventKeycode) == 53 {
+                menuPanel.close()
+                return nil
+            }
             let space = event.getIntegerValueField(.keyboardEventKeycode) == 49
             if dictating && space && flags == .maskControl && phase != .working {
                 if phase != .handsFree { goHandsFree() }
@@ -589,6 +817,7 @@ final class Dictation: NSObject, NSApplicationDelegate {
             if pressedAt - lastTapAt < 400 {
                 goHandsFree()
             } else {
+                rememberTarget()
                 startRecording()
                 phase = .quick
                 // Not shown at once: Control+C would flash it. A quarter of a second of Control alone
@@ -631,7 +860,10 @@ final class Dictation: NSObject, NSApplicationDelegate {
 
     func goHandsFree() {
         showTimer?.invalidate()
-        if phase != .quick { startRecording() }
+        if phase != .quick {
+            rememberTarget()
+            startRecording()
+        }
         phase = .handsFree
         handsFreeSince = now()
         lastTapAt = 0
@@ -662,29 +894,61 @@ final class Dictation: NSObject, NSApplicationDelegate {
     func finish() {
         recorder.stop()
         guard let url = recorder.url else { return abandon() }
+        let peak = recorder.peak
+        let seconds = Date().timeIntervalSince(recorder.startedAt)
+        let heard = String(format: "%.1fs, peak %.2f", seconds, peak)
+        // Nobody spoke: nothing goes to an engine, so nothing can be invented.
+        if peak < Dictation.silence {
+            note("\(engine): silent (\(heard)), thrown away")
+            return abandon()
+        }
         phase = .working
         pill?.show(.working)
         let engine = self.engine
         Task {
-            let text = await Dictation.transcribe(url, engine: engine)
-            if text.isEmpty { NSLog("k0 Dictate: \(engine) heard nothing in \(url.lastPathComponent)") }
+            let (text, failure) = await Dictation.transcribe(url, engine: engine)
             await MainActor.run {
                 self.phase = .idle
-                self.drawIdle()
-                if !text.isEmpty { self.deliver(text) }
+                if let failure {
+                    note("\(engine): \(heard), failed: \(failure)")
+                    self.pill?.flashError()
+                } else if text.isEmpty {
+                    note("\(engine): \(heard), nothing worth pasting")
+                    self.drawIdle()
+                } else {
+                    note("\(engine): \(heard), \(text.count) characters")
+                    self.drawIdle()
+                    self.deliver(text)
+                }
             }
         }
     }
 
-    static func transcribe(_ url: URL, engine: String) async -> String {
+    /// Below this the loudest moment of a phrase was room noise, on the 0…1 scale of the wave.
+    static let silence: Float = 0.15
+
+    /// The text, or why there is none. An empty text with no failure is a phrase Whisper is known to
+    /// invent over silence, which the server has already thrown away.
+    static func transcribe(_ url: URL, engine: String) async -> (String, String?) {
         if engine == "whisper" {
-            let answer = await ask("/api/dictate/transcribe", ["wav": url.path]) as? [String: Any]
-            if let error = answer?["error"] as? String { NSLog("k0 Dictate: Whisper said \(error)") }
-            return (answer?["text"] as? String ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
+            guard let answer = await ask("/api/dictate/transcribe", ["wav": url.path]) as? [String: Any] else {
+                return ("", "k0 did not answer")
+            }
+            if let error = answer["error"] as? String { return ("", error) }
+            return ((answer["text"] as? String ?? "").trimmingCharacters(in: .whitespacesAndNewlines), nil)
         }
         let (best, _) = await AppleEngine.best(url)
         try? FileManager.default.removeItem(at: url)
-        return best?.text ?? ""
+        return (best?.text ?? "", nil)
+    }
+
+    /// The app that was in front when Control went down, or when the menu opened: where the text
+    /// belongs. Never this app itself.
+    var target: NSRunningApplication?
+
+    func rememberTarget() {
+        let front = NSWorkspace.shared.frontmostApplication
+        if front?.bundleIdentifier != Bundle.main.bundleIdentifier { target = front }
     }
 
     /// Into the last ten first, then pasted: if the paste goes nowhere, the phrase is still there.
@@ -695,8 +959,27 @@ final class Dictation: NSObject, NSApplicationDelegate {
         }
     }
 
-    /// The clipboard is borrowed, not taken: whatever was on it goes back a moment later.
+    /// Pasted where the focus is. If the focus has ended up on this app — nothing here takes text —
+    /// the app you were in gets it back first, or the paste would land nowhere.
     func paste(_ text: String) {
+        let front = NSWorkspace.shared.frontmostApplication
+        let lost = front == nil || front?.bundleIdentifier == Bundle.main.bundleIdentifier
+        if lost, let target, !target.isTerminated {
+            note("paste: the focus was on \(name(front)), giving it back to \(name(target))")
+            target.activate()
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.25) { self.press(text) }
+            return
+        }
+        press(text)
+    }
+
+    /// The clipboard is borrowed, not taken: whatever was on it goes back a moment later.
+    func press(_ text: String) {
+        guard AXIsProcessTrusted() else {
+            note("paste: refused, k0 Dictate has no Accessibility")
+            pill?.flashError()
+            return
+        }
         let board = NSPasteboard.general
         let saved: [[NSPasteboard.PasteboardType: Data]] = (board.pasteboardItems ?? []).map { item in
             var copy: [NSPasteboard.PasteboardType: Data] = [:]
@@ -707,8 +990,7 @@ final class Dictation: NSObject, NSApplicationDelegate {
         board.setString(text, forType: .string)
         let ours = board.changeCount
         // Command pressed, V, Command let go — the whole gesture, from a source of our own, so the
-        // keys somebody may still be holding do not mix in. A bare V carrying the Command flag was
-        // ignored often enough by Chrome and the Terminal to look like a paste that never happened.
+        // keys somebody may still be holding do not mix in.
         let source = CGEventSource(stateID: .privateState)
         source?.userData = 0x6b30
         for (code, down) in [(CGKeyCode(55), true), (9, true), (9, false), (55, false)] {
@@ -717,6 +999,10 @@ final class Dictation: NSObject, NSApplicationDelegate {
             key?.post(tap: .cghidEventTap)
             usleep(8_000)
         }
+        let into = NSWorkspace.shared.frontmostApplication
+        let meant = target.flatMap { $0.processIdentifier == into?.processIdentifier ? nil : $0 }
+        note("paste: \(text.count) characters into \(name(into))"
+             + (meant.map { " (Control was pressed in \(name($0)))" } ?? ""))
         // An app reads the clipboard when it gets round to the paste, which can take more than half a
         // second; and if somebody copied something meanwhile, that is theirs and stays.
         DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
@@ -733,71 +1019,45 @@ final class Dictation: NSObject, NSApplicationDelegate {
 
     // MARK: The pill's menu
 
-    func menu() -> NSMenu {
-        let menu = NSMenu()
-        let mics = NSMenuItem(title: "Microphone", action: nil, keyEquivalent: "")
-        let micMenu = NSMenu()
-        let chosen = UserDefaults.standard.string(forKey: Microphones.key)
-        let auto = NSMenuItem(title: "System default", action: #selector(chooseMicrophone(_:)), keyEquivalent: "")
-        auto.target = self
-        auto.state = chosen == nil ? .on : .off
-        micMenu.addItem(auto)
-        for mic in Microphones.all() {
-            let item = NSMenuItem(title: mic.name, action: #selector(chooseMicrophone(_:)), keyEquivalent: "")
-            item.target = self
-            item.representedObject = mic.uid
-            item.state = mic.uid == chosen ? .on : .off
-            micMenu.addItem(item)
-        }
-        mics.submenu = micMenu
-        menu.addItem(mics)
-        menu.addItem(.separator())
+    var menuPanel: MenuPanel?
 
-        let history = NSMenuItem(title: "Transcript history", action: nil, keyEquivalent: "")
-        let historyMenu = NSMenu()
-        let list = lastTen()
-        if list.isEmpty {
-            historyMenu.addItem(NSMenuItem(title: "Nothing dictated yet", action: nil, keyEquivalent: ""))
+    func openMenu() {
+        if let open = menuPanel {
+            open.close()
+            return
         }
-        for text in list {
-            let title = text.count > 60 ? String(text.prefix(60)) + "…" : text
-            let item = NSMenuItem(title: title, action: #selector(pasteOne(_:)), keyEquivalent: "")
-            item.target = self
-            item.representedObject = text
-            item.toolTip = text
-            historyMenu.addItem(item)
-        }
-        history.submenu = historyMenu
-        menu.addItem(history)
-
-        let last = NSMenuItem(title: "Paste last transcript", action: #selector(pasteOne(_:)), keyEquivalent: "")
-        last.target = self
-        last.representedObject = list.first
-        last.isEnabled = list.first != nil
-        menu.addItem(last)
-        return menu
+        rememberTarget()
+        let menu = MenuPanel(
+            history: lastTen(),
+            microphones: Microphones.all().map { (uid: $0.uid, name: $0.name) },
+            chosen: UserDefaults.standard.string(forKey: Microphones.key),
+            paste: { [weak self] text in
+                self?.menuPanel?.close()
+                note("menu: paste asked for")
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) { self?.paste(text) }
+            },
+            choose: { [weak self] uid in
+                if let uid {
+                    UserDefaults.standard.set(uid, forKey: Microphones.key)
+                } else {
+                    UserDefaults.standard.removeObject(forKey: Microphones.key)
+                }
+                self?.menuPanel?.close()
+            })
+        menu.onClose = { [weak self] in self?.menuPanel = nil }
+        menuPanel = menu
+        menu.show(above: pill?.panel.frame ?? .zero)
     }
 
     /// Read synchronously: the menu is open for as long as it takes, and the server is on this Mac.
-    func lastTen() -> [String] {
+    func lastTen() -> [(text: String, at: Double)] {
         guard let url = URL(string: "\(base)/api/dictate/history"),
               let data = try? Data(contentsOf: url),
               let list = try? JSONSerialization.jsonObject(with: data) as? [[String: Any]] else { return [] }
-        return list.compactMap { $0["text"] as? String }
-    }
-
-    @objc func chooseMicrophone(_ sender: NSMenuItem) {
-        if let uid = sender.representedObject as? String {
-            UserDefaults.standard.set(uid, forKey: Microphones.key)
-        } else {
-            UserDefaults.standard.removeObject(forKey: Microphones.key)
+        return list.compactMap { entry in
+            guard let text = entry["text"] as? String else { return nil }
+            return (text: text, at: (entry["at"] as? NSNumber)?.doubleValue ?? 0)
         }
-    }
-
-    /// The menu has taken the focus by now; it gives it back as it closes, and the paste waits for that.
-    @objc func pasteOne(_ sender: NSMenuItem) {
-        guard let text = sender.representedObject as? String else { return }
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) { self.paste(text) }
     }
 
     // MARK: The trial

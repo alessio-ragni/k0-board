@@ -33,9 +33,13 @@ All notable changes to this project are documented here. The format follows
   recordings stay on the Mac, outside the board's database, and one button throws them away.
 - The dictation tests never start Whisper, even on a Mac where Homebrew installed it. Nothing changes
   for anybody using k0.
-- The dictation pill is a soft green while it waits, a soft red while it listens and amber while it
-  works out the words, and a little bigger at rest, so it is easy to tell from Wispr Flow's and to
-  right-click.
+- The dictation pill is a soft light blue while it waits and while it listens, orange while it works
+  out the words, and red for a second only when something went wrong. It is a little bigger at rest,
+  so it is easy to tell from Wispr Flow's and to right-click.
+- Right-clicking the pill opens a menu of k0's own instead of the system's: dark and rounded like the
+  pill, with the first two lines of each recent phrase and when you said it. A click pastes the phrase
+  where you were typing.
+- Each phrase leaves a line in `~/.k0/logs/dictate.log`, on the Mac only, saying where it was pasted.
 
 ### Fixed
 
@@ -54,6 +58,12 @@ All notable changes to this project are documented here. The format follows
 - After a rebuild macOS asks for the microphone first and Accessibility after, one window at a time.
   Both used to open together, and answering one closed the other.
 - The wave in the pill follows your voice. It used to lie nearly flat whatever you said.
+- A dictated phrase lands where you were typing even when the focus had moved to k0 Dictate itself,
+  as it did after opening the pill's menu: the app you were in gets the focus back first. Until now
+  those phrases reached the history and were never pasted.
+- Silence is no longer pasted as words. A phrase in which nobody spoke is thrown away, and Whisper's
+  usual inventions — "Thank you.", a lone full stop, subtitle credits — are dropped; a short Italian
+  phrase is no longer heard as Spanish.
 
 
 ## [0.7.0]

@@ -265,6 +265,29 @@ export function spoken(json = {}) {
   return parts.join('').replace(/\s+/g, ' ').trim()
 }
 
+/**
+ * What Whisper says over silence, or a breath, when nobody spoke: the ends of the subtitled videos it
+ * learned from. Said on its own, such a phrase is thrown away instead of pasted; inside a real
+ * sentence it is left alone.
+ */
+const INVENTED = [
+  '', '.', '..', '...', 'thank you', 'thank you.', 'thanks for watching', 'thanks for watching!', 'you',
+  'grazie', 'grazie.', 'grazie a tutti', 'grazie per la visione', 'sottotitoli creati dalla comunità amara.org',
+  'sottotitoli e revisione a cura di qtss', 'sottotitoli a cura di qtss',
+]
+
+export function invented(text = '') {
+  const t = String(text).trim().toLowerCase()
+  // Over silence Whisper can also read its own prompt back.
+  return INVENTED.includes(t) || t === PROMPT.toLowerCase() || /^[\s.,!?…-]*$/.test(t) || /^sottotitoli\b/.test(t)
+}
+
+/**
+ * A nudge, not a setting: the language is still Whisper's call, but a first line in Italian with
+ * English in it keeps a short Italian phrase from being heard as Spanish.
+ */
+export const PROMPT = 'Allora, facciamo il deploy e poi la code review del branch main.'
+
 async function transcribe(trial, { fetch = globalThis.fetch, run } = {}) {
   const done = (answer) => {
     trial.whisper = clean({ ...answer, text: String(answer.text ?? '').trim(), ms: Date.now() - trial.releasedAt })
@@ -298,7 +321,7 @@ export async function transcribeLive(body = {}, { fetch = globalThis.fetch, run 
   }
   const started = Date.now()
   try {
-    if (run) return { ...(await run(wav)), ms: Date.now() - started }
+    if (run) return heard(await run(wav), started)
     const w = warm({ fetch })
     if (!w) return { error: whyNoWhisper() }
     if (!(await w.ready)) return { error: 'whisper-server did not start.' }
@@ -306,13 +329,23 @@ export async function transcribeLive(body = {}, { fetch = globalThis.fetch, run 
     form.append('file', new Blob([fs.readFileSync(wav)]), 'audio.wav')
     form.append('response_format', 'verbose_json')
     form.append('temperature', '0')
+    form.append('prompt', PROMPT)
     const reply = await fetch(`http://127.0.0.1:${w.port}/inference`, { method: 'POST', body: form })
-    const json = await reply.json()
-    return { text: spoken(json), lang: json.language ?? '', ms: Date.now() - started }
+    return heard(await reply.json(), started)
   } catch (err) {
     return { error: String(err.message || err) }
   } finally {
     fs.rmSync(wav, { force: true })
+  }
+}
+
+function heard(json, started) {
+  const text = spoken(json)
+  return {
+    text: invented(text) ? '' : text,
+    ...(invented(text) && text ? { dropped: text } : {}),
+    lang: json.language ?? json.lang ?? '',
+    ms: Date.now() - started,
   }
 }
 

@@ -1682,17 +1682,26 @@ for the same reason.
 - **Hold Control on its own** for a quick phrase: a small pill at the bottom of the screen shows a
   wave while you speak, and when you let go the text is pasted where the cursor is. Press any other
   key while Control is down — Control+C, Control+A — and nothing happens: that was a shortcut.
-- The pill is coloured, so it is never taken for Wispr Flow's: a soft **green** while it waits, a soft
-  **red** while it listens — the bars move with your voice — and **amber** while the words are worked out.
+- The pill is coloured, so it is never taken for Wispr Flow's: a soft **light blue** while it waits and
+  while it listens — the bars move with your voice — and **orange** while the words are worked out. It
+  turns **red** for a second only when something went wrong: the phrase could not be heard, or could
+  not be pasted.
 - **Control+Space, or Control tapped twice**, is hands-free: the pill shows cancel, the wave and
   done. **Control on its own** again, or done, finishes and pastes; cancel throws it away.
   Control+Space is kept from the app in front; every other key reaches it as usual.
 - The text arrives all at once when you finish, not while you speak. It is pasted through the
   clipboard, and whatever was on the clipboard is put back a moment later — unless you copied
   something else in the meantime, which stays.
-- **Right-click the pill** for the **Microphone**, the **Transcript history** — the last ten
-  phrases, click one to paste it again — and **Paste last transcript**, which is what you want
-  when a paste went nowhere. Each phrase goes into those ten before it is pasted.
+- **Right-click the pill** for its menu, drawn by k0 rather than the system's: the **Transcript
+  history** — the last ten phrases, the first two lines of each and when you said it; click one to
+  paste it again — **Paste last transcript**, which is what you want when a paste went nowhere, and
+  the **Microphone**. Each phrase goes into those ten before it is pasted. A click elsewhere, or
+  Escape, closes the menu; it never takes the cursor away from where you were typing.
+- A phrase in which nobody spoke is thrown away before any engine hears it, and the phrases Whisper is
+  known to invent over silence — "Thank you.", a lone full stop, subtitle credits — are never pasted.
+- Every phrase leaves a line in `~/.k0/logs/dictate.log`: how long and how loud it was, how many
+  characters came back and which app they were pasted into. It stays on the Mac, and it is the first
+  place to look when a paste seems to have gone nowhere.
 - Nobody chooses a language. Whisper hears which one you speak; Apple's engine listens in Italian
   and English at once and keeps the surer of the two.
 - Nothing you say leaves the Mac. The recording of a phrase is deleted once transcribed; the last
