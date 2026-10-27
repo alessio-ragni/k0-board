@@ -64,6 +64,13 @@ All notable changes to this project are documented here. The format follows
 - Silence is no longer pasted as words. A phrase in which nobody spoke is thrown away, and Whisper's
   usual inventions — "Thank you.", a lone full stop, subtitle credits — are dropped; a short Italian
   phrase is no longer heard as Spanish.
+- Dictation no longer gets stuck with the pill up and Control dead until it is switched off and on.
+  Opening a microphone can take seconds — an iPhone's took four and a half — and k0 Dictate waited
+  for it where it reads the keyboard, so macOS stopped passing it keys and the release of Control
+  was lost; a monitor plugged or unplugged left it on a microphone that was no longer there. Now the
+  microphone opens on the side, a new one is used as soon as one comes or goes, and whatever gets
+  stuck all the same is put back at rest within a second and written in the log. Escape drops a
+  phrase, and *Reset dictation* in the pill's menu does what switching off and on used to.
 
 
 ## [0.7.0]

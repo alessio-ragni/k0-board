@@ -1699,9 +1699,22 @@ for the same reason.
   Escape, closes the menu; it never takes the cursor away from where you were typing.
 - A phrase in which nobody spoke is thrown away before any engine hears it, and the phrases Whisper is
   known to invent over silence — "Thank you.", a lone full stop, subtitle credits — are never pasted.
-- Every phrase leaves a line in `~/.k0/logs/dictate.log`: how long and how loud it was, how many
-  characters came back and which app they were pasted into. It stays on the Mac, and it is the first
-  place to look when a paste seems to have gone nowhere.
+- **It never stays stuck.** Plugging or unplugging a monitor with a webcam in it, an iPhone's
+  microphone wandering into range, sleep, a locked screen: none of these leaves the pill up and
+  Control dead any more, and switching dictation off and on is never needed. Twice a second k0
+  Dictate checks the states that must not last — Control let go without the app hearing it, a
+  microphone that stopped sending sound or never started, hands-free open for ten minutes, a
+  transcription with no text after ninety seconds — and puts itself back at rest, red for a second
+  when a phrase was lost. A microphone that gives no sound is opened once more before the phrase is
+  given up.
+- **Escape** while the pill listens or works drops the phrase. **Reset dictation**, at the bottom of
+  the pill's menu, does in place what switching dictation off and on used to; it also happens by
+  itself when the Mac wakes or the screen is unlocked, and the pill moves to the screen you are on
+  when screens come and go.
+- Every phrase leaves a line in `~/.k0/logs/dictate.log`: how long and how loud it was, which
+  microphone heard it, how many characters came back and which app they were pasted into. So does
+  every time k0 Dictate had to put itself right, and every microphone that came, went or became the
+  default. It stays on the Mac, and it is the first place to look when something seems wrong.
 - Nobody chooses a language. Whisper hears which one you speak; Apple's engine listens in Italian
   and English at once and keeps the surer of the two.
 - Nothing you say leaves the Mac. The recording of a phrase is deleted once transcribed; the last
@@ -1946,7 +1959,9 @@ web/             the pages (html, css, js served exactly as they are)
 dictate/         k0 Dictate, the Swift app: the trial (listens beside Wispr, never keeps a key) or
                  dictation (an event tap for Control and Control+Space, the pill, Apple's engine or
                  Whisper through the server, the paste, the pill's menu) — the server says which on
-                 every hello. Built by build.sh into ~/.k0/dictate/, and only when its own code
+                 every hello. The microphone opens and closes on a queue of its own, never where
+                 the keys are read, and a half-second guardian puts back at rest any state that
+                 outlives its reason. Built by build.sh into ~/.k0/dictate/, and only when its own code
                  changed, so its permissions survive updates of k0. Started at login by the
                  com.k0.dictate launchd agent once dictation is switched on
 supabase/        k0 Cloud's own side: migrations/ is its database (accounts, workspaces, the

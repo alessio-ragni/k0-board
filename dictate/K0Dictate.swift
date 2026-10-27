@@ -47,9 +47,23 @@ func post(_ path: String, _ body: [String: Any], then: (([String: Any]) -> Void)
 // MARK: - Listening
 
 /// Records the microphone to a 16 kHz mono WAV, the format both engines read without converting.
+///
+/// The microphone is opened and closed on a queue of its own, never on the main thread: the
+/// keyboard is read there, and opening a microphone can take seconds — four and a half, measured,
+/// for an iPhone's over Continuity. Waited for on the main thread, that wait outlasted the
+/// keyboard's patience: macOS switched the tap off, the release of Control never arrived, and the
+/// pill stayed up listening until the app was restarted.
+///
+/// One engine serves phrase after phrase, because that is what measured best: fifty starts in a
+/// row, switching microphone each time, gave sound every time, where a new engine for every
+/// phrase came up deaf about one time in eight. It is built again only when it can no longer be
+/// trusted — a microphone came or went, the default changed, the Mac woke up, or it gave no sound.
 final class Recorder {
-    private let engine = AVAudioEngine()
-    private var file: AVAudioFile?
+    private var engine = AVAudioEngine()
+    private var queue = DispatchQueue(label: "k0.audio")
+    private var stale = false
+    /// Bumped by every start, stop and reset: an answer, or a buffer, from an earlier one is dropped.
+    private var turn = 0
     private(set) var url: URL?
     /// How loud the last moment was, 0…1, for the wave in the pill. Called on the main thread.
     var onLevel: ((Float) -> Void)?
@@ -57,19 +71,101 @@ final class Recorder {
     /// never got loud is silence, and Whisper fills silence with words nobody said.
     private(set) var peak: Float = 0
     private(set) var startedAt = Date()
+    /// When the microphone last sent anything, loud or not; nil until it first does.
+    private(set) var heardAt: Date?
+    /// When the microphone said it was open; nil while it is still being opened.
+    private(set) var openedAt: Date?
+    /// Since when the audio queue has been busy on something that has not come back yet.
+    private(set) var busySince: Date?
+    /// The microphone this phrase is being recorded from, for the log.
+    private(set) var device = ""
 
-    func start(into url: URL) throws {
+    /// The engine is built again before the next phrase.
+    func renew() { stale = true }
+
+    /// Opens the microphone into `url` and says, on the main thread, whether it could: nil, or why not.
+    func start(into url: URL, then done: @escaping (String?) -> Void) {
+        turn += 1
+        let turn = self.turn
+        // The old engine is let go on the audio queue, behind the work still holding it.
+        let retired = stale ? engine : nil
+        if stale {
+            engine = AVAudioEngine()
+            stale = false
+        }
+        self.url = url
+        peak = 0
+        startedAt = Date()
+        heardAt = nil
+        openedAt = nil
+        device = ""
+        let engine = self.engine
+        busySince = Date()
+        queue.async {
+            withExtendedLifetime(retired) {}
+            // Asked here, not on the main thread: CoreAudio can be slow to answer while devices change.
+            let chosen = Microphones.chosen()
+            let name = Microphones.name(chosen ?? Microphones.standard()) ?? "unknown microphone"
+            DispatchQueue.main.async { if self.turn == turn { self.device = name } }
+            let failure = Recorder.open(engine, into: url, device: chosen) { [weak self] level in
+                guard let self, self.turn == turn else { return }
+                self.heardAt = Date()
+                self.peak = max(self.peak, level)
+                self.onLevel?(level)
+            }
+            DispatchQueue.main.async {
+                guard self.turn == turn else { return }
+                self.busySince = nil
+                if failure == nil { self.openedAt = Date() }
+                done(failure)
+            }
+        }
+    }
+
+    /// Closes the microphone, and the file with it so the engines read all of it, then calls `done`
+    /// on the main thread.
+    func stop(then done: (() -> Void)? = nil) {
+        turn += 1
+        let turn = self.turn
+        let engine = self.engine
+        busySince = Date()
+        queue.async {
+            engine.inputNode.removeTap(onBus: 0)
+            engine.stop()
+            DispatchQueue.main.async {
+                guard self.turn == turn else { return }
+                self.busySince = nil
+                done?()
+            }
+        }
+    }
+
+    /// For a queue that never came back: whatever it is stuck in is left behind, with its engine,
+    /// and the next phrase starts on a new queue and a new engine.
+    func reset() {
+        turn += 1
+        busySince = nil
+        queue = DispatchQueue(label: "k0.audio")
+        engine = AVAudioEngine()
+        stale = false
+    }
+
+    private static func open(_ engine: AVAudioEngine, into url: URL, device: AudioDeviceID?,
+                             level: @escaping (Float) -> Void) -> String? {
         let input = engine.inputNode
-        if let device = Microphones.chosen(), let unit = input.audioUnit {
+        // A tap left behind by a start that failed half-way would make this one raise, and quit the app.
+        input.removeTap(onBus: 0)
+        if let device, let unit = input.audioUnit {
             var id = device
             AudioUnitSetProperty(unit, kAudioOutputUnitProperty_CurrentDevice, kAudioUnitScope_Global, 0,
                                  &id, UInt32(MemoryLayout<AudioDeviceID>.size))
         }
         let inFormat = input.outputFormat(forBus: 0)
+        guard inFormat.sampleRate > 0, inFormat.channelCount > 0 else { return "the microphone has no sound format" }
         guard let outFormat = AVAudioFormat(commonFormat: .pcmFormatFloat32, sampleRate: 16000,
                                              channels: 1, interleaved: false),
               let converter = AVAudioConverter(from: inFormat, to: outFormat) else {
-            throw NSError(domain: "k0", code: 1, userInfo: [NSLocalizedDescriptionKey: "no usable audio format"])
+            return "no usable audio format"
         }
         let settings: [String: Any] = [
             AVFormatIDKey: kAudioFormatLinearPCM,
@@ -78,12 +174,13 @@ final class Recorder {
             AVLinearPCMBitDepthKey: 16,
             AVLinearPCMIsFloatKey: false,
         ]
-        let file = try AVAudioFile(forWriting: url, settings: settings,
-                                   commonFormat: .pcmFormatFloat32, interleaved: false)
-        self.file = file
-        self.url = url
-        peak = 0
-        startedAt = Date()
+        let file: AVAudioFile
+        do {
+            file = try AVAudioFile(forWriting: url, settings: settings, commonFormat: .pcmFormatFloat32,
+                                   interleaved: false)
+        } catch {
+            return "the recording could not be written: \(error.localizedDescription)"
+        }
         input.installTap(onBus: 0, bufferSize: 1024, format: inFormat) { buffer, _ in
             let capacity = AVAudioFrameCount(Double(buffer.frameLength) * 16000 / inFormat.sampleRate) + 32
             guard let out = AVAudioPCMBuffer(pcmFormat: outFormat, frameCapacity: capacity) else { return }
@@ -99,28 +196,25 @@ final class Recorder {
                 return buffer
             }
             if error == nil { try? file.write(from: out) }
+            var heard: Float = 0
             if let samples = buffer.floatChannelData?[0], buffer.frameLength > 0 {
                 var sum: Float = 0
                 for i in 0..<Int(buffer.frameLength) { sum += samples[i] * samples[i] }
                 // In decibels, not raw amplitude: a voice at a normal distance is a few hundredths of
                 // full scale, which on a straight line left the bars lying flat whatever you said.
                 let rms = sqrt(sum / Float(buffer.frameLength))
-                let level = max(0, min(1, (20 * log10(max(rms, 1e-6)) + 55) / 40))
-                DispatchQueue.main.async {
-                    self.peak = max(self.peak, level)
-                    self.onLevel?(level)
-                }
+                heard = max(0, min(1, (20 * log10(max(rms, 1e-6)) + 55) / 40))
             }
+            DispatchQueue.main.async { level(heard) }
         }
         engine.prepare()
-        try engine.start()
-    }
-
-    /// Stops, and closes the file so the engines read all of it.
-    func stop() {
-        engine.inputNode.removeTap(onBus: 0)
-        engine.stop()
-        file = nil
+        do {
+            try engine.start()
+        } catch {
+            input.removeTap(onBus: 0)
+            return error.localizedDescription
+        }
+        return nil
     }
 }
 
@@ -240,10 +334,10 @@ enum AppleEngine {
 
 // MARK: - Talking to the server, and waiting for the answer
 
-func ask(_ path: String, _ body: [String: Any]? = nil) async -> Any? {
+func ask(_ path: String, _ body: [String: Any]? = nil, timeout: TimeInterval = 120) async -> Any? {
     guard let url = URL(string: "\(base)\(path)") else { return nil }
     var req = URLRequest(url: url)
-    req.timeoutInterval = 120
+    req.timeoutInterval = timeout
     if let body, let data = try? JSONSerialization.data(withJSONObject: body) {
         req.httpMethod = "POST"
         req.setValue("application/json", forHTTPHeaderField: "content-type")
@@ -299,6 +393,35 @@ enum Microphones {
     static func chosen() -> AudioDeviceID? {
         guard let uid = UserDefaults.standard.string(forKey: key) else { return nil }
         return all().first { $0.uid == uid }?.id
+    }
+
+    /// The system's default input.
+    static func standard() -> AudioDeviceID? {
+        var address = AudioObjectPropertyAddress(mSelector: kAudioHardwarePropertyDefaultInputDevice,
+                                                 mScope: kAudioObjectPropertyScopeGlobal,
+                                                 mElement: kAudioObjectPropertyElementMain)
+        var id = AudioDeviceID(0)
+        var size = UInt32(MemoryLayout<AudioDeviceID>.size)
+        guard AudioObjectGetPropertyData(AudioObjectID(kAudioObjectSystemObject), &address, 0, nil, &size, &id) == noErr,
+              id != 0 else { return nil }
+        return id
+    }
+
+    static func name(_ id: AudioDeviceID?) -> String? {
+        guard let id else { return nil }
+        return string(id, kAudioObjectPropertyName)
+    }
+
+    /// Calls `changed` on the main thread whenever a microphone comes or goes, or the default
+    /// input changes — plugging a monitor with a webcam in it, or an iPhone wandering into range.
+    static func watch(_ changed: @escaping (String) -> Void) {
+        let system = AudioObjectID(kAudioObjectSystemObject)
+        for (selector, what) in [(kAudioHardwarePropertyDefaultInputDevice, "default microphone changed"),
+                                 (kAudioHardwarePropertyDevices, "a sound device came or went")] {
+            var address = AudioObjectPropertyAddress(mSelector: selector, mScope: kAudioObjectPropertyScopeGlobal,
+                                                     mElement: kAudioObjectPropertyElementMain)
+            AudioObjectAddPropertyListenerBlock(system, &address, DispatchQueue.main) { _, _ in changed(what) }
+        }
     }
 }
 
@@ -430,10 +553,7 @@ final class Pill {
         case .quick, .working, .failed: size = NSSize(width: 86, height: 30)
         case .handsFree: size = NSSize(width: 140, height: 34)
         }
-        let screen = NSScreen.screens.first { NSMouseInRect(NSEvent.mouseLocation, $0.frame, false) } ?? NSScreen.main
-        let area = screen?.visibleFrame ?? .zero
-        panel.setFrame(NSRect(x: area.midX - size.width / 2, y: area.minY + 10, width: size.width, height: size.height),
-                       display: true)
+        place(size)
         view.frame = NSRect(origin: .zero, size: size)
         view.colour = look == .working ? PillView.working : look == .failed ? PillView.failed : PillView.resting
         wave.isHidden = look == .idle
@@ -454,6 +574,16 @@ final class Pill {
     }
 
     func hide() { panel.orderOut(nil) }
+
+    /// At the bottom of the screen the mouse is on. Also called when screens come and go: a pill left
+    /// where a monitor used to be is a pill nobody can see.
+    func place(_ size: NSSize? = nil) {
+        let size = size ?? panel.frame.size
+        let screen = NSScreen.screens.first { NSMouseInRect(NSEvent.mouseLocation, $0.frame, false) } ?? NSScreen.main
+        let area = screen?.visibleFrame ?? .zero
+        panel.setFrame(NSRect(x: area.midX - size.width / 2, y: area.minY + 10, width: size.width, height: size.height),
+                       display: true)
+    }
 
     /// Red for a second, then back to waiting: the phrase is not lost, it is in the menu's list when
     /// there was one to keep.
@@ -516,7 +646,7 @@ final class MenuPanel {
     static let width: CGFloat = 360
 
     init(history: [(text: String, at: Double)], microphones: [(uid: String, name: String)], chosen: String?,
-         paste: @escaping (String) -> Void, choose: @escaping (String?) -> Void) {
+         paste: @escaping (String) -> Void, choose: @escaping (String?) -> Void, reset: @escaping () -> Void) {
         panel = PillPanel(contentRect: .zero, styleMask: [.borderless, .nonactivatingPanel], backing: .buffered,
                           defer: false)
         panel.isOpaque = false
@@ -601,6 +731,8 @@ final class MenuPanel {
         for mic in microphones {
             row(mic.name, mark: mic.uid == chosen) { choose(mic.uid) }
         }
+        line()
+        row("Reset dictation") { reset() }
         y += 6
 
         let glass = NSVisualEffectView()
@@ -664,6 +796,7 @@ final class Dictation: NSObject, NSApplicationDelegate {
     let recorder = Recorder()
     var pill: Pill?
     var tap: CFMachPort?
+    var tapSource: CFRunLoopSource?
 
     // What the server said.
     var mode = "trial"
@@ -680,6 +813,11 @@ final class Dictation: NSObject, NSApplicationDelegate {
     var spoiled = false
     var current = ""
     var showTimer: Timer?
+    /// Which transcription is the one still wanted: one given up on, or cancelled, may still answer.
+    var job = 0
+    var workingSince: Double = 0
+    /// A microphone that gave no sound is opened once more before the phrase is given up.
+    var reopened = false
 
     var dictating: Bool { mode == "dictate" }
 
@@ -710,6 +848,11 @@ final class Dictation: NSObject, NSApplicationDelegate {
         }
         hello()
         Timer.scheduledTimer(withTimeInterval: 5, repeats: true) { _ in self.hello() }
+        // In the common modes, so it keeps running while a menu or a drag holds the run loop.
+        RunLoop.main.add(Timer(timeInterval: 0.5, repeats: true) { _ in self.watch() }, forMode: .common)
+        observe()
+        microphones = Microphones.all().map(\.name)
+        note("started, microphones: \(microphones.joined(separator: ", "))")
     }
 
     /// Tells the board this app is alive and what it is allowed to do, and learns what to be and
@@ -744,13 +887,18 @@ final class Dictation: NSObject, NSApplicationDelegate {
     // MARK: The keyboard
 
     /// Retried on every hello: until Accessibility is granted the tap cannot exist, and nobody
-    /// should have to restart the app after granting it.
+    /// should have to restart the app after granting it. A tap macOS switched off is switched back on;
+    /// one that is gone altogether — it happens across sleep and permission changes — is made again.
     func installTap() {
-        if let tap, CGEvent.tapIsEnabled(tap: tap) { return }
-        if let tap {
-            CGEvent.tapEnable(tap: tap, enable: true)
+        if let tap, CFMachPortIsValid(tap) {
+            if !CGEvent.tapIsEnabled(tap: tap) {
+                note("keyboard: the tap was off, switched back on")
+                CGEvent.tapEnable(tap: tap, enable: true)
+            }
             return
         }
+        if tap != nil { note("keyboard: the tap was gone, made again") }
+        dropTap()
         let mask = (1 << CGEventType.flagsChanged.rawValue) | (1 << CGEventType.keyDown.rawValue)
         let me = Unmanaged.passUnretained(self).toOpaque()
         guard let tap = CGEvent.tapCreate(tap: .cgSessionEventTap, place: .headInsertEventTap, options: .defaultTap,
@@ -760,16 +908,26 @@ final class Dictation: NSObject, NSApplicationDelegate {
         }, userInfo: me) else { return }
         self.tap = tap
         let source = CFMachPortCreateRunLoopSource(nil, tap, 0)
+        tapSource = source
         CFRunLoopAddSource(CFRunLoopGetMain(), source, .commonModes)
         CGEvent.tapEnable(tap: tap, enable: true)
     }
 
-    /// Returns nil to keep a key from the app in front — only ever Control+Space, and only while
-    /// dictating. Everything else passes through untouched.
+    func dropTap() {
+        if let tapSource { CFRunLoopRemoveSource(CFRunLoopGetMain(), tapSource, .commonModes) }
+        if let tap { CFMachPortInvalidate(tap) }
+        tap = nil
+        tapSource = nil
+    }
+
+    /// Returns nil to keep a key from the app in front — only ever Control+Space while dictating, and
+    /// Escape while the pill is busy or its menu is open. Everything else passes through untouched.
     func handle(_ type: CGEventType, _ event: CGEvent) -> Unmanaged<CGEvent>? {
         let pass = Unmanaged.passUnretained(event)
         if type == .tapDisabledByTimeout || type == .tapDisabledByUserInput {
             if let tap { CGEvent.tapEnable(tap: tap, enable: true) }
+            let why = type == .tapDisabledByTimeout ? "the app was too slow" : "user input"
+            DispatchQueue.main.async { note("keyboard: macOS switched the tap off (\(why)), switched back on") }
             return pass
         }
         // Our own Command-V, on its way to the app in front.
@@ -777,9 +935,15 @@ final class Dictation: NSObject, NSApplicationDelegate {
         let flags = event.flags.intersection([.maskControl, .maskShift, .maskAlternate, .maskCommand,
                                               .maskSecondaryFn])
         if type == .keyDown {
-            if let menuPanel, event.getIntegerValueField(.keyboardEventKeycode) == 53 {
-                menuPanel.close()
-                return nil
+            if event.getIntegerValueField(.keyboardEventKeycode) == 53 {
+                if let menuPanel {
+                    menuPanel.close()
+                    return nil
+                }
+                if dictating && phase != .idle {
+                    cancel("Escape")
+                    return nil
+                }
             }
             let space = event.getIntegerValueField(.keyboardEventKeycode) == 49
             if dictating && space && flags == .maskControl && phase != .working {
@@ -818,7 +982,7 @@ final class Dictation: NSObject, NSApplicationDelegate {
                 goHandsFree()
             } else {
                 rememberTarget()
-                startRecording()
+                guard startRecording() else { return }
                 phase = .quick
                 // Not shown at once: Control+C would flash it. A quarter of a second of Control alone
                 // is somebody about to speak.
@@ -862,7 +1026,7 @@ final class Dictation: NSObject, NSApplicationDelegate {
         showTimer?.invalidate()
         if phase != .quick {
             rememberTarget()
-            startRecording()
+            guard startRecording() else { return }
         }
         phase = .handsFree
         handsFreeSince = now()
@@ -875,11 +1039,28 @@ final class Dictation: NSObject, NSApplicationDelegate {
 
     // MARK: Recording, and what becomes of it
 
-    func startRecording() {
-        guard let liveDir else { return }
+    /// False when there is nowhere to put the recording yet — the server has not answered since the
+    /// app started — and then nothing is shown as listening.
+    @discardableResult
+    func startRecording() -> Bool {
+        guard let liveDir else {
+            note("microphone: not opened, k0 has not said where recordings go yet")
+            return false
+        }
         try? FileManager.default.createDirectory(at: liveDir, withIntermediateDirectories: true)
         current = String(Int(now()))
-        try? recorder.start(into: liveDir.appendingPathComponent("\(current).wav"))
+        reopened = false
+        open(liveDir.appendingPathComponent("\(current).wav"))
+        return true
+    }
+
+    func open(_ url: URL) {
+        recorder.start(into: url) { failure in
+            guard let failure, self.phase == .quick || self.phase == .handsFree else { return }
+            note("microphone: \(self.recorder.device) did not open: \(failure)")
+            self.recorder.renew()
+            self.fail()
+        }
     }
 
     /// Thrown away: nothing pasted, nothing kept.
@@ -891,36 +1072,188 @@ final class Dictation: NSObject, NSApplicationDelegate {
         drawIdle()
     }
 
+    /// Something went wrong: nothing pasted, red for a moment, then back at rest and ready.
+    func fail() {
+        if phase == .working {
+            job += 1
+            phase = .idle
+        } else {
+            abandon()
+        }
+        if dictating { pill?.flashError() }
+    }
+
+    /// Escape while the pill listens or transcribes: whatever it was doing is dropped.
+    func cancel(_ why: String) {
+        note("cancelled with \(why)")
+        if phase == .working {
+            job += 1
+            phase = .idle
+            drawIdle()
+        } else {
+            abandon()
+        }
+    }
+
     func finish() {
-        recorder.stop()
+        showTimer?.invalidate()
         guard let url = recorder.url else { return abandon() }
         let peak = recorder.peak
         let seconds = Date().timeIntervalSince(recorder.startedAt)
-        let heard = String(format: "%.1fs, peak %.2f", seconds, peak)
+        let heard = String(format: "%.1fs, peak %.2f, ", seconds, peak) + recorder.device
         // Nobody spoke: nothing goes to an engine, so nothing can be invented.
         if peak < Dictation.silence {
             note("\(engine): silent (\(heard)), thrown away")
             return abandon()
         }
         phase = .working
+        workingSince = now()
+        job += 1
+        let job = self.job
         pill?.show(.working)
         let engine = self.engine
-        Task {
-            let (text, failure) = await Dictation.transcribe(url, engine: engine)
-            await MainActor.run {
-                self.phase = .idle
-                if let failure {
-                    note("\(engine): \(heard), failed: \(failure)")
-                    self.pill?.flashError()
-                } else if text.isEmpty {
-                    note("\(engine): \(heard), nothing worth pasting")
-                    self.drawIdle()
-                } else {
-                    note("\(engine): \(heard), \(text.count) characters")
-                    self.drawIdle()
-                    self.deliver(text)
+        // Read only once the microphone has let go of the file, or the end of the phrase is missing.
+        recorder.stop {
+            Task {
+                let (text, failure) = await Dictation.transcribe(url, engine: engine)
+                await MainActor.run {
+                    guard self.job == job, self.phase == .working else {
+                        note("\(engine): \(heard), answered after it was given up, dropped")
+                        return
+                    }
+                    self.phase = .idle
+                    if let failure {
+                        note("\(engine): \(heard), failed: \(failure)")
+                        self.pill?.flashError()
+                    } else if text.isEmpty {
+                        note("\(engine): \(heard), nothing worth pasting")
+                        self.drawIdle()
+                    } else {
+                        note("\(engine): \(heard), \(text.count) characters")
+                        self.drawIdle()
+                        self.deliver(text)
+                    }
                 }
             }
+        }
+    }
+
+    // MARK: Nothing stays stuck
+
+    /// Twice a second, the states that must not last. Each of these used to leave the pill up and
+    /// Control dead until dictation was switched off and on; now each puts it back at rest and says
+    /// in the log which one it was.
+    func watch() {
+        // A release of Control that never reached the tap: the key is up, the app still thinks it is down.
+        if controlDown && !CGEventSource.flagsState(.combinedSessionState).contains(.maskControl) {
+            note("keyboard: Control was let go without the app hearing it")
+            controlDown = false
+            controlReleased()
+        }
+        // The microphone queue stuck inside CoreAudio, opening or closing.
+        if phase != .idle, let busy = recorder.busySince, Date().timeIntervalSince(busy) > 6 {
+            note("microphone: \(recorder.device) did not answer for 6 s, left behind")
+            recorder.reset()
+            return fail()
+        }
+        switch phase {
+        case .quick, .handsFree:
+            guard let opened = recorder.openedAt else { return }
+            if let heardAt = recorder.heardAt {
+                if Date().timeIntervalSince(heardAt) > 2 {
+                    note("microphone: \(recorder.device) went quiet in the middle of a phrase")
+                    recorder.renew()
+                    return finish()
+                }
+            } else if Date().timeIntervalSince(opened) > 1 {
+                recorder.renew()
+                if !reopened, let url = recorder.url {
+                    note("microphone: \(recorder.device) gave no sound, opened again")
+                    reopened = true
+                    recorder.stop()
+                    return open(url)
+                }
+                note("microphone: \(recorder.device) gave no sound at all")
+                return fail()
+            }
+            if phase == .handsFree && now() - handsFreeSince > 10 * 60_000 {
+                note("hands-free: open for ten minutes, closed")
+                finish()
+            }
+        case .working:
+            if now() - workingSince > 90_000 {
+                note("\(engine): no text after 90 s, given up")
+                fail()
+            }
+        case .idle:
+            break
+        }
+    }
+
+    /// What switching dictation off and on again used to be needed for, done in place: from the
+    /// pill's menu, and by itself when the Mac wakes or the screen is unlocked. A phrase being
+    /// transcribed is left to finish unless it is asked for by hand.
+    func reset(_ why: String, keepWork: Bool = false) {
+        note("reset: \(why)")
+        menuPanel?.close()
+        showTimer?.invalidate()
+        if phase == .quick || phase == .handsFree {
+            recorder.stop()
+            if let url = recorder.url { try? FileManager.default.removeItem(at: url) }
+        }
+        if !(keepWork && phase == .working) {
+            job += 1
+            phase = .idle
+        }
+        recorder.reset()
+        dropTap()
+        installTap()
+        controlDown = false
+        spoiled = false
+        lastTapAt = 0
+        if phase == .idle { drawIdle() }
+        pill?.place()
+    }
+
+    var microphones: [String] = []
+
+    func observe() {
+        let workspace = NSWorkspace.shared.notificationCenter
+        workspace.addObserver(forName: NSWorkspace.didWakeNotification, object: nil, queue: .main) { _ in
+            self.reset("the Mac woke up", keepWork: true)
+        }
+        workspace.addObserver(forName: NSWorkspace.sessionDidBecomeActiveNotification, object: nil, queue: .main) { _ in
+            self.reset("the user session came back", keepWork: true)
+        }
+        DistributedNotificationCenter.default().addObserver(forName: .init("com.apple.screenIsUnlocked"), object: nil,
+                                                            queue: .main) { _ in
+            self.reset("the screen was unlocked", keepWork: true)
+        }
+        NotificationCenter.default.addObserver(forName: NSApplication.didChangeScreenParametersNotification,
+                                               object: nil, queue: .main) { _ in
+            note("screens changed: \(NSScreen.screens.count) now")
+            self.pill?.place()
+        }
+        // Any engine's: there is only ever the recorder's. Not acted on here — choosing a microphone
+        // posts it too — but if the engine really stopped, the guardian sees the sound stop and
+        // closes the phrase with what it has.
+        NotificationCenter.default.addObserver(forName: .AVAudioEngineConfigurationChange, object: nil,
+                                               queue: .main) { _ in
+            self.recorder.renew()
+            if self.phase == .quick || self.phase == .handsFree {
+                note("microphone: \(self.recorder.device) changed in the middle of a phrase")
+            }
+        }
+        // A microphone coming or going does not cut a phrase short — an iPhone wanders in and out
+        // of range on its own — but the next phrase gets an engine that knows about it.
+        Microphones.watch { what in
+            self.recorder.renew()
+            let now = Microphones.all().map(\.name)
+            let standard = Microphones.name(Microphones.standard()) ?? "none"
+            if now != self.microphones || what.hasPrefix("default") {
+                note("microphone: \(what); default \(standard); present: \(now.joined(separator: ", "))")
+            }
+            self.microphones = now
         }
     }
 
@@ -1021,15 +1354,30 @@ final class Dictation: NSObject, NSApplicationDelegate {
 
     var menuPanel: MenuPanel?
 
+    var menuOpening = false
+
+    /// The list and the microphones are fetched off the main thread, where the keyboard is read: a
+    /// server slow to answer used to hold the keys up with it.
     func openMenu() {
         if let open = menuPanel {
             open.close()
             return
         }
+        guard !menuOpening else { return }
+        menuOpening = true
         rememberTarget()
+        Task.detached {
+            let history = await Dictation.lastTen()
+            let microphones = Microphones.all().map { (uid: $0.uid, name: $0.name) }
+            await MainActor.run { self.showMenu(history, microphones) }
+        }
+    }
+
+    func showMenu(_ history: [(text: String, at: Double)], _ microphones: [(uid: String, name: String)]) {
+        menuOpening = false
         let menu = MenuPanel(
-            history: lastTen(),
-            microphones: Microphones.all().map { (uid: $0.uid, name: $0.name) },
+            history: history,
+            microphones: microphones,
             chosen: UserDefaults.standard.string(forKey: Microphones.key),
             paste: { [weak self] text in
                 self?.menuPanel?.close()
@@ -1042,18 +1390,17 @@ final class Dictation: NSObject, NSApplicationDelegate {
                 } else {
                     UserDefaults.standard.removeObject(forKey: Microphones.key)
                 }
+                self?.recorder.renew()
                 self?.menuPanel?.close()
-            })
+            },
+            reset: { [weak self] in self?.reset("asked for from the menu") })
         menu.onClose = { [weak self] in self?.menuPanel = nil }
         menuPanel = menu
         menu.show(above: pill?.panel.frame ?? .zero)
     }
 
-    /// Read synchronously: the menu is open for as long as it takes, and the server is on this Mac.
-    func lastTen() -> [(text: String, at: Double)] {
-        guard let url = URL(string: "\(base)/api/dictate/history"),
-              let data = try? Data(contentsOf: url),
-              let list = try? JSONSerialization.jsonObject(with: data) as? [[String: Any]] else { return [] }
+    static func lastTen() async -> [(text: String, at: Double)] {
+        guard let list = await ask("/api/dictate/history", timeout: 3) as? [[String: Any]] else { return [] }
         return list.compactMap { entry in
             guard let text = entry["text"] as? String else { return nil }
             return (text: text, at: (entry["at"] as? NSNumber)?.doubleValue ?? 0)
@@ -1071,26 +1418,29 @@ final class Dictation: NSObject, NSApplicationDelegate {
         guard let trialDir else { return }
         try? FileManager.default.createDirectory(at: trialDir, withIntermediateDirectories: true)
         current = String(Int(now()))
-        do {
-            try recorder.start(into: trialDir.appendingPathComponent("\(current).wav"))
-            trialRecording = true
-        } catch {
-            trialRecording = false
+        trialRecording = true
+        recorder.start(into: trialDir.appendingPathComponent("\(current).wav")) { failure in
+            if failure != nil { self.trialRecording = false }
         }
     }
 
     func trialEnd() {
         guard trialRecording else { return }
         let releasedAt = now()
-        recorder.stop()
         trialRecording = false
         guard let url = recorder.url else { return }
         // Shorter than this is a key brushed, not a phrase — Wispr ignores it too.
         if spoiled || releasedAt - pressedAt < 400 {
+            recorder.stop()
             try? FileManager.default.removeItem(at: url)
             return
         }
         let id = current
+        let pressedAt = self.pressedAt
+        recorder.stop { self.trialSend(id, url, pressedAt: pressedAt, releasedAt: releasedAt) }
+    }
+
+    func trialSend(_ id: String, _ url: URL, pressedAt: Double, releasedAt: Double) {
         post("/api/dictate/trial", [
             "id": id,
             "releasedAt": releasedAt,
