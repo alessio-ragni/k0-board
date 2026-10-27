@@ -21,11 +21,17 @@ const HOUR = 3600000
  * it was showing you. `WORKING` and `PLANNING` are somebody mid-thought. And a session Claude
  * Code reports as `shell` is a shell you dropped into, which may well have a command of yours
  * running in it — k0 does not know what, so k0 does not touch it.
+ *
+ * And whatever you have marked always active, at any age. A session watching something — a
+ * deploy, a queue, a mailbox — wakes every couple of hours and sits at the prompt in between,
+ * and output that never changes Claude's status leaves none of the clocks below moving. To k0
+ * that is a forgotten terminal; only the person who left it there knows it is not.
  */
 export function dueForClose({ stories, live, hours, now = Date.now() }) {
   if (!(hours > 0)) return [] // switched off, and nothing to think about
   const deadline = now - hours * HOUR
   return stories.filter((story) => {
+    if (story.keep_alive) return false
     if (story.completed_at || !story.session_id || !story.session_alive) return false
     if (story.status !== 'IDLE') return false
     const session = live.get(story.session_id)

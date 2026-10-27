@@ -140,6 +140,7 @@ db.exec(`
     plan            TEXT NOT NULL DEFAULT '',
     state           TEXT NOT NULL DEFAULT 'Backlog',
     starred         INTEGER NOT NULL DEFAULT 0,
+    keep_alive      INTEGER NOT NULL DEFAULT 0,
     lang            TEXT NOT NULL DEFAULT '',
     color           TEXT NOT NULL DEFAULT 'yellow',
     sort_hint       INTEGER NOT NULL DEFAULT 0,
@@ -359,6 +360,7 @@ addColumns('story', [
   ['starred', 'INTEGER NOT NULL DEFAULT 0'],
   ['lang', "TEXT NOT NULL DEFAULT ''"],
   ['imported_at', 'INTEGER'],
+  ['keep_alive', 'INTEGER NOT NULL DEFAULT 0'],
 ])
 addColumns('session_event', [['kind', "TEXT NOT NULL DEFAULT 'session'"]])
 // Which command the interface opened this session with, when it opened it with one. NULL is the
@@ -1055,6 +1057,7 @@ const PATCHABLE = [
   'body',
   'plan',
   'starred',
+  'keep_alive',
   'lang',
   'color',
   'sort_hint',
@@ -1074,8 +1077,8 @@ const PATCHABLE = [
  */
 const STORY_COLUMNS = `
   s.id, s.uid, s.key_num, ${keyText('s.key_num')} AS "key", s.project_path, s.epic_id, s.parent_story_id,
-  s.title, s.description, s.body, s.prompt, s.plan, s.state, s.starred, s.lang, s.color,
-  s.sort_hint, s.completed_at, s.imported_at, s.created_at, s.updated_at,
+  s.title, s.description, s.body, s.prompt, s.plan, s.state, s.starred, s.keep_alive, s.lang,
+  s.color, s.sort_hint, s.completed_at, s.imported_at, s.created_at, s.updated_at,
   v.id AS session_row_id, v.session_id, COALESCE(v.alive, 0) AS session_alive,
   v.status AS session_status, v.terminal_window_id, v.work_path, v.head_at_start,
   COALESCE(v.auto_send, 0) AS auto_send, COALESCE(v.auto_closed, 0) AS auto_closed,

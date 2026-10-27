@@ -8,6 +8,12 @@ All notable changes to this project are documented here. The format follows
 
 ### Added
 
+- **A note you mark always active is never closed for sitting idle.** Next to the flag, at the
+  bottom right of every note, there is now a loop: click it and k0 stops closing that terminal by
+  itself, however long it waits — for a session left watching a deploy or a mailbox, which wakes
+  every couple of hours and looks forgotten in between. The note takes a dashed blue border, or a
+  dashed one in the flag's colour when it is flagged too. It stays on through Resume, and your own
+  Close and Done work as before.
 - **A dictation trial, before k0 gets a dictation of its own.** On a Mac with macOS 26, open
   `k0.localhost:4319/dictate.html` and dictate with Wispr Flow as usual, holding Control: k0 Dictate, a
   small app of k0's own, listens to the same microphone at the same moment and hands the phrase to

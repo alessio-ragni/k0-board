@@ -266,6 +266,23 @@ const flagMark = (story) => {
       title="${esc(why)}" aria-label="${esc(why)}">${ICON.flag}</button>`
 }
 
+/**
+ * Always active: the one note the idle sweep walks past, at the bottom right next to the flag.
+ *
+ * It is drawn whether or not the backlog is on, because it is about the terminal and not about
+ * the story's place in a plan. Like the flag it waits for the pointer until it is set; set, the
+ * note takes a dashed border, so a session left watching something is told apart from one left
+ * by mistake without reading anything.
+ */
+const keepMark = (story) => {
+  const on = !!story.keep_alive
+  const why = on
+    ? 'Always active — k0 will not close this terminal for sitting idle. Click to take it off'
+    : 'Keep it always active: k0 will not close this terminal for sitting idle'
+  return `<button type="button" class="keep${on ? ' on' : ''}${backlogOn ? '' : ' alone'}" aria-pressed="${on}"
+      title="${esc(why)}" aria-label="${esc(why)}">${ICON.keep}</button>`
+}
+
 // ── The epic you are standing in ───────────────────────────────────
 
 function readLane() {
@@ -308,7 +325,9 @@ function currentEpic(data) {
 
 function postit(story, now) {
   const el = document.createElement('article')
-  el.className = `postit ${story.status}${backlogOn && story.starred ? ' flagged' : ''}`
+  el.className = `postit ${story.status}${backlogOn && story.starred ? ' flagged' : ''}${
+    story.keep_alive ? ' keep-alive' : ''
+  }`
   el.dataset.id = story.id
   el.style.transform = `rotate(${tilt(story.id)}deg)`
 
@@ -366,6 +385,7 @@ function postit(story, now) {
       <span class="since" title="${LABEL[story.status]} for ${since(story.status_since, now)}">${since(story.status_since, now)}</span>
     </div>
     <div class="actions"></div>
+    ${keepMark(story)}
     ${backlogOn ? flagMark(story) : ''}`
 
   // The only way to open the editor: clicking the story itself no longer does anything.
@@ -452,6 +472,12 @@ function postit(story, now) {
     }
     flag.addEventListener('dblclick', (e) => e.stopPropagation())
   }
+  const keep = el.querySelector('.keep')
+  keep.onclick = (e) => {
+    e.stopPropagation()
+    setKeepAlive(story)
+  }
+  keep.addEventListener('dblclick', (e) => e.stopPropagation())
 
   // The git mark is a link: a double click on it would open two tabs and bring the terminal to
   // the front into the bargain. Double clicks do not reach it.
@@ -487,6 +513,8 @@ const ICON = {
   // Flagged. Filled, and drawn once — there is no empty flag, because the mark is only ever on a
   // note that has one: an outline on every other note is a mark that says nothing.
   flag: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 21V4"/><path d="M6 4.5h11.5l-2.4 3.8 2.4 3.7H6" fill="currentColor"/></svg>',
+  // Always active: a loop with no end, because the point is that this one does not stop.
+  keep: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 12c-2-2.7-3.6-4-5.5-4a4 4 0 0 0 0 8c1.9 0 3.5-1.3 5.5-4s3.6-4 5.5-4a4 4 0 0 1 0 8c-1.9 0-3.5-1.3-5.5-4z"/></svg>',
 }
 
 const esc = (s) =>
@@ -1480,6 +1508,20 @@ async function setFlag(story) {
   refresh()
 }
 
+/** The same gesture for always active, through the board's door: it is there with the backlog off. */
+async function setKeepAlive(story) {
+  try {
+    await api(`/api/story/${story.id}`, {
+      method: 'PATCH',
+      body: JSON.stringify({ keep_alive: !story.keep_alive }),
+    })
+  } catch (e) {
+    toast(`Couldn't do it: ${e.message}`, 8000)
+  }
+  lastSignature = ''
+  refresh()
+}
+
 let hits = [] // the repositories shown in the list right now
 let active = 0 // where you are with the arrows: the row Enter picks
 
@@ -1806,6 +1848,7 @@ async function refresh() {
         // freshest of these, so when none of them moves nothing can fold, and the board is
         // spared a redraw on a timer.
         c.updated_at,
+        c.keep_alive,
         gitSig(c.git),
         c.load ? weight(c.load.rss) : '',
         // What the backlog draws on the note and on a row in the list. They are all `undefined`

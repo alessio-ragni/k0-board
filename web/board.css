@@ -792,9 +792,39 @@ body {
 /* And the two pieces of writing at the top take it with them, so a flagged note is told apart from
    the ones beside it by more than a hairline of border. */
 .postit.flagged .key, .postit.flagged .title { color: var(--warn); }
+/* Always active: the same button, one place to the left of the flag, or in its corner when the
+   backlog is off and there is no flag. Set, the note takes a dashed border — its own blue alone,
+   the flag's colour when it is flagged too, so the colour still says flagged and the dashes say
+   this one stays open. */
+.postit .keep {
+  position: absolute;
+  right: 32px;
+  bottom: 6px;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 6px;
+  background: none;
+  border-color: transparent;
+  box-shadow: none;
+  color: rgba(0, 0, 0, .35);
+  opacity: 0;
+  cursor: pointer;
+  transition: opacity .12s ease;
+}
+.postit .keep.alone { right: 6px; }
+.postit .keep svg { width: 17px; height: 17px; display: block; }
+.postit:hover .keep, .postit .keep:focus-visible { opacity: 1; }
+.postit .keep:hover { background: rgba(255, 255, 255, .72); border-color: rgba(0, 0, 0, .14); }
+.postit .keep.on { opacity: 1; color: var(--keep); }
+.postit.keep-alive { border: 2px dashed var(--keep); }
+.postit.flagged.keep-alive { border-color: var(--warn); }
 /* The room the flag needs. It sits over the row of buttons, which is empty space until you hover:
    this is what stops the last of them running underneath it once they come out. */
-.postit .actions { padding-right: 22px; }
+.postit .actions { padding-right: 48px; }
 
 /* ── The last column: every repository ────────────────────────────────
    Headings only, one per repository, in the order you last used them. No cards and no counts:
@@ -1097,6 +1127,9 @@ html[data-driving] .zoom button svg { width: 22px; height: 22px; }
    work at that range; this is what says which mark it is once you are closer. */
 html[data-driving] .postit .flag { width: 28px; height: 28px; }
 html[data-driving] .postit .flag svg { width: 21px; height: 21px; }
+html[data-driving] .postit .keep { width: 28px; height: 28px; right: 38px; }
+html[data-driving] .postit .keep.alone { right: 6px; }
+html[data-driving] .postit .keep svg { width: 22px; height: 22px; }
 
 /* The card is in pixels too: with the text at 22 it would choke inside 268. And since the card is
    never taller than it is wide, raising this raises the ceiling with it. */

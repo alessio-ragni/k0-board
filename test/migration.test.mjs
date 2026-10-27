@@ -222,6 +222,8 @@ check('and BACKLOG never becomes a session status again', one(1).session_status,
 check('while a live one keeps the status it had', one(2).session_status, 'WORKING')
 // COMPLETED was never something a session did: the session under a finished story is idle.
 check('a finished story has no session grinding away', one(3).session_status, 'IDLE')
+// A board from before always active had nothing marked as such: every terminal is the sweep's again.
+check('nothing comes across marked always active', [1, 2, 3, 4, 5].map((id) => one(id).keep_alive).join(''), '00000')
 
 // ── The session moved out ────────────────────────────────────────────────────
 section('The session moved out')

@@ -643,6 +643,10 @@ marks nothing. Once it is on it stays on, and the note takes a border and its ke
 the flag's colour with it: the point of flagging something is finding it again from across the
 room, and a fifteen-pixel glyph cannot be seen from there.
 
+Next to the flag sits a loop, on every note whether or not there is a backlog: **always active**,
+the one note k0 never closes for sitting idle. It has its own paragraph where the closing is
+explained, under *And the ones you forget, k0 closes for you*.
+
 **Click an epic's label and the board becomes that epic.** A strip appears under the top bar with
 its key, its title, its repository, a progress bar and `4 of 11 done`, and the way back out. Inside
 the lane the label is not drawn on the notes — everything in here belongs to the same epic, and
@@ -1447,6 +1451,15 @@ rest is left alone, and each for its own reason:
 - A session sitting in a **shell** is left alone as well. That is a shell you dropped into, and
   there may be a command of yours running in it; k0 cannot see what it is, so k0 does not touch it.
   On the board it reads as yellow like any other, which is exactly why this one has to be said.
+- A note you have marked **always active** is never closed, however long it sits there. A session
+  left watching something — a deploy, a queue, a mailbox — wakes every couple of hours, does its
+  turn and goes back to the prompt, and whatever it prints in between moves none of the clocks
+  below. To k0 that looks exactly like a window you forgot; only you know it is not. The mark is the
+  loop at the bottom right of the note, next to the flag, there whether or not the backlog is on:
+  invisible until the pointer is on the note, and once it is on the note takes a **dashed border**,
+  blue — or the flag's colour, still dashed, when the note is flagged as well. It belongs to the
+  story, so it holds through `Resume` and through a `Close`; and it only stops k0 closing the
+  window by itself — your own `Close` and `Done` work exactly as before.
 
 And a window you were using an hour ago is never closed, whatever the story's history says. k0 has
 four clocks for a session — two of its own and two Claude Code keeps — and **the newest one wins**.
@@ -1866,8 +1879,9 @@ server/
   paths.js       where the board, the logs, the settings and the cache live
   settings.js    the few things you can change, and the file that is the list of them —
                  ~/.k0/config.json, written out with everything in it and re-read when it changes
-  idle.js        which terminals have sat still long enough to be closed and given back. Only the
-                 deciding: it kills nothing, so every rule in it can be proved without a machine
+  idle.js        which terminals have sat still long enough to be closed and given back, and
+                 never one marked always active (story.keep_alive). Only the deciding: it kills
+                 nothing, so every rule in it can be proved without a machine
   watcher.js     reads Claude Code's own files and derives the statuses; also renames a session
   usage.js       reads what every session consumed out of its transcripts, a few megabytes at a
                  time and only what is new, plus the statusline's limit samples and which account

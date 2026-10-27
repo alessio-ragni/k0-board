@@ -141,6 +141,7 @@ export function publicStory(story, { git = null } = {}) {
     prompt: story.prompt ?? '',
     state: story.state,
     starred: !!story.starred,
+    keep_alive: !!story.keep_alive,
     lang: story.lang ?? '',
     color: story.color,
     epic_key: epic?.key ?? null,
