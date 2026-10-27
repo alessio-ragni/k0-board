@@ -235,9 +235,17 @@ function warm({ fetch = globalThis.fetch } = {}) {
       child.on('exit', () => {
         if (whisper?.child === child) whisper = null
       })
+      // A binary that cannot be started at all — not executable, gone since it was found — says so
+      // here. Unheard, that error took the whole server down; now it is a phrase with no text.
+      const failed = new Promise((resolve) =>
+        child.once('error', () => {
+          if (whisper?.child === child) whisper = null
+          resolve(false)
+        }),
+      )
       whisper.child = child
       whisper.port = port
-      return waitUntilUp(port, fetch)
+      return Promise.race([waitUntilUp(port, fetch), failed])
     }),
   }
   whisper.ready.catch(() => (whisper = null))

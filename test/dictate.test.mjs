@@ -102,6 +102,23 @@ check('every request stays on 127.0.0.1', loopback, true)
 check('the phrase goes to /inference', asked.some((u) => u.endsWith('/inference')), true)
 dictate.stop()
 
+// Found, and gone before it could be started: the same on every platform, and nothing else on this
+// machine — a real whisper-server Homebrew put here included — is ever looked for in its place.
+const nobody = async () => {
+  throw new Error('nothing is listening')
+}
+const stub = fs.readFileSync(path.join(bin, 'whisper-server'))
+fs.writeFileSync(path.join(dir, '201.wav'), 'RIFF')
+const third = dictate.addTrial({ id: '201', releasedAt: Date.now(), wav: path.join(dir, '201.wav') }, {
+  fetch: nobody,
+})
+fs.rmSync(path.join(bin, 'whisper-server'))
+for (let i = 0; i < 50 && !third.whisper; i++) await tick()
+check('a whisper-server that cannot be started is a phrase with an error, not a crash', third.whisper?.error,
+  'whisper-server did not start.')
+dictate.stop()
+fs.writeFileSync(path.join(bin, 'whisper-server'), stub, { mode: 0o755 })
+
 section('The model, the one download')
 
 const model = path.join(FAKE_HOME, 'dictate', 'models', 'ggml-large-v3-turbo.bin')

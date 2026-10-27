@@ -72,6 +72,9 @@ All notable changes to this project are documented here. The format follows
   microphone opens on the side, a new one is used as soon as one comes or goes, and whatever gets
   stuck all the same is put back at rest within a second and written in the log. Escape drops a
   phrase, and *Reset dictation* in the pill's menu does what switching off and on used to.
+- A Whisper that cannot be started — removed after k0 found it, or no longer a program — is a phrase
+  with an error on the trial page and a red pill, instead of stopping k0 altogether. Found by the
+  tests on Windows; not seen on a real Mac.
 
 
 ## [0.7.0]
