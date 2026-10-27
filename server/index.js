@@ -428,6 +428,7 @@ const publicStory = (s) => ({
   status: s.status,
   state: s.state,
   starred: s.starred,
+  keep_alive: s.keep_alive,
   sort_hint: s.sort_hint,
   parent_story_id: s.parent_story_id,
   project_path: s.project_path,

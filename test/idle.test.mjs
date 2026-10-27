@@ -81,6 +81,10 @@ check('one whose session is already gone', one({ session_alive: 0 }), '')
 check('one sitting in a shell', one({}, new Map([['s1', session({ status: 'shell' })]])), '')
 // The status says the process is alive but the session files say otherwise: believe the files.
 check('one whose process is not really there', one({}, new Map()), '')
+// Always active: a session watching something wakes every couple of hours and sits at the prompt in
+// between, so none of the clocks moves. Only the person who left it there knows it is not forgotten.
+check('one marked always active, however old', one({ keep_alive: 1, updated_at: ago(500), status_since: ago(500) }), '')
+check('and the same one without the mark is closed', one({ keep_alive: 0 }), '1')
 
 // ── The most recent sign of life wins ────────────────────────────────────────
 section('The most recent sign of life wins')

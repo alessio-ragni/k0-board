@@ -36,8 +36,8 @@ const EPIC_SECTIONS = ['Why', 'Discussion', 'Decisions', 'Stories']
 // added by hand — `owner:`, `ticket:` — is theirs and is printed back untouched, for the same
 // reason a section they wrote is: a header that quietly loses a line is a header nobody writes in
 // twice.
-const STORY_KEYS = ['key', 'order', 'epic', 'parent', 'state', 'color', 'starred', 'depends_on', 'sessions', 'lang',
-  'created', 'updated', 'completed']
+const STORY_KEYS = ['key', 'order', 'epic', 'parent', 'state', 'color', 'starred', 'keep_alive', 'depends_on', 'sessions',
+  'lang', 'created', 'updated', 'completed']
 const EPIC_KEYS = ['key', 'order', 'state', 'lang', 'created', 'updated']
 
 // ── Where it may write ───────────────────────────────────────────────────────
@@ -461,6 +461,9 @@ function storyFile(story) {
       // where every post-it is yellow and nothing says the grouping ever existed.
       ['color', story.color || 'yellow'],
       ['starred', story.starred ? 'true' : 'false'],
+      // Only when it is on: it is the exception, and a line on every story saying `false` would
+      // rewrite every file in `.k0/` the first time this version of k0 touched them.
+      ['keep_alive', story.keep_alive ? 'true' : null],
       ['depends_on', `[${db.dependenciesOf(story.id).map((d) => d.key).join(', ')}]`],
       ['sessions', `[${sessions.join(', ')}]`],
       ['lang', story.lang || ''],
@@ -961,7 +964,8 @@ function restore(repoPath, report) {
     storyIds.set(f.key, story.id)
     report.stories++
 
-    db.patchStory(story.id, { plan: proseText(f.sections, 'Plan'), starred: f.data.starred === 'true' })
+    db.patchStory(story.id, { plan: proseText(f.sections, 'Plan'), starred: f.data.starred === 'true',
+      keep_alive: f.data.keep_alive === 'true' })
     // Through `setState` and not as a column of the insert: `Done` is also `completed_at`, and a
     // story restored straight into the table would come back saying Done while the board, which
     // reads the date, went on drawing it as unfinished.

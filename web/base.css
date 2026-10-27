@@ -46,6 +46,8 @@
   --alert: #b91c1c;
   --calm: #15803d;
   --warn: #b45309;
+  /* Always active: a blue that is none of the status colours, for the dashed border round it. */
+  --keep: #1d4ed8;
 
   --sans: ui-sans-serif, system-ui, -apple-system, sans-serif;
   --hand: 'Caveat', ui-sans-serif, system-ui, sans-serif;

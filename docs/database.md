@@ -80,6 +80,7 @@ close is split, not turned into another species.
 | `plan` | TEXT | The plan as it was approved |
 | `state` | TEXT | Where the work is. See above. Defaults to `Backlog` |
 | `starred` | INTEGER | `1` if you have marked it as one to do next |
+| `keep_alive` | INTEGER | `1` if you have marked it always active: the idle sweep never closes its terminal. Written to the `.k0/` file only when it is on |
 | `lang` | TEXT | The language the user spoke about it, e.g. `it`. The interface stays in English |
 | `completed_at` | INTEGER | When you ticked it off, or nothing. Written only alongside the state `Done` |
 | `color` | TEXT | The colour of the note. Defaults to `yellow` |
@@ -102,7 +103,7 @@ has: there is no second number saying where it sits, because where it sits is th
 the tree can be read.
 
 **What may be edited from outside.** Only `title`, `description`, `project_path`, `prompt`,
-`body`, `plan`, `starred`, `lang`, `color`, `sort_hint`, `epic_id` and `parent_story_id`. `state`
+`body`, `plan`, `starred`, `keep_alive`, `lang`, `color`, `sort_hint`, `epic_id` and `parent_story_id`. `state`
 is accepted too but goes through `setState`, which is the only place `completed_at` is written.
 A request that asks to claim a session, invent a key or tick a story off sideways is ignored
 rather than obeyed.
