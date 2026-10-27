@@ -15,6 +15,7 @@ const FAKE_HOME = fs.mkdtempSync(path.join(os.tmpdir(), 'k0-dictate-home-'))
 process.env.K0_DB = path.join(FAKE_HOME, 'k0.db')
 process.env.K0_HOME = FAKE_HOME
 process.env.HOME = FAKE_HOME
+process.env.USERPROFILE = FAKE_HOME
 globalThis.fetch = async () => {
   throw new Error('the test tried to reach the network')
 }

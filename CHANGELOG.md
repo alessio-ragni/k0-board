@@ -31,8 +31,9 @@ All notable changes to this project are documented here. The format follows
   downloaded once, about 1.6 GB, when you press the button that shows where it comes from — and not
   at all if a copy is already on the Mac. Only the model comes in: what you dictate and its
   recordings stay on the Mac, outside the board's database, and one button throws them away.
-- The dictation tests never start Whisper, even on a Mac where Homebrew installed it. Nothing changes
-  for anybody using k0.
+- The dictation tests never start Whisper, even on a Mac where Homebrew installed it, and on Windows
+  they keep to a home folder of their own instead of looking in the real one. Nothing changes for
+  anybody using k0.
 - The dictation pill is a soft light blue while it waits and while it listens, orange while it works
   out the words, and red for a second only when something went wrong. It is a little bigger at rest,
   so it is easy to tell from Wispr Flow's and to right-click.
