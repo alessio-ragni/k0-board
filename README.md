@@ -1718,8 +1718,10 @@ for the same reason.
   Dictate checks the states that must not last — Control let go without the app hearing it, a
   microphone that stopped sending sound or never started, hands-free open for ten minutes, a
   transcription with no text after ninety seconds — and puts itself back at rest, red for a second
-  when a phrase was lost. A microphone that gives no sound is opened once more before the phrase is
-  given up.
+  when a phrase was lost. A microphone that gives no sound — none at all, or nothing but zeros, as
+  AirPods do when their Bluetooth microphone gets stuck — is opened once more, and if it is still
+  deaf the phrase is recorded from the Mac's own microphone instead. That is for the one phrase: the
+  microphone chosen in the menu stays chosen, and the next phrase tries it first again.
 - **Escape** while the pill listens or works drops the phrase. **Reset dictation**, at the bottom of
   the pill's menu, does in place what switching dictation off and on used to; it also happens by
   itself when the Mac wakes or the screen is unlocked, and the pill moves to the screen you are on
