@@ -8,6 +8,10 @@ All notable changes to this project are documented here. The format follows
 
 ### Fixed
 
+- Updating k0 no longer makes you grant dictation the Microphone and Accessibility again. The app
+  used to get a new signature with every build, and macOS took it for a new app; it is now signed
+  with a certificate k0 makes for your Mac once, without asking for a password. The first build
+  after this update asks one last time.
 - Dictation no longer goes silent when the chosen microphone does. AirPods whose microphone gets
   stuck send nothing but zeros, and every phrase was thrown away as silence without a word; now k0
   Dictate notices within a second, opens the microphone again and, if it is still deaf, records
