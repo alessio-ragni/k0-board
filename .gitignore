@@ -3,6 +3,7 @@ k0.db-wal
 k0.db-shm
 menubar/k0.app/
 dictate/k0 Dictate.app/
+dictate/signing.*
 node_modules/
 .DS_Store
 

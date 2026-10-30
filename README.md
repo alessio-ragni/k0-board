@@ -1661,9 +1661,13 @@ Open **`http://k0.localhost:4319/dictate.html`**. The page walks you through wha
 
 - **Start k0 Dictate.** A small app of k0's own, built on your Mac the first time (a few seconds)
   into `~/.k0/dictate/`. macOS asks for the **Microphone** and for **Accessibility** — the second
-  is what lets it notice Control being held. It is an app apart from the menu bar icon on purpose:
-  macOS ties both permissions to the app, and this one is rebuilt only when its own code changes,
-  so updating k0 does not make you grant them again.
+  is what lets it notice Control being held. You grant them once. macOS ties both to the app's
+  signature, so k0 signs it with a certificate it makes for your Mac the first time, kept in a
+  keychain of its own in `~/.k0/dictate/`: an update of k0 that rebuilds the app keeps the
+  permissions, and neither the certificate nor the signature asks for your password. If that
+  certificate cannot be made, the app is signed ad hoc and macOS asks again after an update that
+  touches dictation. It is an app apart from the menu bar icon for the same reason: it is rebuilt
+  only when its own code changes.
 - **Whisper.** `brew install whisper-cpp`, then the model, once — about 1.6 GB, from the address
   the page shows. A model already in `~/.cache/whisper-models/` is used as it is.
 - **Apple's engine** needs nothing: macOS fetches its Italian and English models by itself.
@@ -1978,7 +1982,10 @@ dictate/         k0 Dictate, the Swift app: the trial (listens beside Wispr, nev
                  every hello. The microphone opens and closes on a queue of its own, never where
                  the keys are read, and a half-second guardian puts back at rest any state that
                  outlives its reason. Built by build.sh into ~/.k0/dictate/, and only when its own code
-                 changed, so its permissions survive updates of k0. Started at login by the
+                 changed; signed by the "k0 local signing" certificate sign.sh makes once, in
+                 signing.keychain-db beside the app with its password, so the designated requirement
+                 stays the same from build to build and the permissions survive. Ad hoc when that
+                 fails, and then the server clears the old permissions so macOS asks again. Started at login by the
                  com.k0.dictate launchd agent once dictation is switched on
 supabase/        k0 Cloud's own side: migrations/ is its database (accounts, workspaces, the
                  rows of every board, the counter), config.toml its sign-in settings. The secrets

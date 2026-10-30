@@ -33,9 +33,10 @@ export async function launch({ source, out }) {
 
 async function build({ source, out }) {
   const said = await run('/bin/bash', [path.join(source, 'build.sh'), out], { timeout: 180_000 })
-  // A new build is a new signature, and macOS keeps the old approvals on show: the switch in System
-  // Settings stays on, the app is refused anyway, and it never asks. Cleared, it asks again, once.
-  if (!/already up to date/.test(said)) {
+  // A build signed differently from the last one is a new app to macOS, which keeps the old approvals
+  // on show: the switch in System Settings stays on, the app is refused anyway, and it never asks.
+  // Cleared, it asks again, once. A build signed as before keeps them, and they are left alone.
+  if (!/already up to date|permissions: kept/.test(said)) {
     for (const what of ['Microphone', 'Accessibility']) {
       await runQuiet('/usr/bin/tccutil', ['reset', what, 'com.k0.dictate'])
     }
