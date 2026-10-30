@@ -73,6 +73,10 @@ final class Recorder {
     private(set) var startedAt = Date()
     /// When the microphone last sent anything, loud or not; nil until it first does.
     private(set) var heardAt: Date?
+    /// When the microphone last sent anything other than zeros; nil until it does. A microphone that
+    /// sends buffers of nothing but zeros is as deaf as one that sends none — AirPods do it when their
+    /// Bluetooth microphone gets stuck — where a quiet room is never exactly zero.
+    private(set) var soundAt: Date?
     /// When the microphone said it was open; nil while it is still being opened.
     private(set) var openedAt: Date?
     /// Since when the audio queue has been busy on something that has not come back yet.
@@ -84,7 +88,8 @@ final class Recorder {
     func renew() { stale = true }
 
     /// Opens the microphone into `url` and says, on the main thread, whether it could: nil, or why not.
-    func start(into url: URL, then done: @escaping (String?) -> Void) {
+    /// `builtIn` records from the Mac's own microphone instead of the chosen one, for this phrase only.
+    func start(into url: URL, builtIn: Bool = false, then done: @escaping (String?) -> Void) {
         turn += 1
         let turn = self.turn
         // The old engine is let go on the audio queue, behind the work still holding it.
@@ -97,6 +102,7 @@ final class Recorder {
         peak = 0
         startedAt = Date()
         heardAt = nil
+        soundAt = nil
         openedAt = nil
         device = ""
         let engine = self.engine
@@ -104,12 +110,13 @@ final class Recorder {
         queue.async {
             withExtendedLifetime(retired) {}
             // Asked here, not on the main thread: CoreAudio can be slow to answer while devices change.
-            let chosen = Microphones.chosen()
+            let chosen = builtIn ? Microphones.builtIn() : Microphones.chosen()
             let name = Microphones.name(chosen ?? Microphones.standard()) ?? "unknown microphone"
             DispatchQueue.main.async { if self.turn == turn { self.device = name } }
-            let failure = Recorder.open(engine, into: url, device: chosen) { [weak self] level in
+            let failure = Recorder.open(engine, into: url, device: chosen) { [weak self] level, sound in
                 guard let self, self.turn == turn else { return }
                 self.heardAt = Date()
+                if sound { self.soundAt = Date() }
                 self.peak = max(self.peak, level)
                 self.onLevel?(level)
             }
@@ -151,7 +158,7 @@ final class Recorder {
     }
 
     private static func open(_ engine: AVAudioEngine, into url: URL, device: AudioDeviceID?,
-                             level: @escaping (Float) -> Void) -> String? {
+                             level: @escaping (Float, Bool) -> Void) -> String? {
         let input = engine.inputNode
         // A tap left behind by a start that failed half-way would make this one raise, and quit the app.
         input.removeTap(onBus: 0)
@@ -197,15 +204,17 @@ final class Recorder {
             }
             if error == nil { try? file.write(from: out) }
             var heard: Float = 0
+            var sound = false
             if let samples = buffer.floatChannelData?[0], buffer.frameLength > 0 {
                 var sum: Float = 0
                 for i in 0..<Int(buffer.frameLength) { sum += samples[i] * samples[i] }
+                sound = sum > 0
                 // In decibels, not raw amplitude: a voice at a normal distance is a few hundredths of
                 // full scale, which on a straight line left the bars lying flat whatever you said.
                 let rms = sqrt(sum / Float(buffer.frameLength))
                 heard = max(0, min(1, (20 * log10(max(rms, 1e-6)) + 55) / 40))
             }
-            DispatchQueue.main.async { level(heard) }
+            DispatchQueue.main.async { level(heard, sound) }
         }
         engine.prepare()
         do {
@@ -393,6 +402,20 @@ enum Microphones {
     static func chosen() -> AudioDeviceID? {
         guard let uid = UserDefaults.standard.string(forKey: key) else { return nil }
         return all().first { $0.uid == uid }?.id
+    }
+
+    /// The Mac's own microphone, what a chosen one that has gone deaf falls back to; nil on a Mac
+    /// without one, a mini or a closed laptop on a desk.
+    static func builtIn() -> AudioDeviceID? {
+        all().first { device in
+            var address = AudioObjectPropertyAddress(mSelector: kAudioDevicePropertyTransportType,
+                                                     mScope: kAudioObjectPropertyScopeGlobal,
+                                                     mElement: kAudioObjectPropertyElementMain)
+            var transport = UInt32(0)
+            var size = UInt32(MemoryLayout<UInt32>.size)
+            return AudioObjectGetPropertyData(device.id, &address, 0, nil, &size, &transport) == noErr
+                && transport == kAudioDeviceTransportTypeBuiltIn
+        }?.id
     }
 
     /// The system's default input.
@@ -816,8 +839,10 @@ final class Dictation: NSObject, NSApplicationDelegate {
     /// Which transcription is the one still wanted: one given up on, or cancelled, may still answer.
     var job = 0
     var workingSince: Double = 0
-    /// A microphone that gave no sound is opened once more before the phrase is given up.
+    /// A microphone that gave no sound is opened once more, and then the Mac's own is tried, before
+    /// the phrase is given up. The Mac's is for that phrase only: the next one starts from the chosen.
     var reopened = false
+    var fellBack = false
 
     var dictating: Bool { mode == "dictate" }
 
@@ -1050,12 +1075,13 @@ final class Dictation: NSObject, NSApplicationDelegate {
         try? FileManager.default.createDirectory(at: liveDir, withIntermediateDirectories: true)
         current = String(Int(now()))
         reopened = false
+        fellBack = false
         open(liveDir.appendingPathComponent("\(current).wav"))
         return true
     }
 
     func open(_ url: URL) {
-        recorder.start(into: url) { failure in
+        recorder.start(into: url, builtIn: fellBack) { failure in
             guard let failure, self.phase == .quick || self.phase == .handsFree else { return }
             note("microphone: \(self.recorder.device) did not open: \(failure)")
             self.recorder.renew()
@@ -1159,17 +1185,25 @@ final class Dictation: NSObject, NSApplicationDelegate {
         switch phase {
         case .quick, .handsFree:
             guard let opened = recorder.openedAt else { return }
-            if let heardAt = recorder.heardAt {
-                if Date().timeIntervalSince(heardAt) > 2 {
-                    note("microphone: \(recorder.device) went quiet in the middle of a phrase")
-                    recorder.renew()
-                    return finish()
-                }
-            } else if Date().timeIntervalSince(opened) > 1 {
+            if let heardAt = recorder.heardAt, Date().timeIntervalSince(heardAt) > 2 {
+                note("microphone: \(recorder.device) went quiet in the middle of a phrase")
                 recorder.renew()
-                if !reopened, let url = recorder.url {
+                return finish()
+            }
+            // Nothing at all, or nothing but zeros: either way nobody's voice can be in it.
+            if recorder.soundAt == nil && Date().timeIntervalSince(opened) > 1 {
+                recorder.renew()
+                guard let url = recorder.url else { return fail() }
+                if !reopened {
                     note("microphone: \(recorder.device) gave no sound, opened again")
                     reopened = true
+                    recorder.stop()
+                    return open(url)
+                }
+                if !fellBack, let mac = Microphones.builtIn(), let name = Microphones.name(mac),
+                   name != recorder.device {
+                    note("microphone: \(recorder.device) gave no sound, using \(name) for this phrase")
+                    fellBack = true
                     recorder.stop()
                     return open(url)
                 }

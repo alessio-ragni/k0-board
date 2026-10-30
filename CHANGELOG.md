@@ -6,6 +6,13 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+### Fixed
+
+- Dictation no longer goes silent when the chosen microphone does. AirPods whose microphone gets
+  stuck send nothing but zeros, and every phrase was thrown away as silence without a word; now k0
+  Dictate notices within a second, opens the microphone again and, if it is still deaf, records
+  that phrase from the Mac's own microphone. The log says when it did.
+
 ## [0.8.0]
 
 k0 learns to take dictation on a Mac, offline, in place of Wispr Flow: a trial page to compare the
