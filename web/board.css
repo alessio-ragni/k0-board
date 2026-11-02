@@ -820,6 +820,7 @@ body {
 .postit:hover .keep, .postit .keep:focus-visible { opacity: 1; }
 .postit .keep:hover { background: rgba(255, 255, 255, .72); border-color: rgba(0, 0, 0, .14); }
 .postit .keep.on { opacity: 1; color: var(--keep); }
+.postit .keep.on .sun { fill: currentColor; }
 .postit.keep-alive { border: 2px dashed var(--keep); }
 .postit.flagged.keep-alive { border-color: var(--warn); }
 /* The room the flag needs. It sits over the row of buttons, which is empty space until you hover:

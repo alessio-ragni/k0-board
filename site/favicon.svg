@@ -1,8 +1,10 @@
-<!-- The rounded square of the menu bar icon, in its unlit form: outline only, as when there is
-     nothing going on. This is what the browser shows before the javascript starts; the moment it
-     does, `favicon.js` fills it with the colour of the most urgent status, exactly as the menu
-     bar icon does.
-     The measurements come from `icon()` in menubar/K0MenuBar.swift, scaled to 32. -->
+<!-- The k0 mark: the name itself, drawn in strokes on a dark rounded square, so the tab says k0
+     at sixteen pixels without needing a font. The local board keeps its own icon, which takes the
+     colour of the most urgent status; this one is the site's and never changes. -->
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
-  <rect x="4" y="4" width="24" height="24" rx="5.7" fill="none" stroke="#9ca3b0" stroke-width="3.4"/>
+  <rect width="32" height="32" rx="7" fill="#2b2b2b"/>
+  <g fill="none" stroke="#fde68a" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M7.5 7.5v17M17.5 12.5l-10 7M11.5 16.8l6.5 7.7"/>
+    <ellipse cx="24" cy="18.5" rx="3.6" ry="6"/>
+  </g>
 </svg>

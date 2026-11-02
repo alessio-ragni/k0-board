@@ -1,13 +1,14 @@
 ---
 name: release
-description: The whole way out of a working tree — documentation, tests, one commit, the push to GitHub, and, when it is a release, the tag that publishes k0 to npm. Use this skill whenever the user asks for the work to be shipped, in whatever words and whatever language — "commit and push", "ship it", "cut a release", "publish", "committa e pusha", "manda in produzione", "fai una release", "/release", and "/commit-push-deploy", the name it had before. It calls the changelog skill rather than repeating it, runs the tests and the coverage floor before anything leaves the machine, watches the run on GitHub, and — Alessio having asked for the confirmation to go away for good, see "Why there is no question here" — pushes the tag that publishes without stopping to ask. Do not use it to write a commit message on its own, to inspect what changed, or when the user only wants the changelog.
+description: The whole way out of a working tree — documentation, tests, one commit, the push to GitHub, and, when it is a release, the tag that publishes k0 to npm and puts k0-board.com online with its feature pages. Use this skill whenever the user asks for the work to be shipped, in whatever words and whatever language — "commit and push", "ship it", "cut a release", "publish", "committa e pusha", "manda in produzione", "fai una release", "/release", and "/commit-push-deploy", the name it had before. It calls the changelog skill rather than repeating it, runs the tests and the coverage floor before anything leaves the machine, watches the run on GitHub, merges a branch or worktree into main first, and — Alessio having asked for the confirmation to go away for good, see "Why there is no question here" — pushes the tag that publishes without stopping to ask. Do not use it to write a commit message on its own, to inspect what changed, or when the user only wants the changelog.
 ---
 
 # Getting the work out
 
 There is one road out of this repository and this is it: documentation, tests, one commit, a push
 to `origin`, and — only when a release was asked for — a tag whose arrival on GitHub is what
-publishes k0 to npm.
+publishes k0 to npm, followed by the site at `k0-board.com` with a page for every feature the
+release brings. A release publishes everything; nothing is left for Alessio to put online by hand.
 
 The point of writing it down is that the order matters and the last step is irreversible. A
 version that reaches the registry cannot be taken back; it can only be followed by another one, in
@@ -62,11 +63,17 @@ git remote -v
 node -p "require('./package.json').version"
 ```
 
-Stop and say so, rather than carrying on, when:
+Releasing happens from `main`, so the way there is part of the job, not a reason to stop:
 
 - **the two git directories differ** — this is a worktree. Releasing from one pushes a branch
-  nobody is on. Close it into the base branch first (`/worktree-close`), then come back;
-- **HEAD is detached**, or the branch is not the one the user means;
+  nobody is on. Close it into its base branch with `/worktree-close`, then carry on from there;
+- **the branch is not `main`** — commit what is on it, `git switch main`, `git merge --no-ff
+  <branch>`, and carry on from `main`. A conflict that is not obvious is the one thing to stop and
+  ask about. Delete the branch only once the merge is in.
+
+Stop and say so, rather than carrying on, when:
+
+- **HEAD is detached**, or there is more than one branch it could mean;
 - **there is nothing to do** — a clean tree with nothing ahead of `origin/main`. Say that plainly;
   it is an answer, not a failure.
 
@@ -103,6 +110,15 @@ green — a red build is information, and a green one bought that way is a lie t
 commit. `test/clean.test.mjs` is not negotiable.
 
 If the floor is the only thing red, the answer is a test, not a smaller number.
+
+Then the site, which is part of the tree like anything else:
+
+```bash
+node site/build.mjs --check
+```
+
+It fails when a feature's Markdown in `site/features/` changed and its pages were not rebuilt.
+The answer is `npm run site`, and the rebuilt pages go into the same commit.
 
 ### 3 · The commit
 
@@ -146,7 +162,8 @@ Stop here unless a release was asked for.
 
 Only when the user asked for one. Steps 1–5 have already happened; what follows is on top of them.
 
-1. **Decide the number and say why in one line.** While k0 is at `0.x`: something removed, or a
+1. **Decide the number and say why in one line.** Then go through *The site in a release* below —
+   it is the only place a release may ask Alessio anything. While k0 is at `0.x`: something removed, or a
    behaviour that no longer works, is a minor; new behaviour is a minor; fixes alone are a patch.
 2. **The `changelog` skill closes it.** It turns `## [Unreleased]` into `## [x.y.z]`, leaves a
    fresh empty `## [Unreleased]` above it, writes the two or three sentences that say what the
@@ -171,6 +188,37 @@ Only when the user asked for one. Steps 1–5 have already happened; what follow
    ```
    The second one has to come back with a `provenance` block and a `slsa.dev` predicate. If it
    does not, the tarball went out without the signed statement and that is worth saying out loud.
+10. **Put the site online:**
+    ```bash
+    npm run site:deploy
+    ```
+    It refuses a site that was not rebuilt, uploads `site/` to Amplify, waits for the job, and asks
+    the live site for every address in the sitemap; it ends with `k0-board.com is up to date` or
+    names what did not answer. Only that line counts as the site being online.
+
+### The site in a release
+
+Every feature worth a page has one at `k0-board.com/features/<slug>/`, made from
+`site/features/<slug>.md` by the `site-feature` skill while the work was being done. The release
+is where that is checked, before the number is closed:
+
+1. **List what the release brings:** the `### Added` and `### Changed` entries under
+   `## [Unreleased]`, and the stories behind them (`git log <last tag>..HEAD`). For each one that
+   is a feature a visitor would care about — a decision on its story saying it goes on the site,
+   or, without one, anything new that a user can see — there must be a page that says so.
+2. **Missing or out of date → write it now** with the `site-feature` skill.
+3. **Set `since: x.y.z`** on every page that is new in this release, `updated:` to today on every
+   page that changed, and run `npm run site`.
+4. **Ask Alessio to look at them**, once, with the local addresses
+   (`python3 -m http.server -d site 8080`, then `http://localhost:8080/features/<slug>/` for each):
+   *these pages go online with the release — anything to change?* Changes are made and the pages
+   rebuilt before going on. When no page is new or changed there is nothing to ask, and nothing is
+   asked.
+
+This question is not the one that went away (see below): that one asked again about a tag already
+decided on. This one shows him public text he has not read yet, which is what he asked for on
+2 November 2026, when the feature pages were made: the release asks him to look at the pages,
+because then they go online.
 
 ### Why there is no question here
 
@@ -209,4 +257,7 @@ Short, and honest:
 - what the commit says, and where it went;
 - what CI decided — the verdict, not the hope;
 - for a release: the version, why that number, and whether the registry has it with provenance;
+- for a release: which feature pages are new or changed, and whether `k0-board.com` answered for
+  every one of them;
+- if a branch or worktree was merged into `main` on the way, which one;
 - anything you skipped, and why. Silence there reads as having forgotten.

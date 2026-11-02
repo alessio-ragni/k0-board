@@ -60,6 +60,17 @@ rules about tone live. It ships with the repository, not with the package.
 - **The server answers only itself.** Loopback bind plus a `Host`/`Origin` allowlist. Do not add
   a CORS header to make something work.
 
+## The site
+
+`k0-board.com` has a short page for every feature, made from `site/features/<slug>.md` by
+`site/build.mjs` (`site/README.md` says how). Whether a story deserves one is decided **while it
+is discussed** — with `/k0-discuss`, `/k0-story`, `/k0-epic` or just in conversation, plan or no
+plan: ask *does this go on the site, as a new page or as a change to an existing one?* and record
+the answer as a decision on the story. When the answer is yes, the `site-feature` skill writes the
+page as soon as the behaviour exists, and writes it again whenever Alessio asks for it to be
+regenerated. This lives here and not in the `/k0-*` skills because those ship to everybody who
+installs k0, and nobody else has this site.
+
 ## Releasing
 
 With Claude Code none of this has to be done by hand: the `release` skill in
@@ -68,6 +79,11 @@ the push, and the tag. It used to stop and ask once, before the tag that cannot 
 Alessio asked for that question to go away for good, so it no longer does — see *Why there is no
 question here* inside the skill itself for when and why. It ships with the repository, not with
 the package. What follows is what it does.
+
+A release publishes everything: from `main` (a branch or a worktree is merged in first), the
+package to npm and then the site to Amplify with `npm run site:deploy`, after checking that every
+feature it brings has its page and asking Alessio to look at the pages that are new or changed —
+the one question a release still asks.
 
 Bump the version in `package.json`, close the `[Unreleased]` section of `CHANGELOG.md` into a
 numbered one, commit, then push a tag that matches: `git tag -a v0.2.0 -m … && git push origin

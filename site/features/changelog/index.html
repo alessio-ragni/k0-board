@@ -1,0 +1,143 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>What you actually shipped — k0</title>
+  <meta name="description" content="A ChangeLog of all your repositories, written by Claude Code — what you committed, what is already online, and what is still sitting on this machine.">
+  <link rel="canonical" href="https://k0-board.com/features/changelog/">
+  <meta property="og:type" content="article">
+  <meta property="og:site_name" content="k0">
+  <meta property="og:url" content="https://k0-board.com/features/changelog/">
+  <meta property="og:title" content="What you actually shipped — k0">
+  <meta property="og:description" content="A ChangeLog of all your repositories, written by Claude Code — what you committed, what is already online, and what is still sitting on this machine.">
+  <meta name="twitter:card" content="summary">
+  <meta name="theme-color" content="#f3f1ea" media="(prefers-color-scheme: light)">
+  <meta name="theme-color" content="#1b1a17" media="(prefers-color-scheme: dark)">
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Caveat:wght@500;700&family=Instrument+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap">
+  <link rel="stylesheet" href="/site.css">
+  <script type="application/ld+json">{"@context":"https://schema.org","@type":"TechArticle","headline":"What you actually shipped","description":"A ChangeLog of all your repositories, written by Claude Code — what you committed, what is already online, and what is still sitting on this machine.","url":"https://k0-board.com/features/changelog/","dateModified":"2026-11-02","isPartOf":{"@type":"WebSite","name":"k0","url":"https://k0-board.com/"},"about":{"@type":"SoftwareApplication","name":"k0","applicationCategory":"DeveloperApplication"}}</script>
+</head>
+<body>
+  <a class="skip" href="#main">Skip to content</a>
+
+  <header class="wrap site-header">
+    <a class="logo" href="/" aria-label="k0, home">k0</a>
+    <nav class="site-nav" aria-label="Main">
+      <a href="/features/">Features</a>
+      <a href="/features/statuses/">How it works</a>
+      <a href="/#pricing">Pricing</a>
+      <a href="https://github.com/alessio-ragni/k0-board">GitHub</a>
+      <a href="/app/">Sign in</a>
+    </nav>
+    <a class="btn" href="/#access">Get early access</a>
+  </header>
+
+  <main id="main" class="wrap feature">
+    <nav class="crumbs" aria-label="Breadcrumb"><a href="/features/">Features</a> <span aria-hidden="true">/</span> <span>What you actually shipped</span></nav>
+    <div class="feature-top">
+      <div class="feature-copy">
+        <p class="kicker">what did I do today</p>
+        <h1>What you actually shipped</h1>
+        <p class="lede">A ChangeLog of all your repositories, written by Claude Code — what you committed, what is already online, and what is still sitting on this machine.</p>
+        <p class="small">Since k0 0.2.0</p>
+      </div>
+      <figure class="art" aria-hidden="true">
+<div class="art-stage">
+          <span class="chip">Today</span>
+          <span class="chip">Yesterday</span>
+          <span class="chip">Week</span>
+          <span class="chip">Month</span>
+          <div class="screen">
+            <div class="bar"><i></i><i></i><i></i><span>ChangeLog · Friday</span></div>
+            <div class="body"><span class="dim">A good day: two fixes out, one still here.</span>
+
+invoices — the CSV totals add up now
+<span class="ok">● online</span>     fix: totals include VAT
+<span class="hi">● only here</span>  1 commit, 4 files uncommitted
+
+website — a pricing section
+<span class="ok">● online</span>     feat: pricing table
+<span class="hi">● not out yet</span> 3 changelog lines, no version</div>
+          </div>
+        </div>
+      </figure>
+    </div>
+
+    <article class="prose">
+<h2>A release note for your own day</h2>
+<p>The ChangeLog is not k0's changelog. It is yours: what you have been doing across every repository
+on the board at once, written up by Claude Code. It is the list-shaped button next to the <code>+</code>, and
+it opens in a page of its own.</p>
+<p>It reads like a release note rather than a report. An opening paragraph saying how the day went,
+then one block per repository: a line saying what is different now, a short paragraph, a few
+points, and — the part that matters most — <strong>what is done but not out yet</strong>.</p>
+<h2>Why it matters</h2>
+<p>From inside a terminal, <em>finished</em> and <em>shipped</em> look the same. A commit still sitting on your
+machine, three changelog lines written but never closed into a version, four files never committed:
+the whole page is built on that one distinction — what left here, and what only looks finished.</p>
+<p>It also keeps quiet about what you did not touch: a repository that has been dirty since March is
+not news. Something has to have happened in the window — a commit, a file saved, a story moved —
+before k0 tells you what is outstanding there. And only <strong>your</strong> commits count: k0 asks git which
+email you commit with in that repository, so one shared with other people still tells you about
+your day.</p>
+<h2>How to use it</h2>
+<ul><li>Click the list-shaped button next to the <code>+</code> on the board.</li><li>Pick a window across the top: <strong>Today</strong>, <strong>Yesterday</strong>, <strong>Week</strong> or <strong>Month</strong>. It opens on none of them — it opens on the last day you actually worked, so on a Monday you get Friday instead of an empty page.</li><li>When you do not believe a paragraph, open the facts folded under its block: the commits themselves, green if they are online, amber if they are still only here.</li></ul>
+<h2>Who writes it</h2>
+<p>Not k0: <strong>no model of k0's own reads your work</strong>, so there is no key to keep and no commit message
+going out to somebody's model. You already have Claude Code signed in, so k0 gathers the facts on
+this machine, hands them to it, and shows what comes back — no terminal opens, nothing appears on
+the board. It is written in your language, because it is written out of your own commit messages
+and story titles.</p>
+<h2>Small print</h2>
+<p>Nothing is saved: every time you open the page or change the window, it is written again. k0 Cloud
+keeps your board, not your commits or your diffs. Without Claude Code on the machine the page still
+opens, with the facts and a line saying why the rest is missing.</p>
+    </article>
+
+    <section class="more-features" aria-labelledby="more-title">
+      <h2 id="more-title">Keep reading</h2>
+      <div class="grid">
+        <a class="card feature-card" href="/features/whats-new/">
+          <h3>What changed, in your words</h3>
+          <p>After an update, a page says what changed since the version you had — in your language, as plain or as technical as you like.</p>
+          <span class="more" aria-hidden="true">Read more →</span>
+        </a>
+        <a class="card feature-card" href="/features/git-and-globe/">
+          <h3>Is it saved? Is it up?</h3>
+          <p>A mark on every note and column says what is not committed or not pushed; a globe says whether the dev site is running.</p>
+          <span class="more" aria-hidden="true">Read more →</span>
+        </a>
+        <a class="card feature-card" href="/features/usage/">
+          <h3>Where your week went</h3>
+          <p>What every session consumed, by model, effort, repository and account — and how full your limits were, from your statusline.</p>
+          <span class="more" aria-hidden="true">Read more →</span>
+        </a>
+      </div>
+      <p class="pager">
+        <a href="/features/terminal/">← The real terminal, one click away</a>
+        <a class="btn btn-outline" href="/features/">All features</a>
+        <a href="/features/whats-new/">What changed, in your words →</a>
+      </p>
+    </section>
+
+    <section class="cta" aria-label="Get early access">
+      <p>k0 is in early access. Leave your address and you will hear when your account is ready.</p>
+      <a class="btn" href="/#access">Get early access</a>
+    </section>
+  </main>
+
+  <footer class="wrap site-footer">
+    <span>k0 · source-available under the Sustainable Use License · made by Alessio Ragni</span>
+    <span class="footer-links">
+      <a href="/features/">Features</a>
+      <a href="https://github.com/alessio-ragni/k0-board">GitHub</a>
+      <a href="/privacy.html">Privacy</a>
+      <a href="/terms.html">Terms</a>
+    </span>
+  </footer>
+</body>
+</html>

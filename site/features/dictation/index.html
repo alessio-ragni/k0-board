@@ -1,0 +1,144 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Dictation that stays on your Mac — k0</title>
+  <meta name="description" content="Offline dictation on macOS 26 in place of Wispr Flow — hold Control, talk to Claude Code, let go. Nothing you say leaves the Mac.">
+  <link rel="canonical" href="https://k0-board.com/features/dictation/">
+  <meta property="og:type" content="article">
+  <meta property="og:site_name" content="k0">
+  <meta property="og:url" content="https://k0-board.com/features/dictation/">
+  <meta property="og:title" content="Dictation that stays on your Mac — k0">
+  <meta property="og:description" content="Offline dictation on macOS 26 in place of Wispr Flow — hold Control, talk to Claude Code, let go. Nothing you say leaves the Mac.">
+  <meta name="twitter:card" content="summary">
+  <meta name="theme-color" content="#f3f1ea" media="(prefers-color-scheme: light)">
+  <meta name="theme-color" content="#1b1a17" media="(prefers-color-scheme: dark)">
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Caveat:wght@500;700&family=Instrument+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap">
+  <link rel="stylesheet" href="/site.css">
+  <script type="application/ld+json">{"@context":"https://schema.org","@type":"TechArticle","headline":"Dictation that stays on your Mac","description":"Offline dictation on macOS 26 in place of Wispr Flow — hold Control, talk to Claude Code, let go. Nothing you say leaves the Mac.","url":"https://k0-board.com/features/dictation/","dateModified":"2026-11-02","isPartOf":{"@type":"WebSite","name":"k0","url":"https://k0-board.com/"},"about":{"@type":"SoftwareApplication","name":"k0","applicationCategory":"DeveloperApplication"}}</script>
+</head>
+<body>
+  <a class="skip" href="#main">Skip to content</a>
+
+  <header class="wrap site-header">
+    <a class="logo" href="/" aria-label="k0, home">k0</a>
+    <nav class="site-nav" aria-label="Main">
+      <a href="/features/">Features</a>
+      <a href="/features/statuses/">How it works</a>
+      <a href="/#pricing">Pricing</a>
+      <a href="https://github.com/alessio-ragni/k0-board">GitHub</a>
+      <a href="/app/">Sign in</a>
+    </nav>
+    <a class="btn" href="/#access">Get early access</a>
+  </header>
+
+  <main id="main" class="wrap feature">
+    <nav class="crumbs" aria-label="Breadcrumb"><a href="/features/">Features</a> <span aria-hidden="true">/</span> <span>Dictation that stays on your Mac</span></nav>
+    <div class="feature-top">
+      <div class="feature-copy">
+        <p class="kicker">hold control, speak</p>
+        <h1>Dictation that stays on your Mac</h1>
+        <p class="lede">Offline dictation on macOS 26 in place of Wispr Flow — hold Control, talk to Claude Code, let go. Nothing you say leaves the Mac.</p>
+        <p class="small">Since k0 0.8.0</p>
+      </div>
+      <figure class="art" aria-hidden="true">
+<div class="art-stage">
+          <div class="lane">
+            <div class="pill"><i style="height:8px"></i><i style="height:18px"></i><i style="height:26px"></i><i style="height:14px"></i><i style="height:22px"></i><i style="height:10px"></i><i style="height:16px"></i></div>
+            <span>listening</span>
+          </div>
+          <div class="lane">
+            <div class="pill orange"><i style="height:10px"></i><i style="height:10px"></i><i style="height:10px"></i><i style="height:10px"></i><i style="height:10px"></i><i style="height:10px"></i><i style="height:10px"></i></div>
+            <span>working it out</span>
+          </div>
+          <div class="screen light">
+            <div class="bar"><i></i><i></i><i></i><span>invoices — claude</span></div>
+            <div class="body"><span class="dim">&gt;</span> the totals in the CSV export skip the last
+  row when it has no VAT, can you find out why
+  and fix it<span class="dim">▌</span></div>
+          </div>
+        </div>
+      </figure>
+    </div>
+
+    <article class="prose">
+<h2>Hold Control, speak, let go</h2>
+<p>k0 has a dictation of its own, offline, to replace Wispr Flow. Hold Control, say a phrase, let go,
+and the text is pasted wherever the cursor is — the terminal of a Claude Code session, a browser, a
+note. It needs macOS 26; anywhere else the page says so and the switch stays grey.</p>
+<h2>Why it matters</h2>
+<p>Talking to Claude Code is quicker than typing to it, and most dictation does it by sending your
+voice to somebody else's server. This one does not. <strong>Nothing you say leaves the Mac</strong>: the
+recording of a phrase is deleted once transcribed, and the last ten texts live in
+<code>~/.k0/dictate/history.json</code> — never in the board's database, which is synced to k0 Cloud.</p>
+<p>Nobody chooses a language either. Whisper hears which one you speak; Apple's engine listens in
+Italian and English at once and keeps the surer of the two.</p>
+<h2>Try it before you switch</h2>
+<p>Is an offline engine good enough, and which one? That is answered on your own Mac, with your own
+voice. Open <code>http://k0.localhost:4319/dictate.html</code> and dictate with Wispr as you always do: at the
+same moment k0 Dictate records the same microphone and gives it to both engines. Each phrase shows
+the three texts side by side, with how long each took from the instant you let go.</p>
+<table><thead><tr><th>Engine</th><th>What it needs</th></tr></thead><tbody><tr><td>Apple</td><td>nothing — macOS fetches its models by itself</td></tr><tr><td>Whisper</td><td><code>brew install whisper-cpp</code>, then a model of about 1.6 GB, once</td></tr></tbody></table>
+<p>macOS asks once for the <strong>Microphone</strong> and for <strong>Accessibility</strong> — the second is what lets k0
+Dictate notice Control being held.</p>
+<h2>How to use it</h2>
+<ul><li>On the trial page, press <strong>Keep Apple</strong> or <strong>Keep Whisper</strong>.</li><li><strong>Quit Wispr Flow</strong> — with both running, both paste.</li><li>Press <strong>Switch dictation on</strong>. k0 Dictate starts now and at every login.</li><li>Hold <strong>Control</strong> on its own for a phrase. <strong>Control+Space</strong>, or Control tapped twice, is hands-free; Control again finishes and pastes.</li></ul>
+<p>Control with any other key — Control+C, Control+A — is a shortcut, and nothing happens. <strong>Escape</strong>
+drops the phrase.</p>
+<h2>The pill</h2>
+<p>A small pill at the bottom of the screen says where things stand, coloured so it is never taken for
+Wispr Flow's: <strong>light blue</strong> while it waits and listens, the bars moving with your voice; <strong>orange</strong>
+while the words are worked out; <strong>red</strong> for a second only when a phrase could not be heard or could
+not be pasted.</p>
+<p>Right-click it for the last ten phrases, <strong>Paste last transcript</strong> for a paste that went nowhere, the
+microphone, and <strong>Reset dictation</strong>. The text arrives all at once when you finish, through the
+clipboard, and whatever was on the clipboard is put back a moment later.</p>
+    </article>
+
+    <section class="more-features" aria-labelledby="more-title">
+      <h2 id="more-title">Keep reading</h2>
+      <div class="grid">
+        <a class="card feature-card" href="/features/terminal/">
+          <h3>The real terminal, one click away</h3>
+          <p>Every note is a real Claude Code session in its own terminal window. Double-click the note and that window is in front.</p>
+          <span class="more" aria-hidden="true">Read more →</span>
+        </a>
+        <a class="card feature-card" href="/features/always-on/">
+          <h3>Keep one session always on</h3>
+          <p>Mark a note always active and k0 never closes its terminal for sitting idle — for a session left watching a deploy.</p>
+          <span class="more" aria-hidden="true">Read more →</span>
+        </a>
+        <a class="card feature-card" href="/features/statuses/">
+          <h3>Seven colours, one glance</h3>
+          <p>Every session is a sticky note, and its colour says whose move it is — yours or Claude's.</p>
+          <span class="more" aria-hidden="true">Read more →</span>
+        </a>
+      </div>
+      <p class="pager">
+        <a href="/features/whats-new/">← What changed, in your words</a>
+        <a class="btn btn-outline" href="/features/">All features</a>
+        <a href="/features/usage/">Where your week went →</a>
+      </p>
+    </section>
+
+    <section class="cta" aria-label="Get early access">
+      <p>k0 is in early access. Leave your address and you will hear when your account is ready.</p>
+      <a class="btn" href="/#access">Get early access</a>
+    </section>
+  </main>
+
+  <footer class="wrap site-footer">
+    <span>k0 · source-available under the Sustainable Use License · made by Alessio Ragni</span>
+    <span class="footer-links">
+      <a href="/features/">Features</a>
+      <a href="https://github.com/alessio-ragni/k0-board">GitHub</a>
+      <a href="/privacy.html">Privacy</a>
+      <a href="/terms.html">Terms</a>
+    </span>
+  </footer>
+</body>
+</html>

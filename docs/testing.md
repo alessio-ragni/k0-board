@@ -231,3 +231,11 @@ In CI the same measurement runs once, on Ubuntu, with a floor under it: below th
 fails. The floor is a ratchet — raise it when the number clears it comfortably. Lowering it is a
 decision somebody has to argue for, not a way of getting a build green, and neither is deleting an
 assertion or skipping a test.
+
+The website is the last case, and the simplest. `site/build.mjs` writes the feature pages of
+k0-board.com, and `test/site.test.mjs` builds a small copy of the site — two features, one coming,
+a home page with the markers — in a temporary directory and reads what came out: every live
+feature has its page and its address in the sitemap, the coming one has neither, a related link
+that leads nowhere stops the build, and `--check` notices a page somebody forgot to rebuild. The
+real `site/` is never written by a test. CI runs `node site/build.mjs --check` on the real one,
+which is the other half: the test proves the builder, the check proves it was run.

@@ -1,0 +1,147 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>What changed, in your words — k0</title>
+  <meta name="description" content="After you update k0, a What's New page says what changed since the version you had, written by Claude Code in your language, plain or technical.">
+  <link rel="canonical" href="https://k0-board.com/features/whats-new/">
+  <meta property="og:type" content="article">
+  <meta property="og:site_name" content="k0">
+  <meta property="og:url" content="https://k0-board.com/features/whats-new/">
+  <meta property="og:title" content="What changed, in your words — k0">
+  <meta property="og:description" content="After you update k0, a What's New page says what changed since the version you had, written by Claude Code in your language, plain or technical.">
+  <meta name="twitter:card" content="summary">
+  <meta name="theme-color" content="#f3f1ea" media="(prefers-color-scheme: light)">
+  <meta name="theme-color" content="#1b1a17" media="(prefers-color-scheme: dark)">
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Caveat:wght@500;700&family=Instrument+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap">
+  <link rel="stylesheet" href="/site.css">
+  <script type="application/ld+json">{"@context":"https://schema.org","@type":"TechArticle","headline":"What changed, in your words","description":"After you update k0, a What's New page says what changed since the version you had, written by Claude Code in your language, plain or technical.","url":"https://k0-board.com/features/whats-new/","dateModified":"2026-11-02","isPartOf":{"@type":"WebSite","name":"k0","url":"https://k0-board.com/"},"about":{"@type":"SoftwareApplication","name":"k0","applicationCategory":"DeveloperApplication"}}</script>
+</head>
+<body>
+  <a class="skip" href="#main">Skip to content</a>
+
+  <header class="wrap site-header">
+    <a class="logo" href="/" aria-label="k0, home">k0</a>
+    <nav class="site-nav" aria-label="Main">
+      <a href="/features/">Features</a>
+      <a href="/features/statuses/">How it works</a>
+      <a href="/#pricing">Pricing</a>
+      <a href="https://github.com/alessio-ragni/k0-board">GitHub</a>
+      <a href="/app/">Sign in</a>
+    </nav>
+    <a class="btn" href="/#access">Get early access</a>
+  </header>
+
+  <main id="main" class="wrap feature">
+    <nav class="crumbs" aria-label="Breadcrumb"><a href="/features/">Features</a> <span aria-hidden="true">/</span> <span>What changed, in your words</span></nav>
+    <div class="feature-top">
+      <div class="feature-copy">
+        <p class="kicker">after an update</p>
+        <h1>What changed, in your words</h1>
+        <p class="lede">After you update k0, a What's New page says what changed since the version you had, written by Claude Code in your language, plain or technical.</p>
+        <p class="small">Since k0 0.5.0</p>
+      </div>
+      <figure class="art" aria-hidden="true">
+<div class="art-stage">
+          <div class="screen">
+            <div class="bar"><i></i><i></i><i></i><span>k0 <span class="hi">●</span></span></div>
+            <div class="body"><span class="dim">What's New</span>
+
+You had k0 <span class="hi">0.3.1</span>, you are running <span class="hi">0.4.0</span> now,
+two versions later.
+
+Two things you will notice on the board,
+and one fix you will only notice because
+something stopped going wrong.
+
+<span class="dim">▾ the changelog entries, as written</span></div>
+          </div>
+          <span class="chip">English</span>
+          <span class="chip">Plain</span>
+          <span class="chip">Normal</span>
+          <span class="chip">Nerd</span>
+        </div>
+      </figure>
+    </div>
+
+    <article class="prose">
+<h2>The version you run, and the one you learned</h2>
+<p>k0 updates by having its files replaced under it. You restart, everything looks the same, and
+whatever changed is in a file called <code>CHANGELOG.md</code> that nobody opens. So the version you are
+running drifts away from the one you learned, and the new thing sits there unused because you never
+found out it was there. The What's New page closes that gap.</p>
+<h2>How it shows up</h2>
+<p>A small <strong>mark appears next to <code>k0</code></strong> in the top bar for exactly two reasons: k0 moved on while you
+were not looking, or npm says there is a version newer than the one installed here. Hover it and it
+says which.</p>
+<p><strong>It never opens the page by itself.</strong> It sits next to the name and waits, and it goes out when you
+have read the page — not when you close the tab.</p>
+<h2>What the page says</h2>
+<p>It names the two versions it stands between — <em>you had k0 0.3.1, you are running 0.4.0 now, two
+versions later</em> — and then says what that means in prose, written by your own Claude Code out of the
+changelog entries in between.</p>
+<p>Two controls, and both change who it is written for rather than what is in it:</p>
+<table><thead><tr><th>Control</th><th>Choices</th></tr></thead><tbody><tr><td>Language</td><td>whichever one you read</td></tr><tr><td>How technical</td><td><code>Plain</code>, <code>Normal</code> or <code>Nerd</code></td></tr></tbody></table>
+<p>Both are remembered, because coming back to find the page in a language you do not read is the
+whole page wasted.</p>
+<p>Underneath, folded open from the first moment, are the changelog entries themselves, exactly as
+they were written. While the prose is being written they are what there is to read; afterwards they
+are what you check it against.</p>
+<h2>How to use it</h2>
+<ul><li>When the mark appears next to <code>k0</code>, hover it to see why.</li><li>Click it, and choose the language and the level of detail once.</li><li>If it says a newer version exists, update with <code>npx k0-board@latest</code>. k0 cannot update itself; the most it can do is tell you.</li></ul>
+<h2>Small print</h2>
+<p>It is the same machinery as <a href="/features/changelog/">the ChangeLog</a>, and it has the same shape:
+nothing is stored, and there is no model of k0's own and no key of its own — the Claude Code you
+already pay for does the writing, on this machine. Nothing is downloaded either.</p>
+<p>Knowing that a newer version exists takes one request a day to the public npm registry, asking what
+the newest <code>k0-board</code> is. The package name is in the address and nothing else is in the request.
+<code>&quot;updateCheck&quot;: false</code> in <code>~/.k0/config.json</code> stops it opening a socket at all.</p>
+    </article>
+
+    <section class="more-features" aria-labelledby="more-title">
+      <h2 id="more-title">Keep reading</h2>
+      <div class="grid">
+        <a class="card feature-card" href="/features/changelog/">
+          <h3>What you actually shipped</h3>
+          <p>What you did across every repository — what is online, and what only looks finished — written up like a release note.</p>
+          <span class="more" aria-hidden="true">Read more →</span>
+        </a>
+        <a class="card feature-card" href="/features/usage/">
+          <h3>Where your week went</h3>
+          <p>What every session consumed, by model, effort, repository and account — and how full your limits were, from your statusline.</p>
+          <span class="more" aria-hidden="true">Read more →</span>
+        </a>
+        <a class="card feature-card" href="/features/dictation/">
+          <h3>Dictation that stays on your Mac</h3>
+          <p>Hold Control, speak, let go — the text lands where the cursor is. Offline, in place of Wispr Flow.</p>
+          <span class="more" aria-hidden="true">Read more →</span>
+        </a>
+      </div>
+      <p class="pager">
+        <a href="/features/changelog/">← What you actually shipped</a>
+        <a class="btn btn-outline" href="/features/">All features</a>
+        <a href="/features/dictation/">Dictation that stays on your Mac →</a>
+      </p>
+    </section>
+
+    <section class="cta" aria-label="Get early access">
+      <p>k0 is in early access. Leave your address and you will hear when your account is ready.</p>
+      <a class="btn" href="/#access">Get early access</a>
+    </section>
+  </main>
+
+  <footer class="wrap site-footer">
+    <span>k0 · source-available under the Sustainable Use License · made by Alessio Ragni</span>
+    <span class="footer-links">
+      <a href="/features/">Features</a>
+      <a href="https://github.com/alessio-ragni/k0-board">GitHub</a>
+      <a href="/privacy.html">Privacy</a>
+      <a href="/terms.html">Terms</a>
+    </span>
+  </footer>
+</body>
+</html>

@@ -1,0 +1,137 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Work next door, merge back — k0</title>
+  <meta name="description" content="/k0-work runs a planned story in Claude Code inside its own git worktree, logs as it goes, and merges back into your branch. /k0-ultracode does it with a manager and agents.">
+  <link rel="canonical" href="https://k0-board.com/features/worktree/">
+  <meta property="og:type" content="article">
+  <meta property="og:site_name" content="k0">
+  <meta property="og:url" content="https://k0-board.com/features/worktree/">
+  <meta property="og:title" content="Work next door, merge back — k0">
+  <meta property="og:description" content="/k0-work runs a planned story in Claude Code inside its own git worktree, logs as it goes, and merges back into your branch. /k0-ultracode does it with a manager and agents.">
+  <meta name="twitter:card" content="summary">
+  <meta name="theme-color" content="#f3f1ea" media="(prefers-color-scheme: light)">
+  <meta name="theme-color" content="#1b1a17" media="(prefers-color-scheme: dark)">
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Caveat:wght@500;700&family=Instrument+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap">
+  <link rel="stylesheet" href="/site.css">
+  <script type="application/ld+json">{"@context":"https://schema.org","@type":"TechArticle","headline":"Work next door, merge back","description":"/k0-work runs a planned story in Claude Code inside its own git worktree, logs as it goes, and merges back into your branch. /k0-ultracode does it with a manager and agents.","url":"https://k0-board.com/features/worktree/","dateModified":"2026-11-02","isPartOf":{"@type":"WebSite","name":"k0","url":"https://k0-board.com/"},"about":{"@type":"SoftwareApplication","name":"k0","applicationCategory":"DeveloperApplication"}}</script>
+</head>
+<body>
+  <a class="skip" href="#main">Skip to content</a>
+
+  <header class="wrap site-header">
+    <a class="logo" href="/" aria-label="k0, home">k0</a>
+    <nav class="site-nav" aria-label="Main">
+      <a href="/features/">Features</a>
+      <a href="/features/statuses/">How it works</a>
+      <a href="/#pricing">Pricing</a>
+      <a href="https://github.com/alessio-ragni/k0-board">GitHub</a>
+      <a href="/app/">Sign in</a>
+    </nav>
+    <a class="btn" href="/#access">Get early access</a>
+  </header>
+
+  <main id="main" class="wrap feature">
+    <nav class="crumbs" aria-label="Breadcrumb"><a href="/features/">Features</a> <span aria-hidden="true">/</span> <span>Work next door, merge back</span></nav>
+    <div class="feature-top">
+      <div class="feature-copy">
+        <p class="kicker">a copy of its own</p>
+        <h1>Work next door, merge back</h1>
+        <p class="lede">/k0-work runs a planned story in Claude Code inside its own git worktree, logs as it goes, and merges back into your branch. /k0-ultracode does it with a manager and agents.</p>
+        <p class="small">Since k0 0.5.0</p>
+      </div>
+      <figure class="art" aria-hidden="true">
+<div class="art-stage">
+          <div class="mini blue"><b>K150 · invoices</b><i>CSV totals</i><small>Working</small></div>
+          <div class="screen">
+            <div class="bar"><i></i><i></i><i></i><span>/k0-work K150</span></div>
+            <div class="body"><span class="dim">worktree opened from</span> <span class="hi">release-2</span>
+<span class="dim">Log</span>  step 1 of 3  totals read per row
+<span class="dim">Log</span>  step 2 of 3  rounding after the sum
+<span class="dim">Log</span>  step 3 of 3  export fixtures
+<span class="ok">merged into release-2 · one merge commit</span>
+<span class="dim">worktree removed · no push · no pull request</span></div>
+          </div>
+          <span class="chip">Work</span>
+          <span class="chip">Ultracode</span>
+        </div>
+      </figure>
+    </div>
+
+    <article class="prose">
+<h2>A working copy of its own</h2>
+<p><code>/k0-work</code> takes a story that has a plan and builds it in a <strong>git worktree</strong> under
+<code>.claude/worktrees/</code>, on a branch named after the story, opened <strong>from the branch you are standing
+on</strong> — not from <code>main</code>. You keep working in the repository; the Claude Code session works next
+door, writing to the story's Log as it goes so a session that runs out of context hands over
+cleanly. At the end its branch comes back as <strong>one merge commit</strong> and the copy is destroyed.</p>
+<p>The folder is kept out of git's way through <code>.git/info/exclude</code>, never your <code>.gitignore</code>.</p>
+<h2>Why it stops where it stops</h2>
+<p>It will not open a worktree over uncommitted work, and says how much there is. Three things it
+never does, each of which has already cost somebody a day:</p>
+<ul><li><strong>It never pushes and never opens a pull request.</strong> Publishing is your decision.</li><li><strong>It never resolves a conflict.</strong> A program cannot tell a conflict it resolved correctly from one it resolved plausibly. A conflict stops everything and names the files.</li><li><strong>It never runs tests, a build or a dev server in there.</strong> A copied <code>.env</code> carries the base repository's port, and a test runner that finds a server already on it goes green against the old checkout. Tests run on your branch, after the merge.</li></ul>
+<h2>How to use it</h2>
+<ol><li>Plan the story first: <strong>Plan</strong> on the note, or <code>/k0-plan K150</code>.</li><li>Press <strong>Work</strong>, or type <code>/k0-work K150</code>.</li><li>If the terminal closes, <strong>Resume</strong> picks the conversation up where it was.</li><li>Once it has merged, run your tests on your branch, then <code>/k0-verify K150</code>.</li></ol>
+<h2>The same work, with a manager over it</h2>
+<p>Next to <strong>Work</strong> sits a quieter word: <strong>Ultracode</strong>. <code>/k0-ultracode</code> makes one session a
+<strong>manager</strong>: it cuts the plan into assignments, gives each to an agent in a copy of the repository
+of its own, brings the work back one piece at a time, and then — on your branch — runs the tests,
+has the result read by an agent that wrote none of it, and walks the story past every decision. On
+an epic it goes story after story.</p>
+<p>It asks two things, once: <strong>how much rope</strong> — <em>interactive</em>, <em>checkpoint</em> or <em>autonomous</em> — and
+<strong>how hard</strong>: two, three or five agents at a time, one repair attempt or two. It never pushes,
+never presses <strong>Done</strong>, and stops when the repairs are spent, saying what is still broken.</p>
+<h2>Small print</h2>
+<p>Merging commits whatever the session left pending, and a commit runs your hooks. k0 does not skip
+them with <code>--no-verify</code>, so a <code>pre-commit</code> hook that runs the suite does run next door — and k0
+says so.</p>
+    </article>
+
+    <section class="more-features" aria-labelledby="more-title">
+      <h2 id="more-title">Keep reading</h2>
+      <div class="grid">
+        <a class="card feature-card" href="/features/backlog/">
+          <h3>Decide it, then check it</h3>
+          <p>Epics, stories and tasks, discussed in rounds, every decision written down — and the finished work checked against each one.</p>
+          <span class="more" aria-hidden="true">Read more →</span>
+        </a>
+        <a class="card feature-card" href="/features/git-and-globe/">
+          <h3>Is it saved? Is it up?</h3>
+          <p>A mark on every note and column says what is not committed or not pushed; a globe says whether the dev site is running.</p>
+          <span class="more" aria-hidden="true">Read more →</span>
+        </a>
+        <a class="card feature-card" href="/features/terminal/">
+          <h3>The real terminal, one click away</h3>
+          <p>Every note is a real Claude Code session in its own terminal window. Double-click the note and that window is in front.</p>
+          <span class="more" aria-hidden="true">Read more →</span>
+        </a>
+      </div>
+      <p class="pager">
+        <a href="/features/backlog/">← Decide it, then check it</a>
+        <a class="btn btn-outline" href="/features/">All features</a>
+        <a href="/features/cloud/">Your board, on every machine →</a>
+      </p>
+    </section>
+
+    <section class="cta" aria-label="Get early access">
+      <p>k0 is in early access. Leave your address and you will hear when your account is ready.</p>
+      <a class="btn" href="/#access">Get early access</a>
+    </section>
+  </main>
+
+  <footer class="wrap site-footer">
+    <span>k0 · source-available under the Sustainable Use License · made by Alessio Ragni</span>
+    <span class="footer-links">
+      <a href="/features/">Features</a>
+      <a href="https://github.com/alessio-ragni/k0-board">GitHub</a>
+      <a href="/privacy.html">Privacy</a>
+      <a href="/terms.html">Terms</a>
+    </span>
+  </footer>
+</body>
+</html>

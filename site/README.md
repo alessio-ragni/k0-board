@@ -1,7 +1,9 @@
 # site
 
 Everything that is served at `https://k0-board.com`: the marketing site and the web side of k0
-Cloud. All of it is static — plain HTML, CSS and ES modules, no build step and no dependencies.
+Cloud. All of it is static — plain HTML, CSS and ES modules, no dependencies, and nothing to build
+when it is deployed. The one generated part, the feature pages, is generated before the commit and
+committed.
 The pages that need data talk to Supabase directly from the browser with `fetch`.
 
 ## The marketing site
@@ -18,7 +20,30 @@ The pages that need data talk to Supabase directly from the browser with `fetch`
 - **`site.css`** — one stylesheet for all of the above. The colours are custom properties on
   `:root`, redefined for `prefers-color-scheme: dark`; the sticky notes keep their dark ink in
   both schemes.
-- **`favicon.svg`** — the same icon as the local board.
+- **`favicon.svg`** — the k0 mark, drawn in strokes so it needs no font. The local board has an
+  icon of its own, which takes the colour of the most urgent status.
+
+## The feature pages
+
+Every feature of k0 has a short page at `/features/<slug>/`, and they are all listed at
+`/features/` and as cards on the home page. None of these is written by hand:
+
+- **`features/<slug>.md`** — one feature: a header with its title, card text, summary, order,
+  version and related features, then a few hundred words of Markdown. A feature marked
+  `status: coming` gets a card that says *coming soon* and no page.
+- **`features/<slug>.art.html`** — the drawing beside it, built only from the pieces at the end of
+  `site.css` (`.mini` notes, `.screen`, `.pill`, `.chip`): no pictures, nothing fetched.
+- **`build.mjs`** — reads them with the board's own Markdown renderer (`web/md.js`) and writes
+  `features/<slug>/index.html`, `features/index.html`, the cards between the
+  `<!-- features:start -->` and `<!-- features:end -->` markers in `index.html`, and
+  `sitemap.xml`. `npm run site` writes; `node site/build.mjs --check` writes nothing and fails if
+  anything on disk is not what it would write, which is how CI and the release catch a page that
+  was edited and not rebuilt. A related feature that has no page stops the build: it would be a
+  broken link on a public page.
+
+The words of a page are written by the `site-feature` skill in `.claude/skills/`, from the story's
+decisions, the manual and the changelog; whether a story deserves a page is decided while it is
+discussed, and the release checks that every feature it brings has one.
 
 The marketing pages load their fonts (Caveat, Instrument Sans, JetBrains Mono) from Google Fonts.
 That is the marketing site only: the k0 app itself still makes no request for fonts.
@@ -52,4 +77,13 @@ would not mind seeing there.
 ## Deploying
 
 The folder is deployed as it is, as static files on AWS Amplify — there is no build. Whatever is
-in `site/` is what is served.
+in `site/` is what is served, except the files that only exist to make it: this README,
+`build.mjs`, `deploy.sh` and the feature sources.
+
+```sh
+npm run site:deploy
+```
+
+It refuses a site that was not rebuilt, uploads the zip, waits for Amplify to finish, then asks the
+live site for every address in the sitemap and compares the sitemap online with this one. The
+release runs it as its last step; `docs/cloud.md` has the same thing written out by hand.
