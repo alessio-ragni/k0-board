@@ -17,6 +17,12 @@ All notable changes to this project are documented here. The format follows
   Dictate notices within a second, opens the microphone again and, if it is still deaf, records
   that phrase from the Mac's own microphone. The log says when it did.
 
+### Changed
+
+- The command that ships k0, for whoever works on it, is now called `/release`; it used to be
+  `/commit-push-deploy`. The two commands k0 installs that mention it say so. Nothing changes for
+  anybody using k0.
+
 ## [0.8.0]
 
 k0 learns to take dictation on a Mac, offline, in place of Wispr Flow: a trial page to compare the

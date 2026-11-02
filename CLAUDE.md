@@ -62,7 +62,7 @@ rules about tone live. It ships with the repository, not with the package.
 
 ## Releasing
 
-With Claude Code none of this has to be done by hand: the `commit-push-deploy` skill in
+With Claude Code none of this has to be done by hand: the `release` skill in
 `.claude/skills/` is the whole road out — documentation, tests, the coverage floor, one commit,
 the push, and the tag. It used to stop and ask once, before the tag that cannot be taken back;
 Alessio asked for that question to go away for good, so it no longer does — see *Why there is no

@@ -1,6 +1,6 @@
 ---
 name: k0-ultracode
-description: Runs a whole epic — or one story — as a manager with agents under it: it takes what the board already knows, cuts the plan into assignments, hands each one to an agent working in an isolated copy of the repository, brings the work back one piece at a time, and closes every story with the tests, a fresh pair of eyes and the counter-check before moving to the next. Use this skill when the user types "/k0-ultracode" or "/k0-ultracode K7", or says "run the whole epic", "take this and go", "do it with agents", "hand it to the manager", "fallo tutto tu", "porta avanti l'epica", "usa gli agenti", "vai fino in fondo". Do not use it to talk a story through (that is /k0-discuss), to write a plan and stop (/k0-plan), to do one story by hand in one session (/k0-work), or to push, tag or release anything (/commit-push-deploy).
+description: Runs a whole epic — or one story — as a manager with agents under it: it takes what the board already knows, cuts the plan into assignments, hands each one to an agent working in an isolated copy of the repository, brings the work back one piece at a time, and closes every story with the tests, a fresh pair of eyes and the counter-check before moving to the next. Use this skill when the user types "/k0-ultracode" or "/k0-ultracode K7", or says "run the whole epic", "take this and go", "do it with agents", "hand it to the manager", "fallo tutto tu", "porta avanti l'epica", "usa gli agenti", "vai fino in fondo". Do not use it to talk a story through (that is /k0-discuss), to write a plan and stop (/k0-plan), to do one story by hand in one session (/k0-work), or to push, tag or release anything (/release).
 ---
 
 # /k0-ultracode [key]
@@ -194,7 +194,7 @@ using this project rather than which function moved. The base repository must be
 is not, stop and say so rather than committing somebody else's work.
 
 **Never `git push`. Never a pull request.** Not with a flag, not because the branch tracks a remote,
-not to be helpful. What leaves this machine leaves it through `/commit-push-deploy`, and only when
+not to be helpful. What leaves this machine leaves it through `/release`, and only when
 the user asks.
 
 Then, in the base repository and nowhere else:

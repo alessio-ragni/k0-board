@@ -1,6 +1,6 @@
 ---
 name: k0-work
-description: Carries out a planned k0 story inside its own git worktree — opens the worktree through k0 from the branch you are on, does the work there, writes to the story's Log as it goes so a session that runs out of context hands over cleanly, then merges back into that same branch and destroys the worktree. Never pushes and never opens a pull request. Use this skill when the user types "/k0-work" or "/k0-work K42", or says "start the work", "do it", "let's build K42", "carry on with this story", "fai il lavoro", "inizia a lavorare su K42", "mettiti al lavoro", "riprendi la storia". Do not use it on a story with no stored plan (that is /k0-plan), to check the finished work against the decisions (/k0-verify), or to push, tag or release anything (/commit-push-deploy).
+description: Carries out a planned k0 story inside its own git worktree — opens the worktree through k0 from the branch you are on, does the work there, writes to the story's Log as it goes so a session that runs out of context hands over cleanly, then merges back into that same branch and destroys the worktree. Never pushes and never opens a pull request. Use this skill when the user types "/k0-work" or "/k0-work K42", or says "start the work", "do it", "let's build K42", "carry on with this story", "fai il lavoro", "inizia a lavorare su K42", "mettiti al lavoro", "riprendi la storia". Do not use it on a story with no stored plan (that is /k0-plan), to check the finished work against the decisions (/k0-verify), or to push, tag or release anything (/release).
 ---
 
 # /k0-work [key]
@@ -188,7 +188,7 @@ was the one next door, with the copied `.env`. Say so in one line when it happen
 trap as §5, arriving from the other direction, and the run that counts is the one after the merge.
 
 **Never `git push`. Never a pull request.** Not with a flag, not because the user's branch tracks
-a remote, not to be helpful. What leaves this machine leaves it through `/commit-push-deploy`, and
+a remote, not to be helpful. What leaves this machine leaves it through `/release`, and
 only when the user asks.
 
 If the merge comes back with a conflict, **stop**. Say which files, leave the worktree standing,

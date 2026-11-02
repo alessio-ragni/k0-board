@@ -1973,8 +1973,7 @@ web/             the pages (html, css, js served exactly as they are)
                  calls it by itself when the ChangeLog is opened, so it is in the package too
   changelog/     the one that writes the changelog and the documentation when work is finished.
                  For whoever works on k0, not for whoever uses it: it is not in the package
-  commit-push-deploy/
-                 the road out: the documents, the tests, the commit, the push, and the tag that
+  release/       the road out: the documents, the tests, the commit, the push, and the tag that
                  publishes. Also for whoever works on k0, and also not in the package
 dictate/         k0 Dictate, the Swift app: the trial (listens beside Wispr, never keeps a key) or
                  dictation (an event tap for Control and Control+Space, the pill, Apple's engine or
