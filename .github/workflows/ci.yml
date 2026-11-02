@@ -26,6 +26,10 @@ jobs:
           node-version: ${{ matrix.node }}
       - run: node --version
       - run: npm test
+      - name: the feature pages were rebuilt
+        # The pages of k0-board.com are generated from site/features/ and committed; a Markdown
+        # file edited without `npm run site` would publish the old page. Text only, so any runner.
+        run: node site/build.mjs --check
       - name: k0-board doctor
         # Never the reason a build fails: it is here so that every run leaves a record of what
         # each platform claims it can do. When a port stops being honest, this is where it shows.

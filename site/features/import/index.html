@@ -1,0 +1,133 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Start with the work you already did — k0</title>
+  <meta name="description" content="/k0-import fills the k0 board with the Claude Code sessions you already had — the ones opened by hand included — each titled and described in the language it was held in.">
+  <link rel="canonical" href="https://k0-board.com/features/import/">
+  <meta property="og:type" content="article">
+  <meta property="og:site_name" content="k0">
+  <meta property="og:url" content="https://k0-board.com/features/import/">
+  <meta property="og:title" content="Start with the work you already did — k0">
+  <meta property="og:description" content="/k0-import fills the k0 board with the Claude Code sessions you already had — the ones opened by hand included — each titled and described in the language it was held in.">
+  <meta name="twitter:card" content="summary">
+  <meta name="theme-color" content="#f3f1ea" media="(prefers-color-scheme: light)">
+  <meta name="theme-color" content="#1b1a17" media="(prefers-color-scheme: dark)">
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Caveat:wght@500;700&family=Instrument+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap">
+  <link rel="stylesheet" href="/site.css">
+  <script type="application/ld+json">{"@context":"https://schema.org","@type":"TechArticle","headline":"Start with the work you already did","description":"/k0-import fills the k0 board with the Claude Code sessions you already had — the ones opened by hand included — each titled and described in the language it was held in.","url":"https://k0-board.com/features/import/","dateModified":"2026-11-02","isPartOf":{"@type":"WebSite","name":"k0","url":"https://k0-board.com/"},"about":{"@type":"SoftwareApplication","name":"k0","applicationCategory":"DeveloperApplication"}}</script>
+</head>
+<body>
+  <a class="skip" href="#main">Skip to content</a>
+
+  <header class="wrap site-header">
+    <a class="logo" href="/" aria-label="k0, home">k0</a>
+    <nav class="site-nav" aria-label="Main">
+      <a href="/features/">Features</a>
+      <a href="/features/statuses/">How it works</a>
+      <a href="/#pricing">Pricing</a>
+      <a href="https://github.com/alessio-ragni/k0-board">GitHub</a>
+      <a href="/app/">Sign in</a>
+    </nav>
+    <a class="btn" href="/#access">Get early access</a>
+  </header>
+
+  <main id="main" class="wrap feature">
+    <nav class="crumbs" aria-label="Breadcrumb"><a href="/features/">Features</a> <span aria-hidden="true">/</span> <span>Start with the work you already did</span></nav>
+    <div class="feature-top">
+      <div class="feature-copy">
+        <p class="kicker">never an empty board</p>
+        <h1>Start with the work you already did</h1>
+        <p class="lede">/k0-import fills the k0 board with the Claude Code sessions you already had — the ones opened by hand included — each titled and described in the language it was held in.</p>
+        <p class="small">Since k0 0.1.0</p>
+      </div>
+      <figure class="art" aria-hidden="true">
+<div class="art-stage">
+          <div class="screen">
+            <div class="bar"><i></i><i></i><i></i><span>/k0-import</span></div>
+            <div class="body"><span class="dim">last 14 days · at most 10 per repository</span>
+invoices   <span class="hi">4</span> sessions
+website    <span class="hi">3</span> sessions
+api        <span class="hi">2</span> sessions
+<span class="dim">automated runs left out · already imported skipped</span></div>
+          </div>
+          <div class="mini yellow"><b>K412 · invoices</b><i>CSV totals off by a cent</i><small>Your turn</small></div>
+          <div class="mini yellow"><b>K415 · website</b><i>Pricing page copy</i><small>Your turn</small></div>
+          <div class="mini yellow"><b>K418 · api</b><i>Retry on 429</i><small>Your turn</small></div>
+        </div>
+      </figure>
+    </div>
+
+    <article class="prose">
+<h2>What it is</h2>
+<p>An empty board is no help in getting your bearings. You have been using Claude Code for weeks;
+the conversations are already on your machine. <code>/k0-import</code> picks them up — including the ones
+you opened by hand, outside k0 — and puts each one on the board as a story: the <strong>last 14 days</strong>,
+at most the <strong>10 most recent per repository</strong>.</p>
+<p>It does more than copy a name across. Claude reads each conversation and writes a <strong>title and a
+description in the language it was held in</strong>. That description is the line in italics under the
+title on the note, and importing is the only thing that writes one — a story you write yourself
+has a title and a prompt, which is all it needs.</p>
+<h2>Why it matters</h2>
+<p>A session you closed last Tuesday is still a piece of work: half finished, or finished and never
+looked at again. Imported, it sits in its repository's column next to everything else, and one
+press takes you back into it rather than leaving you to dig through a list of transcripts by date.</p>
+<h2>How to use it</h2>
+<ol><li>Say yes when the installer offers to fill the board on the first run. That pass uses the name the session already had, or the first few words of its first prompt.</li><li>Later, from any Claude Code session, type <code>/k0-import</code> for the fuller version, with titles and descriptions written by Claude.</li><li><code>/k0-import 30 5</code> changes the two numbers: the last 30 days, at most 5 per repository.</li><li>On each imported note, <strong>Resume</strong> reopens the conversation where it was, and <strong>Done</strong> clears it away.</li></ol>
+<p>Running it again skips the ones already imported, so it is safe to repeat.</p>
+<h2>Small print</h2>
+<p>Imported stories are born yellow — <strong>Your turn</strong> — but being dead sessions they do not light the
+menu bar icon.</p>
+<p>Automated runs stay out: <code>claude -p</code>, subagents, skills launched from a script. The tell is a line
+that only Claude Code's own interface writes when it really starts. On one real machine that
+separated 145 genuine sessions from 867 automated ones — and k0 reads 64 KB at the head and 64 KB
+at the tail of each file to find it, rather than the whole thing.</p>
+    </article>
+
+    <section class="more-features" aria-labelledby="more-title">
+      <h2 id="more-title">Keep reading</h2>
+      <div class="grid">
+        <a class="card feature-card" href="/features/statuses/">
+          <h3>Seven colours, one glance</h3>
+          <p>Every session is a sticky note, and its colour says whose move it is — yours or Claude's.</p>
+          <span class="more" aria-hidden="true">Read more →</span>
+        </a>
+        <a class="card feature-card" href="/features/backlog/">
+          <h3>Decide it, then check it</h3>
+          <p>Epics, stories and tasks, discussed in rounds, every decision written down — and the finished work checked against each one.</p>
+          <span class="more" aria-hidden="true">Read more →</span>
+        </a>
+        <a class="card feature-card" href="/features/terminal/">
+          <h3>The real terminal, one click away</h3>
+          <p>Every note is a real Claude Code session in its own terminal window. Double-click the note and that window is in front.</p>
+          <span class="more" aria-hidden="true">Read more →</span>
+        </a>
+      </div>
+      <p class="pager">
+        <a href="/features/cloud/">← Your board, on every machine</a>
+        <a class="btn btn-outline" href="/features/">All features</a>
+        <a href="/features/git-and-globe/">Is it saved? Is it up? →</a>
+      </p>
+    </section>
+
+    <section class="cta" aria-label="Get early access">
+      <p>k0 is in early access. Leave your address and you will hear when your account is ready.</p>
+      <a class="btn" href="/#access">Get early access</a>
+    </section>
+  </main>
+
+  <footer class="wrap site-footer">
+    <span>k0 · source-available under the Sustainable Use License · made by Alessio Ragni</span>
+    <span class="footer-links">
+      <a href="/features/">Features</a>
+      <a href="https://github.com/alessio-ragni/k0-board">GitHub</a>
+      <a href="/privacy.html">Privacy</a>
+      <a href="/terms.html">Terms</a>
+    </span>
+  </footer>
+</body>
+</html>

@@ -643,8 +643,9 @@ marks nothing. Once it is on it stays on, and the note takes a border and its ke
 the flag's colour with it: the point of flagging something is finding it again from across the
 room, and a fifteen-pixel glyph cannot be seen from there.
 
-Next to the flag sits a loop, on every note whether or not there is a backlog: **always active**,
-the one note k0 never closes for sitting idle. It has its own paragraph where the closing is
+Next to the flag sits a sun, on every note whether or not there is a backlog: **always active**,
+the one note k0 never closes for sitting idle — a session that never goes to rest, so the sun is
+lit, its disc filled, once it is on. It has its own paragraph where the closing is
 explained, under *And the ones you forget, k0 closes for you*.
 
 **Click an epic's label and the board becomes that epic.** A strip appears under the top bar with
@@ -1455,7 +1456,7 @@ rest is left alone, and each for its own reason:
   left watching something — a deploy, a queue, a mailbox — wakes every couple of hours, does its
   turn and goes back to the prompt, and whatever it prints in between moves none of the clocks
   below. To k0 that looks exactly like a window you forgot; only you know it is not. The mark is the
-  loop at the bottom right of the note, next to the flag, there whether or not the backlog is on:
+  sun at the bottom right of the note, next to the flag, there whether or not the backlog is on:
   invisible until the pointer is on the note, and once it is on the note takes a **dashed border**,
   blue — or the flag's colour, still dashed, when the note is flagged as well. It belongs to the
   story, so it holds through `Resume` and through a `Close`; and it only stops k0 closing the
@@ -1989,10 +1990,14 @@ dictate/         k0 Dictate, the Swift app: the trial (listens beside Wispr, nev
 supabase/        k0 Cloud's own side: migrations/ is its database (accounts, workspaces, the
                  rows of every board, the counter), config.toml its sign-in settings. The secrets
                  are in ~/.config/k0-cloud/.env, never in the repository
-site/            k0-board.com: static pages, no build, deployed as they are. index.html is the
-                 home page with the early-access form (waitlist.js), privacy, terms and 404
-                 beside it, one site.css; app/ is the read-only web board and the page where
-                 accounts are approved
+site/            k0-board.com: static pages, deployed as they are. index.html is the home page
+                 with the early-access form (waitlist.js), privacy, terms and 404 beside it, one
+                 site.css; app/ is the read-only web board and the page where accounts are
+                 approved. features/ holds one Markdown file per feature, and build.mjs (npm run
+                 site) turns them into /features/<slug>/, the index, the cards on the home page
+                 and the sitemap — written once and committed, so there is still nothing to build
+                 when it is deployed. deploy.sh (npm run site:deploy) puts it online and asks the
+                 live site whether it arrived
 docs/
   database.md    the shape of the database as it is now, table by table, column by column
   method.md      why a decision has to be an object, what a round of questions is for, and

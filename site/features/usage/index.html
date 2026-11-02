@@ -1,0 +1,135 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Where your week went — k0</title>
+  <meta name="description" content="See what your Claude Code sessions consumed this week — by model, effort, repository and account — and how full your limits were, read from your own disk.">
+  <link rel="canonical" href="https://k0-board.com/features/usage/">
+  <meta property="og:type" content="article">
+  <meta property="og:site_name" content="k0">
+  <meta property="og:url" content="https://k0-board.com/features/usage/">
+  <meta property="og:title" content="Where your week went — k0">
+  <meta property="og:description" content="See what your Claude Code sessions consumed this week — by model, effort, repository and account — and how full your limits were, read from your own disk.">
+  <meta name="twitter:card" content="summary">
+  <meta name="theme-color" content="#f3f1ea" media="(prefers-color-scheme: light)">
+  <meta name="theme-color" content="#1b1a17" media="(prefers-color-scheme: dark)">
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Caveat:wght@500;700&family=Instrument+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap">
+  <link rel="stylesheet" href="/site.css">
+  <script type="application/ld+json">{"@context":"https://schema.org","@type":"TechArticle","headline":"Where your week went","description":"See what your Claude Code sessions consumed this week — by model, effort, repository and account — and how full your limits were, read from your own disk.","url":"https://k0-board.com/features/usage/","dateModified":"2026-11-02","isPartOf":{"@type":"WebSite","name":"k0","url":"https://k0-board.com/"},"about":{"@type":"SoftwareApplication","name":"k0","applicationCategory":"DeveloperApplication"}}</script>
+</head>
+<body>
+  <a class="skip" href="#main">Skip to content</a>
+
+  <header class="wrap site-header">
+    <a class="logo" href="/" aria-label="k0, home">k0</a>
+    <nav class="site-nav" aria-label="Main">
+      <a href="/features/">Features</a>
+      <a href="/features/statuses/">How it works</a>
+      <a href="/#pricing">Pricing</a>
+      <a href="https://github.com/alessio-ragni/k0-board">GitHub</a>
+      <a href="/app/">Sign in</a>
+    </nav>
+    <a class="btn" href="/#access">Get early access</a>
+  </header>
+
+  <main id="main" class="wrap feature">
+    <nav class="crumbs" aria-label="Breadcrumb"><a href="/features/">Features</a> <span aria-hidden="true">/</span> <span>Where your week went</span></nav>
+    <div class="feature-top">
+      <div class="feature-copy">
+        <p class="kicker">where did the week go</p>
+        <h1>Where your week went</h1>
+        <p class="lede">See what your Claude Code sessions consumed this week — by model, effort, repository and account — and how full your limits were, read from your own disk.</p>
+        <p class="small">Since k0 0.5.0</p>
+      </div>
+      <figure class="art" aria-hidden="true">
+<div class="art-stage">
+          <div class="screen">
+            <div class="bar"><i></i><i></i><i></i><span>Usage · this week</span></div>
+            <div class="body"><span class="dim">at API prices, stacked by model</span>
+Mon <span class="hi">██████</span><span class="ok">███</span>       $38
+Tue <span class="hi">████████</span><span class="ok">█████</span>  $57
+Wed <span class="hi">███</span><span class="ok">██</span>           $21
+Thu <span class="hi">█████████</span><span class="ok">██</span>   $49
+Fri <span class="hi">█████</span><span class="ok">████</span>       $40
+
+<span class="dim">weekly limit</span>  <span class="bad">61%</span>  <span class="dim">five-hour</span>  42%
+<span class="dim">most expensive</span>  invoices  ≈9% of the week</div>
+          </div>
+          <div class="screen light">
+            <div class="bar"><i></i><i></i><i></i><span>statusline</span></div>
+            <div class="body">api · main  <span class="dim">│</span>  5h 42%  <span class="dim">│</span>  week 61%</div>
+          </div>
+        </div>
+      </figure>
+    </div>
+
+    <article class="prose">
+<h2>The question Claude Code leaves you to guess at</h2>
+<p>You switch between models, between efforts, between one agent and a whole workflow, and between
+accounts — and the only thing you ever see is a limit arriving. The icon with three bars in k0's top
+bar opens a page that answers <strong>where did the week go?</strong>, a week at a time, Monday to Sunday, with
+the arrows to go back.</p>
+<h2>What it shows</h2>
+<ul><li><strong>What each day would have cost at the API price list</strong>, stacked by model. With a subscription you do not pay this — it is the one scale on which two models can be put side by side.</li><li><strong>How full each account's weekly limit was</strong>, a line per account, and the five-hour limit as it was last seen.</li><li>The week split <strong>by model and effort</strong> (fast mode is a row of its own), by <strong>who did the work</strong> — the conversation itself, its subagents, or a workflow's agents — by <strong>repository</strong> and by <strong>account</strong>.</li><li>Every <strong>session</strong>, the most expensive first: model and effort, how long Claude actually worked on your turns, tokens, cost, estimated share of the weekly limit, and how many times a limit stopped it. A session that belongs to a story links to it.</li></ul>
+<h2>Why it costs nothing to find out</h2>
+<p>No model is asked and nothing goes over the network. Claude Code already writes every reply's token
+counts, model and effort into the transcripts on your disk, and k0 reads them as they grow — the
+history first, a few megabytes at a time so the board never stalls, and after that once a minute.</p>
+<h2>How to use it</h2>
+<ul><li>Click the three bars in the top bar. The first time, the page says how much history is still left to read.</li><li>For the limits, add the few lines from the k0 README to your statusline command. Claude Code tells only the statusline how full the limits are, so the snippet writes it down in <code>~/.k0/usage/limits.jsonl</code> when a number changes, and never breaks the bar if anything fails.</li><li>Without the snippet the page works the same, with the limits chart empty and a note saying why.</li></ul>
+<h2>Small print</h2>
+<p>The limits reach the statusline only on a subscription, and only after a session's first reply.
+Which account a reply came from is not in the transcripts: k0 records every change of account from
+the moment it runs, and anything before that stays <strong>Unknown account</strong> — it is not guessed. A
+session's share of the weekly limit is an estimate, marked <code>≈</code>. The prices are Anthropic's
+published API rates; a model k0 has no price for is counted in tokens and shown as <code>?</code> in dollars —
+never as free.</p>
+    </article>
+
+    <section class="more-features" aria-labelledby="more-title">
+      <h2 id="more-title">Keep reading</h2>
+      <div class="grid">
+        <a class="card feature-card" href="/features/changelog/">
+          <h3>What you actually shipped</h3>
+          <p>What you did across every repository — what is online, and what only looks finished — written up like a release note.</p>
+          <span class="more" aria-hidden="true">Read more →</span>
+        </a>
+        <a class="card feature-card" href="/features/idle-close/">
+          <h3>The sessions you forget, closed for you</h3>
+          <p>k0 shows what each session weighs, and after twelve idle hours closes the forgotten ones. Resume picks them up again.</p>
+          <span class="more" aria-hidden="true">Read more →</span>
+        </a>
+        <a class="card feature-card" href="/features/modes/">
+          <h3>Four modes, from asleep to across the room</h3>
+          <p>Sleep, Away, Nerd, Driving: one click says how awake the machine stays while Claude Code works, lid closed included.</p>
+          <span class="more" aria-hidden="true">Read more →</span>
+        </a>
+      </div>
+      <p class="pager">
+        <a href="/features/dictation/">← Dictation that stays on your Mac</a>
+        <a class="btn btn-outline" href="/features/">All features</a>
+        <a href="/features/files/">Every file a session touched →</a>
+      </p>
+    </section>
+
+    <section class="cta" aria-label="Get early access">
+      <p>k0 is in early access. Leave your address and you will hear when your account is ready.</p>
+      <a class="btn" href="/#access">Get early access</a>
+    </section>
+  </main>
+
+  <footer class="wrap site-footer">
+    <span>k0 · source-available under the Sustainable Use License · made by Alessio Ragni</span>
+    <span class="footer-links">
+      <a href="/features/">Features</a>
+      <a href="https://github.com/alessio-ragni/k0-board">GitHub</a>
+      <a href="/privacy.html">Privacy</a>
+      <a href="/terms.html">Terms</a>
+    </span>
+  </footer>
+</body>
+</html>

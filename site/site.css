@@ -27,6 +27,9 @@
   --green: #b7e8c4;
   --yellow: #fde68a;
   --yellow-line: #e3c65a;
+  --grey: #e2dfd6;
+  --amber: #f9c46b;
+  --sky: #cfe3fb;
 
   --hand-font: 'Caveat', cursive;
   --sans: 'Instrument Sans', system-ui, sans-serif;
@@ -58,6 +61,9 @@
     --green: #a8dbb5;
     --yellow: #f4dc7c;
     --yellow-line: #c9ab45;
+    --grey: #cfcbc0;
+    --amber: #eab662;
+    --sky: #bed6f1;
   }
 }
 
@@ -434,6 +440,195 @@ h2 {
 }
 .lost p { margin: 0; font-size: 19px; color: var(--body); }
 
+/* Feature cards: the grid on the home page and on /features/ */
+
+a.feature-card { text-decoration: none; color: var(--ink); transition: transform .15s, box-shadow .15s; }
+a.feature-card:hover { transform: translateY(-2px); box-shadow: 0 10px 22px var(--shadow); color: var(--ink); }
+.feature-card .more { margin-top: auto; padding-top: 6px; font-size: 14px; font-weight: 600; color: var(--muted); }
+.feature-card.is-coming { border-style: dashed; background: transparent; }
+.feature-card.is-coming .coming { align-self: flex-start; color: var(--muted); }
+.feature-card h2 { margin: 0; font-family: var(--sans); font-size: 21px; font-weight: 700; line-height: 1.25; }
+.grid-compact { grid-template-columns: repeat(auto-fit, minmax(min(260px, 100%), 1fr)); gap: 14px; }
+.grid-compact .card { padding: 20px 22px; gap: 8px; }
+.grid-compact .card h3 { font-size: 18px; }
+.grid-compact .card p { font-size: 15px; }
+.see-all { margin: 28px 0 0; }
+.section > h1 { margin-bottom: 8px; }
+
+/* A feature page. The column is narrower than the home page, and everything in it — text, figures,
+   cards — runs to its edge: a reading measure is set once, on the container, never on a paragraph. */
+
+.feature { max-width: 1040px; padding-top: 24px; padding-bottom: 72px; }
+.crumbs { font-size: 14px; color: var(--muted); display: flex; gap: 8px; flex-wrap: wrap; }
+.crumbs a { color: var(--muted); }
+
+.feature-top {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 36px;
+  align-items: center;
+  padding: 28px 0 12px;
+}
+.feature-copy { flex: 1 1 420px; min-width: 0; display: flex; flex-direction: column; gap: 16px; }
+.feature-copy p { margin: 0; }
+.feature-copy h1 { font-size: clamp(36px, 6vw, 54px); }
+.art { flex: 1 1 380px; min-width: 0; margin: 0; }
+
+.prose { padding-top: 12px; }
+.prose h2 { font-size: 40px; margin: 40px 0 6px; }
+.prose h3 { font-size: 20px; margin: 28px 0 4px; }
+.prose p, .prose li { font-size: 18px; line-height: 1.65; color: var(--body); }
+.prose ul, .prose ol { padding-left: 22px; }
+.prose li { margin: 4px 0; }
+.prose strong { color: var(--ink); }
+.prose code {
+  font-size: .86em;
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  padding: 1px 6px;
+}
+.prose pre {
+  background: var(--panel);
+  color: var(--panel-text);
+  border-radius: 12px;
+  padding: 18px 20px;
+  overflow-x: auto;
+}
+.prose pre code { background: none; border: 0; padding: 0; font-size: 14px; }
+.prose table { width: 100%; border-collapse: collapse; font-size: 16px; margin: 12px 0; }
+.prose th, .prose td { text-align: left; padding: 10px 12px; border-bottom: 1px solid var(--line); vertical-align: top; }
+.prose td { color: var(--body); }
+.prose blockquote {
+  margin: 20px 0;
+  padding: 4px 20px;
+  border-left: 4px solid var(--yellow-line);
+  background: var(--card);
+  border-radius: 0 10px 10px 0;
+}
+
+.more-features { padding-top: 56px; }
+.more-features h2 { margin-bottom: 20px; }
+.pager {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14px 24px;
+  align-items: center;
+  justify-content: space-between;
+  margin: 28px 0 0;
+  font-size: 15px;
+}
+
+.cta {
+  margin-top: 56px;
+  background: var(--panel);
+  color: var(--panel-text);
+  border-radius: 18px;
+  padding: 28px 32px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 18px;
+  align-items: center;
+  justify-content: space-between;
+}
+.cta p { margin: 0; flex: 1 1 360px; font-size: 18px; line-height: 1.5; color: var(--panel-soft); }
+.cta .btn, .cta .btn:hover { background: var(--yellow); color: var(--note-ink); }
+
+/* The drawings on the feature pages, made of the same paper as the notes in the hero. The pieces:
+   .mini — a small note; .screen — a window with its title bar; .pill — the dictation pill. */
+
+.art-stage {
+  position: relative;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14px;
+  justify-content: center;
+  align-items: flex-start;
+  padding: 10px;
+}
+
+.mini {
+  width: 150px;
+  min-height: 104px;
+  padding: 12px;
+  border-radius: 4px;
+  box-shadow: 0 10px 20px var(--shadow);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  color: var(--note-ink);
+  background: var(--yellow);
+  position: relative;
+}
+.mini:nth-child(odd) { transform: rotate(-2deg); }
+.mini:nth-child(even) { transform: rotate(1.6deg); }
+.mini b { font-family: var(--mono); font-size: 11px; font-weight: 600; }
+.mini i { font-family: var(--hand-font); font-style: normal; font-size: 22px; line-height: 1.05; }
+.mini small { font-size: 11px; margin-top: auto; }
+.mini.grey { background: var(--grey); }
+.mini.red { background: var(--red); }
+.mini.amber { background: var(--amber); }
+.mini.yellow { background: var(--yellow); }
+.mini.blue { background: var(--blue); }
+.mini.sky { background: var(--sky); }
+.mini.green { background: var(--green); }
+.mini.dashed { outline: 2px dashed #3b6fc4; outline-offset: -5px; }
+.mini.wide { width: 220px; }
+.mini.big { width: 230px; min-height: 150px; }
+.mini.big i { font-size: 34px; }
+.mini.big b, .mini.big small { font-size: 14px; }
+.mini .mark { position: absolute; right: 8px; bottom: 8px; width: 20px; height: 20px; }
+
+.screen {
+  width: 100%;
+  max-width: 440px;
+  background: var(--panel);
+  color: var(--panel-text);
+  border-radius: 12px;
+  box-shadow: 0 14px 30px var(--shadow);
+  overflow: hidden;
+  font-family: var(--mono);
+  font-size: 13px;
+  line-height: 1.6;
+}
+.screen .bar { display: flex; gap: 6px; padding: 10px 12px; background: rgba(255, 255, 255, .06); }
+.screen .bar i { width: 10px; height: 10px; border-radius: 50%; background: var(--panel-line); }
+.screen .bar span { margin-left: 8px; font-size: 11px; color: var(--panel-soft); }
+.screen .body { padding: 14px 16px; white-space: pre-wrap; }
+.screen .dim { color: #9d9789; }
+.screen .hi { color: var(--yellow); }
+.screen .ok { color: var(--green); }
+.screen .bad { color: var(--red); }
+.screen.light { background: var(--card); color: var(--ink); border: 1px solid var(--line); }
+.screen.light .bar { background: var(--paper); }
+.screen.light .dim { color: var(--muted); }
+
+.lane { display: flex; flex-direction: column; gap: 10px; align-items: center; }
+.lane > span { font-family: var(--mono); font-size: 12px; color: var(--muted); }
+
+.pill {
+  display: inline-flex;
+  gap: 4px;
+  align-items: center;
+  padding: 10px 16px;
+  border-radius: 999px;
+  background: var(--sky);
+  box-shadow: 0 8px 18px var(--shadow);
+}
+.pill i { width: 4px; border-radius: 2px; background: #3b6fc4; }
+.pill.orange { background: var(--orange); }
+.pill.orange i { background: #b8641c; }
+
+.chip {
+  font-family: var(--mono);
+  font-size: 12px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: var(--card);
+  border: 1px solid var(--line);
+  color: var(--ink);
+}
+
 /* Phones */
 
 @media (max-width: 640px) {
@@ -454,4 +649,10 @@ h2 {
   }
   .note { position: static; width: auto; padding: 14px; }
   .note-title { font-size: 24px; }
+  .feature-top { padding-top: 16px; gap: 24px; }
+  .prose h2 { font-size: 34px; }
+  .prose p, .prose li { font-size: 17px; }
+  .mini { width: 132px; }
+  .mini.big, .mini.wide { width: 100%; max-width: 260px; }
+  .cta { padding: 24px 20px; }
 }

@@ -1,0 +1,145 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Every file a session touched — k0</title>
+  <meta name="description" content="A file viewer for each Claude Code session — what it changed, a search by name and by text, light editing, clickable file names, and a clean PDF.">
+  <link rel="canonical" href="https://k0-board.com/features/files/">
+  <meta property="og:type" content="article">
+  <meta property="og:site_name" content="k0">
+  <meta property="og:url" content="https://k0-board.com/features/files/">
+  <meta property="og:title" content="Every file a session touched — k0">
+  <meta property="og:description" content="A file viewer for each Claude Code session — what it changed, a search by name and by text, light editing, clickable file names, and a clean PDF.">
+  <meta name="twitter:card" content="summary">
+  <meta name="theme-color" content="#f3f1ea" media="(prefers-color-scheme: light)">
+  <meta name="theme-color" content="#1b1a17" media="(prefers-color-scheme: dark)">
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Caveat:wght@500;700&family=Instrument+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap">
+  <link rel="stylesheet" href="/site.css">
+  <script type="application/ld+json">{"@context":"https://schema.org","@type":"TechArticle","headline":"Every file a session touched","description":"A file viewer for each Claude Code session — what it changed, a search by name and by text, light editing, clickable file names, and a clean PDF.","url":"https://k0-board.com/features/files/","dateModified":"2026-11-02","isPartOf":{"@type":"WebSite","name":"k0","url":"https://k0-board.com/"},"about":{"@type":"SoftwareApplication","name":"k0","applicationCategory":"DeveloperApplication"}}</script>
+</head>
+<body>
+  <a class="skip" href="#main">Skip to content</a>
+
+  <header class="wrap site-header">
+    <a class="logo" href="/" aria-label="k0, home">k0</a>
+    <nav class="site-nav" aria-label="Main">
+      <a href="/features/">Features</a>
+      <a href="/features/statuses/">How it works</a>
+      <a href="/#pricing">Pricing</a>
+      <a href="https://github.com/alessio-ragni/k0-board">GitHub</a>
+      <a href="/app/">Sign in</a>
+    </nav>
+    <a class="btn" href="/#access">Get early access</a>
+  </header>
+
+  <main id="main" class="wrap feature">
+    <nav class="crumbs" aria-label="Breadcrumb"><a href="/features/">Features</a> <span aria-hidden="true">/</span> <span>Every file a session touched</span></nav>
+    <div class="feature-top">
+      <div class="feature-copy">
+        <p class="kicker">what did it touch</p>
+        <h1>Every file a session touched</h1>
+        <p class="lede">A file viewer for each Claude Code session — what it changed, a search by name and by text, light editing, clickable file names, and a clean PDF.</p>
+        <p class="small">Since k0 0.1.0</p>
+      </div>
+      <figure class="art" aria-hidden="true">
+<div class="art-stage">
+          <span class="chip">/ audrep</span>
+          <span class="chip">config</span>
+          <div class="screen light">
+            <div class="bar"><i></i><i></i><i></i><span>website · files</span></div>
+            <div class="body"><span class="dim">Changed</span>
+  docs/audit-report.md
+  src/pages/pricing.md
+<span class="dim">Recent</span>
+  README.md
+  out/proposal.pdf
+<span class="dim">All files</span>
+  docs/glossary.md
+  docs/onboarding/welcome.md</div>
+          </div>
+          <div class="mini yellow"><b>website</b><i>Pricing section</i><small>2 files changed</small></div>
+        </div>
+      </figure>
+    </div>
+
+    <article class="prose">
+<h2>The git mark is also a door</h2>
+<p>Click the git mark on a column or a story — or the <strong>lens</strong>, where there is no git — and a file
+viewer opens <strong>in another tab</strong>, with the board left where it is. Files on the left, what they say
+on the right, a divider you can drag.</p>
+<h2>Documents, not code</h2>
+<p>What is listed is what you read and print: Markdown, HTML, text, PDF, Word. In a real repository
+code is 95% of the files, and among two thousand <code>.tsx</code> files the document you were after cannot be
+found. Nothing is closed off: a code file reached by a link still opens.</p>
+<p>Folders come first, then the files in three groups: <strong>Changed</strong> — what this session touched, in the
+working tree or in commits made since it started — <strong>Recent</strong>, the thirty most recently modified,
+and <strong>All files</strong>. A folder narrows the listing to itself, and every piece of the path above is a
+way back up.</p>
+<h2>Finding the one you meant</h2>
+<ul><li><strong>By name</strong>: the letters you type, in order, inside the file's own name — <code>audrep</code> finds <code>docs/audit-report.md</code>, with the matched letters underlined.</li><li><strong>In the text</strong>: the line the word appears on, highlighted in yellow. Accents need no typing.</li><li><strong>From the chat</strong>: click the lens, paste the summary a session ended with, press <strong>Find the files</strong>, and the list narrows to the files that text names, in the order it names them.</li></ul>
+<p><code>/</code> puts the cursor in the search, Enter opens, Esc clears. There is no index: a few hundred
+documents are read every time, straight from the operating system's cache.</p>
+<h2>Configuration, behind a switch</h2>
+<p>The <strong><code>config</code></strong> button beside the search adds <code>.env</code>, <code>.json</code>, <code>.yml</code>, <code>.toml</code> and <code>.ini</code> —
+including the ones git ignores, because an <code>.env</code> is ignored by definition and is the file you came
+for. A JSON file opens as a tree that folds; an <code>.env</code> as a table.</p>
+<p>The <strong>pencil</strong> edits configuration, <code>.md</code> and <code>.txt</code> in place; <strong>Save</strong> or ⌘/Ctrl+S writes it. If
+the file changed on disk meanwhile, the save stops and says so.</p>
+<h2>Links everywhere</h2>
+<p>File names written inside a document — in backticks, in a table — open the file in a new tab, as
+long as the file exists and it is clear which one is meant.</p>
+<p>With the <code>k0-links</code> mod and k0 running, everything Claude's last reply pointed at — addresses,
+folders, documents, artifacts — sits in a row just above the prompt, one click away.</p>
+<h2>On paper</h2>
+<p>The printer sends only the document: no listing, no bar, no path. The <strong>PDF</strong> button has a headless
+Chrome print the page, so the file arrives laid out, without the date and address the print dialog
+adds.</p>
+    </article>
+
+    <section class="more-features" aria-labelledby="more-title">
+      <h2 id="more-title">Keep reading</h2>
+      <div class="grid">
+        <a class="card feature-card" href="/features/git-and-globe/">
+          <h3>Is it saved? Is it up?</h3>
+          <p>A mark on every note and column says what is not committed or not pushed; a globe says whether the dev site is running.</p>
+          <span class="more" aria-hidden="true">Read more →</span>
+        </a>
+        <a class="card feature-card" href="/features/terminal/">
+          <h3>The real terminal, one click away</h3>
+          <p>Every note is a real Claude Code session in its own terminal window. Double-click the note and that window is in front.</p>
+          <span class="more" aria-hidden="true">Read more →</span>
+        </a>
+        <a class="card feature-card" href="/features/changelog/">
+          <h3>What you actually shipped</h3>
+          <p>What you did across every repository — what is online, and what only looks finished — written up like a release note.</p>
+          <span class="more" aria-hidden="true">Read more →</span>
+        </a>
+      </div>
+      <p class="pager">
+        <a href="/features/usage/">← Where your week went</a>
+        <a class="btn btn-outline" href="/features/">All features</a>
+        <a href="/features/backlog/">Decide it, then check it →</a>
+      </p>
+    </section>
+
+    <section class="cta" aria-label="Get early access">
+      <p>k0 is in early access. Leave your address and you will hear when your account is ready.</p>
+      <a class="btn" href="/#access">Get early access</a>
+    </section>
+  </main>
+
+  <footer class="wrap site-footer">
+    <span>k0 · source-available under the Sustainable Use License · made by Alessio Ragni</span>
+    <span class="footer-links">
+      <a href="/features/">Features</a>
+      <a href="https://github.com/alessio-ragni/k0-board">GitHub</a>
+      <a href="/privacy.html">Privacy</a>
+      <a href="/terms.html">Terms</a>
+    </span>
+  </footer>
+</body>
+</html>

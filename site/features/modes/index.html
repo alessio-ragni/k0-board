@@ -1,0 +1,132 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Four modes, from asleep to across the room — k0</title>
+  <meta name="description" content="Four modes set how awake the machine stays while Claude Code sessions work, even with the lid shut, and Driving makes everything big enough to read from across the room.">
+  <link rel="canonical" href="https://k0-board.com/features/modes/">
+  <meta property="og:type" content="article">
+  <meta property="og:site_name" content="k0">
+  <meta property="og:url" content="https://k0-board.com/features/modes/">
+  <meta property="og:title" content="Four modes, from asleep to across the room — k0">
+  <meta property="og:description" content="Four modes set how awake the machine stays while Claude Code sessions work, even with the lid shut, and Driving makes everything big enough to read from across the room.">
+  <meta name="twitter:card" content="summary">
+  <meta name="theme-color" content="#f3f1ea" media="(prefers-color-scheme: light)">
+  <meta name="theme-color" content="#1b1a17" media="(prefers-color-scheme: dark)">
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Caveat:wght@500;700&family=Instrument+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap">
+  <link rel="stylesheet" href="/site.css">
+  <script type="application/ld+json">{"@context":"https://schema.org","@type":"TechArticle","headline":"Four modes, from asleep to across the room","description":"Four modes set how awake the machine stays while Claude Code sessions work, even with the lid shut, and Driving makes everything big enough to read from across the room.","url":"https://k0-board.com/features/modes/","dateModified":"2026-11-02","isPartOf":{"@type":"WebSite","name":"k0","url":"https://k0-board.com/"},"about":{"@type":"SoftwareApplication","name":"k0","applicationCategory":"DeveloperApplication"}}</script>
+</head>
+<body>
+  <a class="skip" href="#main">Skip to content</a>
+
+  <header class="wrap site-header">
+    <a class="logo" href="/" aria-label="k0, home">k0</a>
+    <nav class="site-nav" aria-label="Main">
+      <a href="/features/">Features</a>
+      <a href="/features/statuses/">How it works</a>
+      <a href="/#pricing">Pricing</a>
+      <a href="https://github.com/alessio-ragni/k0-board">GitHub</a>
+      <a href="/app/">Sign in</a>
+    </nav>
+    <a class="btn" href="/#access">Get early access</a>
+  </header>
+
+  <main id="main" class="wrap feature">
+    <nav class="crumbs" aria-label="Breadcrumb"><a href="/features/">Features</a> <span aria-hidden="true">/</span> <span>Four modes, from asleep to across the room</span></nav>
+    <div class="feature-top">
+      <div class="feature-copy">
+        <p class="kicker">where you are</p>
+        <h1>Four modes, from asleep to across the room</h1>
+        <p class="lede">Four modes set how awake the machine stays while Claude Code sessions work, even with the lid shut, and Driving makes everything big enough to read from across the room.</p>
+        <p class="small">Since k0 0.1.0</p>
+      </div>
+      <figure class="art" aria-hidden="true">
+<div class="art-stage">
+          <div class="mini grey"><b>💤 mode 1</b><i>Sleep</i><small>sleeps as usual</small></div>
+          <div class="mini grey"><b>🌴 mode 2</b><i>Away</i><small>lid shut, still going</small></div>
+          <div class="mini grey"><b>🤓 mode 3</b><i>Nerd</i><small>screen stays on</small></div>
+          <div class="mini big yellow"><b>🚗 mode 4 · lit</b><i>Driving</i><small>22 pt, reddest column first</small></div>
+        </div>
+      </figure>
+    </div>
+
+    <article class="prose">
+<h2>A scale, not four switches</h2>
+<p>How awake the machine has to stay while sessions are working. Each step includes the one before
+it, and exactly <strong>one</strong> is always lit: you leave a mode by picking another. The icons describe
+<strong>where you are</strong> — asleep, away, at the desk, watching from across the room.</p>
+<table><thead><tr><th>Mode</th><th>The machine</th><th>The screen</th><th>Text and windows</th></tr></thead><tbody><tr><td><strong>Sleep</strong></td><td>sleeps as usual</td><td>goes off</td><td>normal</td></tr><tr><td><strong>Away</strong></td><td>does not sleep, lid closed or not</td><td>may sleep and lock</td><td>normal</td></tr><tr><td><strong>Nerd</strong></td><td>does not sleep</td><td>stays on</td><td>normal</td></tr><tr><td><strong>Driving</strong></td><td>does not sleep</td><td>stays on</td><td>large</td></tr></tbody></table>
+<h2>Sleep</h2>
+<p>Nothing k0 does keeps the machine up. For when nothing needs to run.</p>
+<h2>Away</h2>
+<p>The palm tree: <em>I am not here, but it keeps going.</em> A <code>caffeinate</code> left running only stops sleep
+from inactivity; closing the lid is a forced sleep that goes straight past it. On macOS the only
+thing that stops that one is a system flag that takes root, so the installer writes one line in
+<code>/etc/sudoers.d/k0-pmset</code> granting that single command. Skip the password and the modes work with
+the lid open only, and the lit button wears an <strong>amber ring</strong> to say so.</p>
+<h2>Nerd</h2>
+<p>The machine stays awake and the screen stays on. <em>I am sitting here programming.</em></p>
+<h2>Driving</h2>
+<p>Nerd for the machine; the difference is size. Terminal text goes to 22 points, the board's to 22
+pixels, and the things you click grow with it. The columns reorder by urgency, <strong>reddest to the
+left</strong>, because on a screen you glance at only two or three are visible. The change lands on the
+terminals already open, and a window you had dragged to another screen comes back to the main one.</p>
+<h2>How to use it</h2>
+<ul><li>Click one of the four buttons at the end of the board's bar, or tick it in the menu bar icon.</li><li>That is all. The mode is remembered and reapplied when k0 starts.</li></ul>
+<h2>Why the machine does not stay awake forever</h2>
+<p>A sleep block is system state: if k0 vanished while it was on, the machine would never sleep
+again. So the block dies with the server, is released on exit, is repaired at startup after a bad
+crash, and <code>k0-board uninstall</code> removes it before the permission. Below <strong>15% on battery</strong> k0 lets
+go of the lid: a machine forbidden to sleep does not just drain, it dies outright.</p>
+<p>On Linux and Windows the lid belongs to a machine-wide setting k0 does not rewrite; the switch says
+it is unavailable and <code>k0-board doctor</code> says where to change it.</p>
+    </article>
+
+    <section class="more-features" aria-labelledby="more-title">
+      <h2 id="more-title">Keep reading</h2>
+      <div class="grid">
+        <a class="card feature-card" href="/features/idle-close/">
+          <h3>The sessions you forget, closed for you</h3>
+          <p>k0 shows what each session weighs, and after twelve idle hours closes the forgotten ones. Resume picks them up again.</p>
+          <span class="more" aria-hidden="true">Read more →</span>
+        </a>
+        <a class="card feature-card" href="/features/always-on/">
+          <h3>Keep one session always on</h3>
+          <p>Mark a note always active and k0 never closes its terminal for sitting idle — for a session left watching a deploy.</p>
+          <span class="more" aria-hidden="true">Read more →</span>
+        </a>
+        <a class="card feature-card" href="/features/statuses/">
+          <h3>Seven colours, one glance</h3>
+          <p>Every session is a sticky note, and its colour says whose move it is — yours or Claude's.</p>
+          <span class="more" aria-hidden="true">Read more →</span>
+        </a>
+      </div>
+      <p class="pager">
+        <a href="/features/views/">← Kanban to work, List to plan</a>
+        <a class="btn btn-outline" href="/features/">All features</a>
+        <a href="/features/always-on/">Keep one session always on →</a>
+      </p>
+    </section>
+
+    <section class="cta" aria-label="Get early access">
+      <p>k0 is in early access. Leave your address and you will hear when your account is ready.</p>
+      <a class="btn" href="/#access">Get early access</a>
+    </section>
+  </main>
+
+  <footer class="wrap site-footer">
+    <span>k0 · source-available under the Sustainable Use License · made by Alessio Ragni</span>
+    <span class="footer-links">
+      <a href="/features/">Features</a>
+      <a href="https://github.com/alessio-ragni/k0-board">GitHub</a>
+      <a href="/privacy.html">Privacy</a>
+      <a href="/terms.html">Terms</a>
+    </span>
+  </footer>
+</body>
+</html>

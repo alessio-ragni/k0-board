@@ -1,0 +1,147 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Is it saved? Is it up? — k0</title>
+  <meta name="description" content="On the k0 board for Claude Code, a git mark shows what is uncommitted or unpushed in each repository, and a globe starts, stops and shows the dev server.">
+  <link rel="canonical" href="https://k0-board.com/features/git-and-globe/">
+  <meta property="og:type" content="article">
+  <meta property="og:site_name" content="k0">
+  <meta property="og:url" content="https://k0-board.com/features/git-and-globe/">
+  <meta property="og:title" content="Is it saved? Is it up? — k0">
+  <meta property="og:description" content="On the k0 board for Claude Code, a git mark shows what is uncommitted or unpushed in each repository, and a globe starts, stops and shows the dev server.">
+  <meta name="twitter:card" content="summary">
+  <meta name="theme-color" content="#f3f1ea" media="(prefers-color-scheme: light)">
+  <meta name="theme-color" content="#1b1a17" media="(prefers-color-scheme: dark)">
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Caveat:wght@500;700&family=Instrument+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap">
+  <link rel="stylesheet" href="/site.css">
+  <script type="application/ld+json">{"@context":"https://schema.org","@type":"TechArticle","headline":"Is it saved? Is it up?","description":"On the k0 board for Claude Code, a git mark shows what is uncommitted or unpushed in each repository, and a globe starts, stops and shows the dev server.","url":"https://k0-board.com/features/git-and-globe/","dateModified":"2026-11-02","isPartOf":{"@type":"WebSite","name":"k0","url":"https://k0-board.com/"},"about":{"@type":"SoftwareApplication","name":"k0","applicationCategory":"DeveloperApplication"}}</script>
+</head>
+<body>
+  <a class="skip" href="#main">Skip to content</a>
+
+  <header class="wrap site-header">
+    <a class="logo" href="/" aria-label="k0, home">k0</a>
+    <nav class="site-nav" aria-label="Main">
+      <a href="/features/">Features</a>
+      <a href="/features/statuses/">How it works</a>
+      <a href="/#pricing">Pricing</a>
+      <a href="https://github.com/alessio-ragni/k0-board">GitHub</a>
+      <a href="/app/">Sign in</a>
+    </nav>
+    <a class="btn" href="/#access">Get early access</a>
+  </header>
+
+  <main id="main" class="wrap feature">
+    <nav class="crumbs" aria-label="Breadcrumb"><a href="/features/">Features</a> <span aria-hidden="true">/</span> <span>Is it saved? Is it up?</span></nav>
+    <div class="feature-top">
+      <div class="feature-copy">
+        <p class="kicker">safe, and running</p>
+        <h1>Is it saved? Is it up?</h1>
+        <p class="lede">On the k0 board for Claude Code, a git mark shows what is uncommitted or unpushed in each repository, and a globe starts, stops and shows the dev server.</p>
+      </div>
+      <figure class="art" aria-hidden="true">
+<div class="art-stage">
+          <div class="lane">
+            <span>invoices · ● 3</span>
+            <div class="mini blue"><b>K412 · invoices</b><i>Fix the CSV totals</i><small>Working</small><span class="mark">●</span></div>
+          </div>
+          <div class="lane">
+            <span>website · ↑ 2</span>
+            <div class="mini yellow"><b>K415 · website</b><i>Pricing section</i><small>Your turn</small><span class="mark">↑</span></div>
+          </div>
+          <div class="lane">
+            <span>api · ✓</span>
+            <div class="mini green"><b>K401 · api</b><i>Rate limits</i><small>Done</small><span class="mark">✓</span></div>
+          </div>
+          <div class="screen light">
+            <div class="bar"><i></i><i></i><i></i><span>globe · website</span></div>
+            <div class="body"><span class="ok">● up</span> on port 5173
+<span class="dim">started with</span> npm run dev
+<span class="dim">one click: off · two: restart</span></div>
+          </div>
+        </div>
+      </figure>
+    </div>
+
+    <article class="prose">
+<h2>The git mark</h2>
+<p>Next to every repository name — on each story and above each column — one symbol says whether
+the work is safe:</p>
+<table><thead><tr><th>Mark</th><th>Means</th></tr></thead><tbody><tr><td>a <strong>dot</strong> with a number</td><td>that many files are changed and nowhere yet</td></tr><tr><td>an <strong>up arrow</strong> with a number</td><td>that many commits are made but not pushed</td></tr><tr><td>a faded <strong>tick</strong></td><td>everything is saved</td></tr></tbody></table>
+<p>Hover it to read it in full — branch, files, commits, and how many of those commits belong to that
+session. <strong>Click it and the files open.</strong></p>
+<p>A story in an <a href="/features/worktree/">isolated worktree</a> has a working tree of its own, so its mark
+is really its own. A story working in the base repository shares the working tree with everybody:
+there the dot belongs to the repository, and what belongs to the session is the commits made since
+it started.</p>
+<h2>The globe</h2>
+<p>Last on a column's heading, a small <strong>globe</strong> says whether that repository's dev server is
+running. <strong>Grey</strong> is off, <strong>green</strong> is up, it <strong>breathes</strong> while it is coming up, and <strong>red</strong> means
+it was started and did not come up — hover it for the reason and the log.</p>
+<p>When it is green the repository's name gets a green dashed underline and becomes a link to the
+site, on the port it is really listening on.</p>
+<h2>Why it matters</h2>
+<p>With several Claude Code sessions in several repositories, the two questions you keep asking are
+<em>did that get committed</em> and <em>is the site running</em>. Both used to mean opening a terminal. Now they
+are answered from across the board.</p>
+<p>And a dev server started inside a session belongs to that session and dies with it. k0 starts the
+server detached and owned by nobody: close every session, restart k0 itself, and the globe stays
+green.</p>
+<h2>How to use it</h2>
+<ol><li>Nothing to set up. A repository gets a globe when its <code>package.json</code> has a <code>dev</code> script, or failing that a <code>serve</code> one.</li><li><strong>One click</strong> on the globe switches the server on or off. <strong>Two</strong> restart it.</li><li>Click the repository name, once it is underlined, to open the site in another tab.</li><li>Click the git mark to see the files that are not saved yet.</li></ol>
+<h2>Small print</h2>
+<p>k0 <strong>never runs <code>git fetch</code></strong>: it reads what your git already knows, which is exact for your own
+pushes and blind to somebody else's until you fetch. It <strong>never opens a socket to your server</strong>
+either — &quot;up&quot; means the process is alive and the operating system says it holds a port. A server
+you started by hand in a terminal is recognised within a few seconds, except on Windows, where k0
+says so rather than showing it as off.</p>
+    </article>
+
+    <section class="more-features" aria-labelledby="more-title">
+      <h2 id="more-title">Keep reading</h2>
+      <div class="grid">
+        <a class="card feature-card" href="/features/worktree/">
+          <h3>Work next door, merge back</h3>
+          <p>/k0-work builds a planned story in its own git worktree, keeps a log as it goes, and merges back into the branch it came from.</p>
+          <span class="more" aria-hidden="true">Read more →</span>
+        </a>
+        <a class="card feature-card" href="/features/changelog/">
+          <h3>What you actually shipped</h3>
+          <p>What you did across every repository — what is online, and what only looks finished — written up like a release note.</p>
+          <span class="more" aria-hidden="true">Read more →</span>
+        </a>
+        <a class="card feature-card" href="/features/files/">
+          <h3>Every file a session touched</h3>
+          <p>Open a repository's documents in a tab — what the session changed, a search that finds them, and one click from Claude's reply.</p>
+          <span class="more" aria-hidden="true">Read more →</span>
+        </a>
+      </div>
+      <p class="pager">
+        <a href="/features/import/">← Start with the work you already did</a>
+        <a class="btn btn-outline" href="/features/">All features</a>
+        <a href="/features/statuses/">Seven colours, one glance →</a>
+      </p>
+    </section>
+
+    <section class="cta" aria-label="Get early access">
+      <p>k0 is in early access. Leave your address and you will hear when your account is ready.</p>
+      <a class="btn" href="/#access">Get early access</a>
+    </section>
+  </main>
+
+  <footer class="wrap site-footer">
+    <span>k0 · source-available under the Sustainable Use License · made by Alessio Ragni</span>
+    <span class="footer-links">
+      <a href="/features/">Features</a>
+      <a href="https://github.com/alessio-ragni/k0-board">GitHub</a>
+      <a href="/privacy.html">Privacy</a>
+      <a href="/terms.html">Terms</a>
+    </span>
+  </footer>
+</body>
+</html>

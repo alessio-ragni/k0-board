@@ -513,8 +513,9 @@ const ICON = {
   // Flagged. Filled, and drawn once — there is no empty flag, because the mark is only ever on a
   // note that has one: an outline on every other note is a mark that says nothing.
   flag: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 21V4"/><path d="M6 4.5h11.5l-2.4 3.8 2.4 3.7H6" fill="currentColor"/></svg>',
-  // Always active: a loop with no end, because the point is that this one does not stop.
-  keep: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 12c-2-2.7-3.6-4-5.5-4a4 4 0 0 0 0 8c1.9 0 3.5-1.3 5.5-4s3.6-4 5.5-4a4 4 0 0 1 0 8c-1.9 0-3.5-1.3-5.5-4z"/></svg>',
+  // Always active: a sun that is lit, because the point is that this one never goes to rest. The
+  // disc fills when it is set, so the mark reads as on from across the room and not only by colour.
+  keep: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle class="sun" cx="12" cy="12" r="4"/><path d="M12 2.5v2.2M12 19.3v2.2M2.5 12h2.2M19.3 12h2.2M5.3 5.3l1.6 1.6M17.1 17.1l1.6 1.6M5.3 18.7l1.6-1.6M17.1 6.9l1.6-1.6"/></svg>',
 }
 
 const esc = (s) =>

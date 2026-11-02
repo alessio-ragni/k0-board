@@ -1,0 +1,135 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Decide it, then check it — k0</title>
+  <meta name="description" content="A backlog for Claude Code: stories discussed in rounds, every decision written down, and /k0-verify holding the finished work against each one before Done.">
+  <link rel="canonical" href="https://k0-board.com/features/backlog/">
+  <meta property="og:type" content="article">
+  <meta property="og:site_name" content="k0">
+  <meta property="og:url" content="https://k0-board.com/features/backlog/">
+  <meta property="og:title" content="Decide it, then check it — k0">
+  <meta property="og:description" content="A backlog for Claude Code: stories discussed in rounds, every decision written down, and /k0-verify holding the finished work against each one before Done.">
+  <meta name="twitter:card" content="summary">
+  <meta name="theme-color" content="#f3f1ea" media="(prefers-color-scheme: light)">
+  <meta name="theme-color" content="#1b1a17" media="(prefers-color-scheme: dark)">
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Caveat:wght@500;700&family=Instrument+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap">
+  <link rel="stylesheet" href="/site.css">
+  <script type="application/ld+json">{"@context":"https://schema.org","@type":"TechArticle","headline":"Decide it, then check it","description":"A backlog for Claude Code: stories discussed in rounds, every decision written down, and /k0-verify holding the finished work against each one before Done.","url":"https://k0-board.com/features/backlog/","dateModified":"2026-11-02","isPartOf":{"@type":"WebSite","name":"k0","url":"https://k0-board.com/"},"about":{"@type":"SoftwareApplication","name":"k0","applicationCategory":"DeveloperApplication"}}</script>
+</head>
+<body>
+  <a class="skip" href="#main">Skip to content</a>
+
+  <header class="wrap site-header">
+    <a class="logo" href="/" aria-label="k0, home">k0</a>
+    <nav class="site-nav" aria-label="Main">
+      <a href="/features/">Features</a>
+      <a href="/features/statuses/">How it works</a>
+      <a href="/#pricing">Pricing</a>
+      <a href="https://github.com/alessio-ragni/k0-board">GitHub</a>
+      <a href="/app/">Sign in</a>
+    </nav>
+    <a class="btn" href="/#access">Get early access</a>
+  </header>
+
+  <main id="main" class="wrap feature">
+    <nav class="crumbs" aria-label="Breadcrumb"><a href="/features/">Features</a> <span aria-hidden="true">/</span> <span>Decide it, then check it</span></nav>
+    <div class="feature-top">
+      <div class="feature-copy">
+        <p class="kicker">decided, then checked</p>
+        <h1>Decide it, then check it</h1>
+        <p class="lede">A backlog for Claude Code: stories discussed in rounds, every decision written down, and /k0-verify holding the finished work against each one before Done.</p>
+        <p class="small">Since k0 0.5.0</p>
+      </div>
+      <figure class="art" aria-hidden="true">
+<div class="art-stage">
+          <div class="mini grey wide"><b>K7 · epic · invoices</b><i>Exports that add up</i><small>3 stories · 4 decisions</small></div>
+          <div class="mini yellow"><b>K150 · 1.2</b><i>CSV totals</i><small>Review</small></div>
+          <div class="screen">
+            <div class="bar"><i></i><i></i><i></i><span>/k0-verify K150</span></div>
+            <div class="body"><span class="dim">run 2 · 4 decisions, one at a time</span>
+K7·D3   totals include tax    <span class="ok">kept</span>
+K150·D1 one row per invoice   <span class="ok">kept</span>
+K150·D2 round after the sum   <span class="bad">violated</span>
+<span class="dim">        sum.js:41 rounds each line</span>
+K150·D3 PDF layout            <span class="dim">na</span></div>
+          </div>
+        </div>
+      </figure>
+    </div>
+
+    <article class="prose">
+<h2>The rest of a post-it</h2>
+<p>A post-it used to be a name and a prompt — enough to start a Claude Code session, not enough to
+remember why. The backlog adds what the work is <em>about</em>, and a check against it.</p>
+<p><strong>An epic</strong> is a reason with several stories under it. <strong>A story</strong> is one post-it, the thing you
+work on. <strong>A task</strong> is a story cut out of another one. Each gets a key, <code>K150</code>: one number for
+your whole account, the same in every repository and on every machine, never reused.</p>
+<h2>Why decisions, and why a counter-check</h2>
+<p>You explain a piece of work for half an hour, the model says it understood, and then it builds
+something that quietly contradicts the one thing you settled at minute twenty. You notice three
+days later, and by then you cannot prove you said it.</p>
+<p>So the discussion happens in <strong>rounds</strong> of four questions at most, each saying where it is —
+<em>Round 3 of about 8</em> — and each written to k0 before the next is asked. What comes out is a row of
+<strong>decisions</strong>, <code>D1</code>, <code>D2</code>, one sentence each, about behaviour rather than code. A decision is never
+rewritten: a new one supersedes it and both stay. Stories inherit their epic's, shown as <code>K7·D3</code>.</p>
+<p>When the work is done, <code>/k0-verify</code> takes the decisions <strong>one at a time</strong> and records a verdict for
+each — kept, violated or not applicable — with the evidence. A run that skips one is refused, and a
+story with a broken decision cannot be marked Done until the work is put right or the decision is
+superseded.</p>
+<h2>How to use it</h2>
+<ol><li>Say yes when the installer offers to copy the commands into <code>~/.claude/skills/</code>.</li><li>Press <code>+</code> on a repository: <strong>Story</strong> for something you already know you want, <strong>Epic</strong> for something big, which opens a terminal running <code>/k0-epic</code>.</li><li>Press the one button on the note — <strong>Discuss</strong>, <strong>Plan</strong> or <strong>Work</strong>. A terminal opens with the command already in it.</li><li>When it is built, <code>/k0-verify</code>, then <strong>Done</strong> — which only you can press.</li></ol>
+<table><thead><tr><th>Command</th><th>What it does</th></tr></thead><tbody><tr><td><code>/k0-story</code></td><td>one story, straight onto the board</td></tr><tr><td><code>/k0-epic</code></td><td>rounds, decisions, then stories you approve</td></tr><tr><td><code>/k0-discuss</code></td><td>the same rounds on a story that exists</td></tr><tr><td><code>/k0-plan</code></td><td>plan mode, with the decisions as constraints</td></tr><tr><td><code>/k0-work</code></td><td>the work, <a href="/features/worktree/">in a worktree of its own</a></td></tr><tr><td><code>/k0-verify</code></td><td>the counter-check</td></tr><tr><td><code>/k0-next</code></td><td>what to pick up now, and why</td></tr></tbody></table>
+<h2>Small print</h2>
+<p>Each repository with a backlog grows a <code>.k0/</code> folder, one Markdown file per epic and story. Commit
+it: it is how a board is rebuilt, keys and all, on a machine that has never seen it.
+<code>&quot;backlog&quot;: false</code> in <code>~/.k0/config.json</code> switches the feature off.</p>
+    </article>
+
+    <section class="more-features" aria-labelledby="more-title">
+      <h2 id="more-title">Keep reading</h2>
+      <div class="grid">
+        <a class="card feature-card" href="/features/worktree/">
+          <h3>Work next door, merge back</h3>
+          <p>/k0-work builds a planned story in its own git worktree, keeps a log as it goes, and merges back into the branch it came from.</p>
+          <span class="more" aria-hidden="true">Read more →</span>
+        </a>
+        <a class="card feature-card" href="/features/views/">
+          <h3>Kanban to work, List to plan</h3>
+          <p>The same stories two ways: a board of notes for the day's work, and rows of epics, stories and tasks for planning it.</p>
+          <span class="more" aria-hidden="true">Read more →</span>
+        </a>
+        <a class="card feature-card" href="/features/statuses/">
+          <h3>Seven colours, one glance</h3>
+          <p>Every session is a sticky note, and its colour says whose move it is — yours or Claude's.</p>
+          <span class="more" aria-hidden="true">Read more →</span>
+        </a>
+      </div>
+      <p class="pager">
+        <a href="/features/files/">← Every file a session touched</a>
+        <a class="btn btn-outline" href="/features/">All features</a>
+        <a href="/features/worktree/">Work next door, merge back →</a>
+      </p>
+    </section>
+
+    <section class="cta" aria-label="Get early access">
+      <p>k0 is in early access. Leave your address and you will hear when your account is ready.</p>
+      <a class="btn" href="/#access">Get early access</a>
+    </section>
+  </main>
+
+  <footer class="wrap site-footer">
+    <span>k0 · source-available under the Sustainable Use License · made by Alessio Ragni</span>
+    <span class="footer-links">
+      <a href="/features/">Features</a>
+      <a href="https://github.com/alessio-ragni/k0-board">GitHub</a>
+      <a href="/privacy.html">Privacy</a>
+      <a href="/terms.html">Terms</a>
+    </span>
+  </footer>
+</body>
+</html>

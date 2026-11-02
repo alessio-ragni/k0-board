@@ -1,0 +1,127 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>The sessions you forget, closed for you — k0</title>
+  <meta name="description" content="k0 shows what each Claude Code session really weighs, and after twelve idle hours closes the forgotten ones to give the memory back. Resume picks them up where they were.">
+  <link rel="canonical" href="https://k0-board.com/features/idle-close/">
+  <meta property="og:type" content="article">
+  <meta property="og:site_name" content="k0">
+  <meta property="og:url" content="https://k0-board.com/features/idle-close/">
+  <meta property="og:title" content="The sessions you forget, closed for you — k0">
+  <meta property="og:description" content="k0 shows what each Claude Code session really weighs, and after twelve idle hours closes the forgotten ones to give the memory back. Resume picks them up where they were.">
+  <meta name="twitter:card" content="summary">
+  <meta name="theme-color" content="#f3f1ea" media="(prefers-color-scheme: light)">
+  <meta name="theme-color" content="#1b1a17" media="(prefers-color-scheme: dark)">
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Caveat:wght@500;700&family=Instrument+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap">
+  <link rel="stylesheet" href="/site.css">
+  <script type="application/ld+json">{"@context":"https://schema.org","@type":"TechArticle","headline":"The sessions you forget, closed for you","description":"k0 shows what each Claude Code session really weighs, and after twelve idle hours closes the forgotten ones to give the memory back. Resume picks them up where they were.","url":"https://k0-board.com/features/idle-close/","dateModified":"2026-11-02","isPartOf":{"@type":"WebSite","name":"k0","url":"https://k0-board.com/"},"about":{"@type":"SoftwareApplication","name":"k0","applicationCategory":"DeveloperApplication"}}</script>
+</head>
+<body>
+  <a class="skip" href="#main">Skip to content</a>
+
+  <header class="wrap site-header">
+    <a class="logo" href="/" aria-label="k0, home">k0</a>
+    <nav class="site-nav" aria-label="Main">
+      <a href="/features/">Features</a>
+      <a href="/features/statuses/">How it works</a>
+      <a href="/#pricing">Pricing</a>
+      <a href="https://github.com/alessio-ragni/k0-board">GitHub</a>
+      <a href="/app/">Sign in</a>
+    </nav>
+    <a class="btn" href="/#access">Get early access</a>
+  </header>
+
+  <main id="main" class="wrap feature">
+    <nav class="crumbs" aria-label="Breadcrumb"><a href="/features/">Features</a> <span aria-hidden="true">/</span> <span>The sessions you forget, closed for you</span></nav>
+    <div class="feature-top">
+      <div class="feature-copy">
+        <p class="kicker">memory comes back</p>
+        <h1>The sessions you forget, closed for you</h1>
+        <p class="lede">k0 shows what each Claude Code session really weighs, and after twelve idle hours closes the forgotten ones to give the memory back. Resume picks them up where they were.</p>
+        <p class="small">Since k0 0.3.0</p>
+      </div>
+      <figure class="art" aria-hidden="true">
+<div class="art-stage">
+          <div class="chip">RAM 79% · CPU 19% · closes at 12h</div>
+          <div class="mini yellow"><b>K418 · api</b><i>Rate limits</i><small>closed automatically</small></div>
+          <div class="mini blue"><b>K409 · k0</b><i>Sync on two laptops</i><small>Working · 1.2 GB</small></div>
+          <div class="mini red"><b>K412 · invoices</b><i>Fix the CSV totals</i><small>Needs answer</small></div>
+        </div>
+      </figure>
+    </div>
+
+    <article class="prose">
+<h2>What a session really costs</h2>
+<p>At the end of the top bar a chip says how the computer is doing: memory and CPU, with a green,
+amber or red dot — the kernel's own verdict, plus amber when memory in use passes 90%. Hover it to
+see what is heavy and <strong>is not k0</strong>: if Chrome is the problem, better to know before closing
+sessions for nothing.</p>
+<p>On every note there is what that session weighs. Not the <code>claude</code> process alone: everything it
+dragged along — the MCP servers, the browsers they opened, a type check started from a commit hook.
+Only the heaviest note turns red, and only while the machine is struggling.</p>
+<h2>Why k0 closes the ones you forget</h2>
+<p>The window costing you a gigabyte is the one you stopped thinking about yesterday. So <strong>after
+twelve hours with nothing happening, k0 presses <code>Close</code> itself</strong>: the session stops, its window
+goes, the memory comes back. Nothing is lost — the note keeps its place and its status, and
+<strong>Resume</strong> picks the conversation up where it was.</p>
+<p>Only yellow — <em>Your turn</em> — is ever touched. The rest is left alone, each for a reason:</p>
+<table><thead><tr><th>Left alone</th><th>Why</th></tr></thead><tbody><tr><td>Working, Planning</td><td>somebody mid-thought: stopping it is work lost</td></tr><tr><td>Needs answer, Needs approval</td><td>the question or plan is not saved until answered</td></tr><tr><td>a session sitting in a shell</td><td>a command of yours may be running in it</td></tr><tr><td>a note marked <a href="/features/always-on/">always active</a></td><td>you said so</td></tr></tbody></table>
+<p>A window you used an hour ago is never closed either: k0 keeps four clocks for a session and the
+newest wins.</p>
+<h2>How to use it</h2>
+<ul><li>Nothing to switch on. The chip says it is watching: <code>RAM 79% · CPU 19% · closes at 12h</code>.</li><li>Want the memory back now? Press <strong>Close</strong> on the story — it is not offered while it is working.</li><li>A note k0 closed reads <em>closed automatically</em>, where one you closed reads <em>session closed</em>.</li><li>Change the hours with <code>closeIdleTerminalsAfterHours</code> in <code>~/.k0/config.json</code>. <code>0</code> switches it off; anything under an hour counts as an hour.</li></ul>
+<h2>And what k0 itself costs</h2>
+<p>Hover the chip and the last line is k0's own weight. Its watching loop goes round every two seconds
+while a session is open or you are at the board, and once a minute otherwise. The board page asks
+whether anything changed, and when nothing did the answer is a couple of hundred bytes — it used to
+be the whole board every second, fifty-six gigabytes a day to redraw notes that had not moved.</p>
+    </article>
+
+    <section class="more-features" aria-labelledby="more-title">
+      <h2 id="more-title">Keep reading</h2>
+      <div class="grid">
+        <a class="card feature-card" href="/features/always-on/">
+          <h3>Keep one session always on</h3>
+          <p>Mark a note always active and k0 never closes its terminal for sitting idle — for a session left watching a deploy.</p>
+          <span class="more" aria-hidden="true">Read more →</span>
+        </a>
+        <a class="card feature-card" href="/features/statuses/">
+          <h3>Seven colours, one glance</h3>
+          <p>Every session is a sticky note, and its colour says whose move it is — yours or Claude's.</p>
+          <span class="more" aria-hidden="true">Read more →</span>
+        </a>
+        <a class="card feature-card" href="/features/modes/">
+          <h3>Four modes, from asleep to across the room</h3>
+          <p>Sleep, Away, Nerd, Driving: one click says how awake the machine stays while Claude Code works, lid closed included.</p>
+          <span class="more" aria-hidden="true">Read more →</span>
+        </a>
+      </div>
+      <p class="pager">
+        <a href="/features/always-on/">← Keep one session always on</a>
+        <a class="btn btn-outline" href="/features/">All features</a>
+        <a href="/features/terminal/">The real terminal, one click away →</a>
+      </p>
+    </section>
+
+    <section class="cta" aria-label="Get early access">
+      <p>k0 is in early access. Leave your address and you will hear when your account is ready.</p>
+      <a class="btn" href="/#access">Get early access</a>
+    </section>
+  </main>
+
+  <footer class="wrap site-footer">
+    <span>k0 · source-available under the Sustainable Use License · made by Alessio Ragni</span>
+    <span class="footer-links">
+      <a href="/features/">Features</a>
+      <a href="https://github.com/alessio-ragni/k0-board">GitHub</a>
+      <a href="/privacy.html">Privacy</a>
+      <a href="/terms.html">Terms</a>
+    </span>
+  </footer>
+</body>
+</html>

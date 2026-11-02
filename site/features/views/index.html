@@ -1,0 +1,137 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Kanban to work, List to plan — k0</title>
+  <meta name="description" content="k0 shows your Claude Code stories two ways — Kanban, a column of notes per repository, and List, every epic, story and task as rows to plan with.">
+  <link rel="canonical" href="https://k0-board.com/features/views/">
+  <meta property="og:type" content="article">
+  <meta property="og:site_name" content="k0">
+  <meta property="og:url" content="https://k0-board.com/features/views/">
+  <meta property="og:title" content="Kanban to work, List to plan — k0">
+  <meta property="og:description" content="k0 shows your Claude Code stories two ways — Kanban, a column of notes per repository, and List, every epic, story and task as rows to plan with.">
+  <meta name="twitter:card" content="summary">
+  <meta name="theme-color" content="#f3f1ea" media="(prefers-color-scheme: light)">
+  <meta name="theme-color" content="#1b1a17" media="(prefers-color-scheme: dark)">
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Caveat:wght@500;700&family=Instrument+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap">
+  <link rel="stylesheet" href="/site.css">
+  <script type="application/ld+json">{"@context":"https://schema.org","@type":"TechArticle","headline":"Kanban to work, List to plan","description":"k0 shows your Claude Code stories two ways — Kanban, a column of notes per repository, and List, every epic, story and task as rows to plan with.","url":"https://k0-board.com/features/views/","dateModified":"2026-11-02","isPartOf":{"@type":"WebSite","name":"k0","url":"https://k0-board.com/"},"about":{"@type":"SoftwareApplication","name":"k0","applicationCategory":"DeveloperApplication"}}</script>
+</head>
+<body>
+  <a class="skip" href="#main">Skip to content</a>
+
+  <header class="wrap site-header">
+    <a class="logo" href="/" aria-label="k0, home">k0</a>
+    <nav class="site-nav" aria-label="Main">
+      <a href="/features/">Features</a>
+      <a href="/features/statuses/">How it works</a>
+      <a href="/#pricing">Pricing</a>
+      <a href="https://github.com/alessio-ragni/k0-board">GitHub</a>
+      <a href="/app/">Sign in</a>
+    </nav>
+    <a class="btn" href="/#access">Get early access</a>
+  </header>
+
+  <main id="main" class="wrap feature">
+    <nav class="crumbs" aria-label="Breadcrumb"><a href="/features/">Features</a> <span aria-hidden="true">/</span> <span>Kanban to work, List to plan</span></nav>
+    <div class="feature-top">
+      <div class="feature-copy">
+        <p class="kicker">same stories, two shapes</p>
+        <h1>Kanban to work, List to plan</h1>
+        <p class="lede">k0 shows your Claude Code stories two ways — Kanban, a column of notes per repository, and List, every epic, story and task as rows to plan with.</p>
+        <p class="small">Since k0 0.5.0</p>
+      </div>
+      <figure class="art" aria-hidden="true">
+<div class="art-stage">
+          <div class="lane">
+            <span>Kanban · invoices</span>
+            <div class="mini red"><b>K42 · Monthly export</b><i>Fix the CSV totals</i><small>Needs answer</small></div>
+            <div class="mini yellow"><b>K51</b><i>Rate limits</i><small>Your turn</small></div>
+          </div>
+          <div class="screen light">
+            <div class="bar"><i></i><i></i><i></i><span>List</span></div>
+            <div class="body"><span class="dim">invoices</span>
+▾ K40  Monthly export      <span class="dim">1 of 3 done</span>
+    K42  Fix the CSV totals  <span class="bad">Needs answer</span>
+    K43  Accountant format   <span class="ok">Done</span>
+    K44  VAT column          <span class="dim">Backlog</span>
+<span class="dim">No epic</span>
+    K51  Rate limits         <span class="hi">Your turn</span></div>
+          </div>
+        </div>
+      </figure>
+    </div>
+
+    <article class="prose">
+<h2>One switch, two shapes</h2>
+<p>The switch in the top bar, in among the filters, says <strong>Kanban</strong> or <strong>List</strong>. It changes the shape
+of what you are looking at and never <em>what</em> you are looking at: the state pills, the repository
+and the epic lane apply to both, so nothing appears or vanishes when you switch.</p>
+<p><strong>Kanban is for working.</strong> The board you already know — one column per repository, notes that
+reorder themselves by who is waiting for you. With a <a href="/features/backlog/">backlog</a> behind it a note
+grows four marks and no more: its <strong>key</strong>, like <code>K42</code>; its <strong>epic</strong>, as a small label in the epic's
+own colour; a <strong>flag</strong> in the bottom corner; and a warning when something it <strong>waits on</strong> is not
+finished.</p>
+<p><strong>List is for planning.</strong> The same stories as rows, every repository at once: a heading per
+repository, epics that open and close with their progress bar, stories under them, and tasks
+indented beneath the story they were cut from. A row carries key, title, state, flag, how many
+decisions are still standing and how much of the checklist has passed.</p>
+<h2>Why two</h2>
+<p>Working and planning ask different questions. While working it is <em>which one needs me now</em>, and a
+board of coloured notes answers that from across the room. While planning it is <em>what is left, and
+in what order</em>, and that wants everything at once, in rows you can run your eye down.</p>
+<h2>How to use it</h2>
+<ul><li>Click <strong>Kanban</strong> or <strong>List</strong> in the top bar.</li><li>Hover a note and click the flag in its bottom corner. Once on, the note takes a border in the flag's colour, so you can find it from across the room; click again to take it off.</li><li>Click an epic's label and the board becomes that epic: a strip under the top bar shows a progress bar, <code>4 of 11 done</code>, and the way back out. It survives a reload.</li><li>In List, click a row and the story opens <strong>beside it</strong> — its rounds, decisions, plan, checklist and log — so the rows you were comparing stay on screen.</li><li>Drag a row to reorder it, or onto another epic to move it there.</li><li>Open a story with the pencil to keep <strong>notes</strong> on it: they sit on the post-it for you and are never sent to Claude Code.</li></ul>
+<h2>Small print</h2>
+<p>Progress counts the epic's stories and is not weighted: eleven stories with one done is 1 of 11.
+Dragging never changes state — states move from the terminal and the Done button. And the two views
+come with the backlog: with <code>&quot;backlog&quot;: false</code> in <code>~/.k0/config.json</code> the switch leaves the bar.</p>
+    </article>
+
+    <section class="more-features" aria-labelledby="more-title">
+      <h2 id="more-title">Keep reading</h2>
+      <div class="grid">
+        <a class="card feature-card" href="/features/backlog/">
+          <h3>Decide it, then check it</h3>
+          <p>Epics, stories and tasks, discussed in rounds, every decision written down — and the finished work checked against each one.</p>
+          <span class="more" aria-hidden="true">Read more →</span>
+        </a>
+        <a class="card feature-card" href="/features/statuses/">
+          <h3>Seven colours, one glance</h3>
+          <p>Every session is a sticky note, and its colour says whose move it is — yours or Claude's.</p>
+          <span class="more" aria-hidden="true">Read more →</span>
+        </a>
+        <a class="card feature-card" href="/features/always-on/">
+          <h3>Keep one session always on</h3>
+          <p>Mark a note always active and k0 never closes its terminal for sitting idle — for a session left watching a deploy.</p>
+          <span class="more" aria-hidden="true">Read more →</span>
+        </a>
+      </div>
+      <p class="pager">
+        <a href="/features/statuses/">← Seven colours, one glance</a>
+        <a class="btn btn-outline" href="/features/">All features</a>
+        <a href="/features/modes/">Four modes, from asleep to across the room →</a>
+      </p>
+    </section>
+
+    <section class="cta" aria-label="Get early access">
+      <p>k0 is in early access. Leave your address and you will hear when your account is ready.</p>
+      <a class="btn" href="/#access">Get early access</a>
+    </section>
+  </main>
+
+  <footer class="wrap site-footer">
+    <span>k0 · source-available under the Sustainable Use License · made by Alessio Ragni</span>
+    <span class="footer-links">
+      <a href="/features/">Features</a>
+      <a href="https://github.com/alessio-ragni/k0-board">GitHub</a>
+      <a href="/privacy.html">Privacy</a>
+      <a href="/terms.html">Terms</a>
+    </span>
+  </footer>
+</body>
+</html>

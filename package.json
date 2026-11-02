@@ -58,6 +58,8 @@
     "test": "node --test \"test/*.test.mjs\"",
     "test:watch": "node --test --watch \"test/*.test.mjs\"",
     "coverage": "node --test --experimental-test-coverage --test-coverage-exclude=\"platform/**\" --test-coverage-exclude=\"test/**\" \"test/*.test.mjs\"",
-    "doctor": "node bin/k0-board.js doctor"
+    "doctor": "node bin/k0-board.js doctor",
+    "site": "node site/build.mjs",
+    "site:deploy": "sh site/deploy.sh"
   }
 }
