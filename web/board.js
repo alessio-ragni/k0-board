@@ -6,6 +6,7 @@ import { split } from '/recency.js'
 import { drawList, leaveList } from '/list.js'
 import { search as fuzzy } from '/fuzzy.js'
 import { whileVisible } from '/awake.js'
+import { rank, snippet } from '/finder.js'
 
 // ── Statuses ───────────────────────────────────────────────────────
 // The order is the attention priority inside a column: first whoever is waiting for you,
@@ -489,11 +490,19 @@ function postit(story, now) {
   el.ondblclick = (e) => {
     if (story.completed_at) return
     e.preventDefault()
-    if (alive) return focusTerminal(story.id)
-    if (story.session_id) return start(story.id, 'resume')
-    startStory(story)
+    goToWork(story)
   }
   return el
+}
+
+/**
+ * Into the work: the note's double click, and Terminal in the ⌘K finder. One gesture, one place —
+ * the two of them must never disagree about what "take me to it" means.
+ */
+function goToWork(story) {
+  if (story.session_id && story.session_alive) return focusTerminal(story.id)
+  if (story.session_id) return start(story.id, 'resume')
+  startStory(story)
 }
 
 // Few icons, all in the same stroke: the pencil opens the editor, the bin throws away, the
@@ -1736,6 +1745,153 @@ const LIST = {
   },
 }
 
+// ── ⌘K: finding a story ────────────────────────────────────────────
+// One box over the board: a number with or without its K, a word of a title or of the notes, or
+// the name of a repository. What it searches is the last answer the board had — see finder.js for
+// how it ranks — so nothing is asked of the server while you type.
+//
+// Enter goes to the terminal, because the question you open it with is nearly always "what is that
+// one doing". ⌘Enter opens the story to edit it. A finished story has no terminal to go to: there
+// Enter opens it instead, and the Terminal button says why it is off.
+
+let finderRows = []
+let finderAt = 0
+
+const DONE_NO_TERMINAL = 'This story is done — reopen it from its note first'
+
+function openFinder() {
+  if (!lastBoard) return
+  const d = $('#finder')
+  $('#finder-q').value = ''
+  paintFinder()
+  if (!d.open) d.showModal()
+  $('#finder-q').focus()
+}
+
+/** Repositories are offered only where choosing one can do something: the repository filter. */
+const finderRepos = () => (backlogOn && !laneEpic ? (lastBoard?.columns ?? []) : [])
+
+function marked(text, at) {
+  const set = new Set(at)
+  let out = ''
+  let open = false
+  for (let i = 0; i < text.length; i++) {
+    const on = set.has(i)
+    if (on && !open) out += '<mark>'
+    if (!on && open) out += '</mark>'
+    open = on
+    out += esc(text[i])
+  }
+  return open ? `${out}</mark>` : out
+}
+
+function paintFinder() {
+  const q = $('#finder-q').value
+  finderRows = rank({ stories: lastBoard?.stories ?? [], columns: finderRepos() }, q)
+  finderAt = 0
+  const list = $('#finder-rows')
+  if (!finderRows.length) {
+    list.innerHTML = `<p class="none">${q.trim() ? 'Nothing matches that.' : 'No open stories.'}</p>`
+    return
+  }
+  list.innerHTML = finderRows
+    .map((r, i) => {
+      if (r.kind === 'repo') {
+        return `<div class="row repo" data-i="${i}" role="option">
+          <span class="what">repo</span>
+          <span class="body"><span class="title">${marked(r.item.name ?? '', r.at)}</span></span>
+          <span class="acts"><button type="button" data-act="repo">Filter the board</button></span>
+        </div>`
+      }
+      const s = r.item
+      const done = !!s.completed_at
+      const note = r.notes ? snippet(s.description, q) : ''
+      return `<div class="row${done ? ' done' : ''}" data-i="${i}" role="option">
+        <span class="what s-${esc(s.status)}">${esc(s.key ?? '')}</span>
+        <span class="body">
+          <span class="title">${marked(s.title ?? '', r.at)}</span>
+          <span class="meta">${esc(s.project_name ?? '')} · ${esc(LABEL[s.status] ?? s.status)}${
+            s.session_alive && !done ? ' · terminal open' : ''
+          }</span>
+          ${note ? `<span class="note">${esc(note)}</span>` : ''}
+        </span>
+        <span class="acts">
+          <button type="button" data-act="open">Open</button>
+          <button type="button" data-act="terminal"${done ? ` disabled title="${DONE_NO_TERMINAL}"` : ''}>Terminal</button>
+        </span>
+      </div>`
+    })
+    .join('')
+  markFinder()
+}
+
+function markFinder() {
+  const rows = $('#finder-rows').querySelectorAll('.row')
+  rows.forEach((el, i) => el.classList.toggle('on', i === finderAt))
+  rows[finderAt]?.scrollIntoView({ block: 'nearest' })
+}
+
+/** What a row does. `act` is `terminal`, `open` or `repo`; Enter passes the row's default. */
+function actFinder(i, act) {
+  const r = finderRows[i]
+  if (!r) return
+  $('#finder').close()
+  if (r.kind === 'repo') {
+    chooseRepo(r.item.path)
+    lastSignature = ''
+    refresh()
+    return
+  }
+  const story = r.item
+  if (act === 'open' || story.completed_at) return openEditor(story)
+  goToWork(story)
+}
+
+function wireFinder() {
+  document.addEventListener('keydown', (e) => {
+    if (!(e.metaKey || e.ctrlKey) || e.altKey || e.shiftKey || e.key.toLowerCase() !== 'k') return
+    e.preventDefault()
+    const d = $('#finder')
+    if (d.open) return d.close()
+    // Not over another dialog: the editor half-filled is somebody's work, and a box on top of it
+    // would be one dialog too many to find the way back from.
+    if (document.querySelector('dialog[open]')) return
+    openFinder()
+  })
+  $('#finder-q').oninput = paintFinder
+  $('#finder-q').onkeydown = (e) => {
+    if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+      e.preventDefault()
+      if (!finderRows.length) return
+      finderAt = (finderAt + (e.key === 'ArrowDown' ? 1 : finderRows.length - 1)) % finderRows.length
+      markFinder()
+      return
+    }
+    if (e.key !== 'Enter') return
+    e.preventDefault()
+    actFinder(finderAt, e.metaKey || e.ctrlKey ? 'open' : 'terminal')
+  }
+  const rows = $('#finder-rows')
+  rows.onclick = (e) => {
+    const b = e.target.closest('button[data-act]')
+    const row = e.target.closest('.row')
+    if (!row) return
+    if (b) return actFinder(Number(row.dataset.i), b.dataset.act)
+    finderAt = Number(row.dataset.i)
+    markFinder()
+    $('#finder-q').focus()
+  }
+  rows.ondblclick = (e) => {
+    const row = e.target.closest('.row')
+    if (!row || e.target.closest('button')) return
+    actFinder(Number(row.dataset.i), 'terminal')
+  }
+  // A click on the backdrop is a click outside the box: it shuts, the way a menu does.
+  $('#finder').onclick = (e) => {
+    if (e.target === $('#finder')) $('#finder').close()
+  }
+}
+
 // ── The loop ──────────────────────────────────────────────────────
 /**
  * The last answer that had a board in it, and the stamp that came with it.
@@ -1897,6 +2053,7 @@ async function boot() {
   initView() // before anything else: render() assumes the view is already there
   renderFilters()
   renderColumnsSwitch() // hidden until the first answer says there is a backlog
+  wireFinder()
   await loadProjects()
 
   $('#filters').onclick = (e) => {

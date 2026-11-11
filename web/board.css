@@ -1135,3 +1135,70 @@ html[data-driving] .postit .keep svg { width: 22px; height: 22px; }
 /* The card is in pixels too: with the text at 22 it would choke inside 268. And since the card is
    never taller than it is wide, raising this raises the ceiling with it. */
 html[data-driving] { --card-w: 340px; }
+
+/* ── ⌘K: finding a story ──────────────────────────────────────────────
+   High on the screen rather than in the middle, the way every command palette sits: what you type
+   stays where your eyes already are, and the list has room to grow downwards. */
+dialog.finder {
+  width: min(720px, 94vw);
+  margin-top: 12vh;
+  padding: 12px;
+}
+dialog.finder input {
+  margin: 0 0 8px;
+  font-size: 1.05rem;
+  padding: 12px 14px;
+}
+dialog.finder input:focus { outline: none; border-color: #bdb6a5; }
+.finder .rows { max-height: 56vh; overflow-y: auto; }
+.finder .none { margin: 14px 6px; color: var(--muted); }
+.finder .row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  cursor: default;
+}
+.finder .row.on { background: var(--bg); }
+.finder .row.done { opacity: .55; }
+.finder .what {
+  flex: none;
+  min-width: 52px;
+  text-align: center;
+  font: 700 .72rem/1 var(--mono);
+  padding: 5px 6px;
+  border-radius: 6px;
+  background: var(--BACKLOG);
+  color: rgba(0, 0, 0, .65);
+}
+.finder .what.s-ASK { background: var(--ASK); }
+.finder .what.s-PLANNED { background: var(--PLANNED); }
+.finder .what.s-IDLE { background: var(--IDLE); }
+.finder .what.s-WORKING { background: var(--WORKING); }
+.finder .what.s-PLANNING { background: var(--PLANNING); }
+.finder .what.s-COMPLETED { background: var(--COMPLETED); }
+.finder .row.repo .what { background: none; border: 1px solid var(--line); font-weight: 600; }
+.finder .body { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.finder .title { font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.finder .title mark { background: none; color: inherit; text-decoration: underline; text-underline-offset: 2px; }
+.finder .meta, .finder .note { font-size: .8rem; color: var(--muted); }
+.finder .note { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-style: italic; }
+.finder .acts { flex: none; display: flex; gap: 6px; }
+.finder .acts button { padding: 5px 10px; font-size: .82rem; }
+.finder .acts button:disabled { opacity: .4; cursor: not-allowed; }
+.finder footer {
+  margin: 8px 4px 0;
+  font-size: .75rem;
+  color: var(--muted);
+  gap: 6px;
+}
+.finder kbd {
+  font: 600 .72rem/1 var(--mono);
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  padding: 2px 5px;
+  background: var(--paper);
+  color: var(--ink);
+}
+.finder kbd:not(:first-child) { margin-left: 8px; }

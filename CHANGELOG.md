@@ -6,6 +6,15 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+### Added
+
+- **⌘K finds any story from anywhere on the board** (Ctrl+K on Windows and Linux). Type its
+  number with or without the K, a word of its title or of its notes — half a word or scattered
+  letters are enough — and pick it: Enter takes you to its terminal, exactly like a double click
+  on the note, and ⌘Enter opens it to edit. Finished stories come up too, after the open ones and
+  in grey; with the backlog on, so do repositories, and choosing one filters the board. Stories in
+  a folded column or behind a filter are found all the same. It has its own page on k0-board.com.
+
 ### Fixed
 
 - Updating k0 no longer makes you grant dictation the Microphone and Accessibility again. The app

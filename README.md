@@ -455,6 +455,28 @@ or something in it wakes up. It **closes nothing**: no session is stopped and no
 shut. It is the board that gets smaller, not the work — what closes a session is `Close` or `Done`
 on a story.
 
+### Finding a story: ⌘K
+
+**⌘K** (Ctrl+K on Windows and Linux) opens a box over the board, wherever you are on it. Type a
+story's number — `42` or `K42`, with or without the K — or a word of its title or of its notes,
+and the stories that match come up underneath, best first. Half a word is enough, and so are
+scattered letters: `expo` finds *Export*, `qfind` finds *Quick find*. Several words narrow it
+down, because every one of them has to be there.
+
+Every row has two buttons. **Terminal** takes you into the work, exactly as a double click on the
+note does: its terminal up front if one is running, the conversation it left behind if it was
+closed, a new session if there was never one. **Open** opens the story to edit it. **Enter** — or
+a double click on the row — is Terminal, **⌘Enter** is Open, the arrows move, Esc shuts it.
+
+Finished stories are in the list too, after everything still open and in grey; they have no
+terminal to go to, so there Enter opens them and the Terminal button says why it is off. With the
+backlog on, repositories come up as well: choosing one filters the board on it, the same as the
+repository menu on the bar. With nothing typed the box lists the open stories you touched last,
+so ⌘K and Enter is the way back to whatever you were just on.
+
+It searches what the board already has in front of it, so typing asks the server nothing — and a
+story in a column that has folded away, or behind a filter, is found all the same.
+
 ### The git mark
 
 On every story, next to the repository name, and next to every column name, one symbol says
@@ -1953,6 +1975,8 @@ web/             the pages (html, css, js served exactly as they are)
   fuzzy.js       searching the names: the letters you type, in the order you type them — the
                  file viewer, the repository the new story goes in, and the repository menu on
                  the bar, which is drawn here rather than left to the system
+  finder.js      ⌘K: which stories and repositories match what you typed, and in what order —
+                 a number, whole words or scattered letters of a title, words of the notes
   mentions.js    which of a repository's files a piece of text names
   refs.js        what a name written inside a document points at, and which of the nine READMEs
   json.js        a JSON file as a tree that folds, and the search that opens the right branches
