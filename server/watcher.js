@@ -70,12 +70,79 @@ export function renameSession(story, name) {
   const sessionId = story.session_id
   const file = findTranscript(sessionId, story.work_path, story.project_path)
   if (!file) return false
+  writeName(file, sessionId, name)
+  return true
+}
+
+/** The two lines themselves, appended to a transcript already found. */
+export function writeName(file, sessionId, name) {
   const line = (o) => JSON.stringify({ ...o, sessionId }) + '\n'
   fs.appendFileSync(
     file,
     line({ type: 'custom-title', customTitle: name }) + line({ type: 'agent-name', agentName: name })
   )
-  return true
+}
+
+/** How much of the end of a transcript is read to find the name it goes by. */
+const TAIL = 64 * 1024
+
+/**
+ * The name a transcript goes by now: the last `custom-title` near its end, or null when there is
+ * none there. Claude Code writes that line at the end of every turn and a rename appends one, so
+ * the tail is where it is; a transcript whose tail has none is simply named again, which costs two
+ * lines and nothing else.
+ */
+export function transcriptName(file) {
+  let fd
+  try {
+    fd = fs.openSync(file, 'r')
+    const size = fs.fstatSync(fd).size
+    const len = Math.min(size, TAIL)
+    const buf = Buffer.alloc(len)
+    fs.readSync(fd, buf, 0, len, size - len)
+    const lines = buf.toString('utf8').split('\n')
+    for (let i = lines.length - 1; i >= 0; i--) {
+      if (!lines[i].includes('"custom-title"')) continue
+      try {
+        const o = JSON.parse(lines[i])
+        if (o.type === 'custom-title' && typeof o.customTitle === 'string') return o.customTitle
+      } catch {
+        // the first line of the tail is usually cut in half: not this one, then
+      }
+    }
+    return null
+  } catch {
+    return null
+  } finally {
+    if (fd !== undefined) fs.closeSync(fd)
+  }
+}
+
+/**
+ * Every transcript on the machine by session id, read in one pass over the projects directory.
+ * Used when every story's sessions are brought into line at once, where looking each one up on its
+ * own would walk the whole directory again for every transcript that is not where it was expected.
+ */
+export function transcriptIndex() {
+  const index = new Map()
+  let dirs
+  try {
+    dirs = fs.readdirSync(PROJECTS_DIR)
+  } catch {
+    return index
+  }
+  for (const d of dirs) {
+    let files
+    try {
+      files = fs.readdirSync(path.join(PROJECTS_DIR, d))
+    } catch {
+      continue
+    }
+    for (const f of files) {
+      if (f.endsWith('.jsonl') && !index.has(f.slice(0, -6))) index.set(f.slice(0, -6), path.join(PROJECTS_DIR, d, f))
+    }
+  }
+  return index
 }
 
 /**

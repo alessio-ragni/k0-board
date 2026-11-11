@@ -12,7 +12,7 @@ import {
   focusWindow,
   sessionName,
   closeTerminal,
-  setWindowTitle,
+  titleName,
   renameDue,
   renameLive,
   applyModeToWindows,
@@ -38,6 +38,7 @@ import * as update from './update.js'
 import * as usage from './usage.js'
 import * as cloud from './cloud.js'
 import * as sync from './sync.js'
+import * as names from './names.js'
 import * as dictate from './dictate.js'
 import { report as platformReport, capabilities, why, dictate as dictateApp } from '../platform/index.js'
 // The same front-matter reader the viewer uses: the PDF has to be called what the page is
@@ -62,8 +63,10 @@ function tick() {
     // put in it the name the story has today. That is how a rename made while the session was
     // running still reaches the list of sessions you can resume.
     if (story.session_id && story.session_alive && !alive) {
-      renameSession(story, sessionName(story.title))
+      renameSession(story, sessionName(story))
     }
+    // The name every one of its sessions should have — key and title — wherever that changed.
+    names.keep(story, live)
     // Still running under the old name, and sitting idle: the rename goes in as a `/rename`
     // typed into its window — the first time that window is the one in front of you, since
     // nothing is ever raised to type into it. Not awaited, for the same reason `sweepIdle` is not.
@@ -126,6 +129,7 @@ function tick() {
   // simply end.
   forgetDeadSessions(live)
   forgetRenameAttempts(live)
+  names.roundDone()
 
   // Handed back so the pace of the next round can follow what is actually running.
   return live
@@ -213,24 +217,17 @@ async function renameNow(story) {
 }
 
 /**
- * A story's name is the session's name: when the title changes — and only the title, the prompt
- * has nothing to do with it — it has to change over there too. Both doors a title comes through
- * pass here, the post-it's dialog and the skills' route.
- *
- * Three places, three moments. The window's title bar, at once, session running or not. The
- * transcript, only once the session has ended — a live process would write the old name back
- * over it — so here only if it already has; `tick` does it when a live one dies. And the live
- * session itself, through `/rename` typed into its window, which is `tick`'s too: it happens the
- * first time that window is in front of you and sitting idle, and not here, because you have
- * just pressed Save on the board and the keyboard is yours. `before` is the row from before the
- * change: that is the session the story had, and where its transcript is.
+ * A story's name is its sessions' name: when the title or the key changes — a move to another
+ * repository can hand out a new key — it has to change over there too. Both doors an edit comes
+ * through pass here, the post-it's dialog and the skills' route, so the window's title bar and
+ * the closed transcripts follow at once instead of at the next round of the loop, which at rest
+ * is a minute away. The live session itself is renamed by the loop, through `/rename` typed into
+ * its window the first time that window is in front of you and sitting idle — not here, because
+ * you have just pressed Save on the board and the keyboard is yours. See names.js.
  */
-async function followTitle(before, after) {
-  if (!before.session_id) return
-  const name = sessionName(after.title)
-  if (name === sessionName(before.title)) return
-  await setWindowTitle(before.terminal_window_id, name)
-  if (!before.session_alive) renameSession(before, name)
+function followName(before, after) {
+  if (!after.session_id || sessionName(after) === sessionName(before)) return
+  names.follow(after)
 }
 
 /** When somebody last looked at the board. */
@@ -1164,7 +1161,7 @@ async function backlogApi(req, res, url, seg) {
       // would resurrect the story where it no longer lives. It also carried a key that repository
       // has since handed to something else — see `patchStory`, which renumbers on the move.
       const after = db.getStory(id)
-      await followTitle(story, after)
+      followName(story, after)
       const left =
         after.project_path === story.project_path
           ? null
@@ -1181,6 +1178,7 @@ async function backlogApi(req, res, url, seg) {
       const going = family(story)
       for (const s of going) if (s.session_id) forgetSession(s.session_id)
       db.deleteStory(id)
+      names.forget(id)
       const gone = going.map((s) => mirroring(() => mirror.removeStory(s.key, s.project_path))).find(Boolean)
       // The epic is rewritten whether or not the files went, and not inside a `??`: its list still
       // has the deleted story's name on it, and a `??` that short-circuits would leave it there
@@ -1531,7 +1529,7 @@ async function api(req, res, url) {
       }
       // The same normalisation as the title field on the dashboard: a story's title is the
       // session's name, and importing must not create one of a different shape.
-      const title = sessionName(raw)
+      const title = titleName(raw)
       if (taken.has(sessionId)) {
         skipped.push({ session_id: sessionId, why: 'already on the board' })
         continue
@@ -1729,7 +1727,7 @@ async function api(req, res, url) {
         await closeTerminal({ winId: story.terminal_window_id, pid: readLiveSessions().get(story.session_id)?.pid })
       }
       if ('completed' in b) updated = db.setCompleted(id, done)
-      await followTitle(story, updated)
+      followName(story, updated)
       // The readable copy follows an edit made on the board exactly as it follows one made by a
       // skill: the title in the file's name is the title, and a story renamed here would otherwise
       // leave `K42-fix-api.md` sitting next to `K42-fix-the-api.md` with nothing to say which is
@@ -1749,6 +1747,7 @@ async function api(req, res, url) {
       const going = family(story)
       for (const s of going) if (s.session_id) forgetSession(s.session_id)
       db.deleteStory(id)
+      names.forget(id)
       const gone = going.map((s) => mirroring(() => mirror.removeStory(s.key, s.project_path))).find(Boolean)
       const epics = new Set(going.map((s) => s.epic_id).filter(Boolean))
       const counted = [...epics].map(mirrorEpic).find(Boolean)

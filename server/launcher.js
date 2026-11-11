@@ -4,12 +4,34 @@ import { titleCase } from '../web/title.js'
 import { terminal, shell, capabilities } from '../platform/index.js'
 
 /**
- * "fix now 2h" -> "Fix-Now-2h", which is the name you will see on the session.
- * Same rule as the title field on the dashboard: the session's name is exactly what you saw
- * yourself typing.
+ * "fix now 2h" -> "Fix-Now-2h". Same rule as the title field on the dashboard: what you saw
+ * yourself typing. It is a story's title, and the half of its session's name after the key.
  */
-export function sessionName(title) {
+export function titleName(title) {
   return titleCase(title).replace(/-+$/, '') || 'Untitled'
+}
+
+/**
+ * The name a story's session goes by: its key, then its title — `K1136-Fix-Now-2h`. With many
+ * sessions open at once, the key is what ties a terminal, or a line of `claude --resume`, back to
+ * a note on the board.
+ *
+ * Only a real key goes in front. A provisional one (`K~3`, made offline) would come out as `K-3`
+ * and then change once the cloud numbers it, and a bare `K3` could be somebody else's; so until
+ * the number is real the session carries the title alone, and the watching loop renames it the
+ * moment the number arrives. A title that already starts with its own key — an imported session
+ * somebody had named that way by hand — does not get it twice; a different key at the start of a
+ * title is part of what the title says, and stays.
+ *
+ * Anything without a key — the stand-in a new epic is opened with — is named by its title.
+ */
+export function sessionName(story) {
+  const title = String(story?.title || '')
+  const n = Number(story?.key_num)
+  if (!Number.isInteger(n) || n < 1) return titleName(title)
+  const key = `K${n}`
+  const own = new RegExp(`^\\s*${key}(?![0-9])[^a-zA-Z0-9]*`, 'i')
+  return `${key}-${titleName(title.replace(own, ''))}`
 }
 
 export const findClaude = () => shell.findClaude()
@@ -71,7 +93,7 @@ export function forgetRenameAttempts(alive) {
 export function renameDue(story, session, now = Date.now()) {
   if (!session || session.status !== 'idle' || !('name' in session)) return false
   if (!story.terminal_window_id || !capabilities.terminal.commands) return false
-  const name = sessionName(story.title)
+  const name = sessionName(story)
   if (session.name === name) return false
   const last = attempted.get(story.session_id)
   return !(last && last.name === name && last.until > now)
@@ -83,7 +105,7 @@ export function renameDue(story, session, now = Date.now()) {
  * the rename waits until you look at the session, and happens then.
  */
 export async function renameLive(story) {
-  const name = sessionName(story.title)
+  const name = sessionName(story)
   const line = `/rename ${name}`
   // Written down before the keys go in, not after: the watching loop asks again a second later,
   // and typing takes longer than that — two rounds typing the same command into one box is a
@@ -179,7 +201,7 @@ export const SESSION_ENV = { CLAUDE_CODE_ENABLE_TODO_TOOLS: '1' }
  * the session now, and it is read from there through the same row rather than looked up again.
  */
 export async function launch({ story, sessionId, mode = 'start' }) {
-  const name = sessionName(story.title)
+  const name = sessionName(story)
   const bin = findClaude()
   const resume = mode === 'resume'
   const args = []

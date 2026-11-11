@@ -22,9 +22,9 @@ process.env.USERPROFILE = FAKE_HOME
 // `db.js` now stops by itself if anybody tries again, but this is the right way round.
 process.env.K0_DB = path.join(os.tmpdir(), `k0-test-${process.pid}.db`)
 
-const { deriveStatus, transcriptPath, projectSlug, renameSession, findTranscript, busy } =
+const { deriveStatus, transcriptPath, projectSlug, renameSession, findTranscript, busy, transcriptName, transcriptIndex } =
   await import('../server/watcher.js')
-const { sessionName, promptText, promptIsEmpty, renameDue, RENAME_RETRY_MS } = await import('../server/launcher.js')
+const { sessionName, titleName, promptText, promptIsEmpty, renameDue, RENAME_RETRY_MS } = await import('../server/launcher.js')
 const { capabilities } = await import('../platform/index.js')
 const { scanSessions } = await import('../server/sessions.js')
 
@@ -214,7 +214,7 @@ check(
 // transcript, in the same shape Claude Code writes there itself.
 {
   const s = write([mode('normal')])
-  const name = sessionName('rename test')
+  const name = sessionName({ title: 'rename test' })
   check('the session name is what you see on the story', name, 'Rename-Test')
   check('rename done', renameSession(story(s), name), true)
 
@@ -305,6 +305,89 @@ check('not free: no box', promptIsEmpty(null), false)
     capabilities.terminal.commands
   )
   check('the timeout after a try is a minute', RENAME_RETRY_MS, 60000)
+
+  // The key is part of the name: a session called after the title alone is a session to rename.
+  const keyed = { ...row, key_num: 7 }
+  check('not when the keyed name is already right', renameDue(keyed, session({ name: 'K7-New-Name' })), false)
+  check(
+    'yes, when only the key is missing from the live name — where the platform can',
+    renameDue(keyed, session({ name: 'New-Name' })),
+    capabilities.terminal.commands
+  )
+}
+
+// ── The key in front of the session's name ───────────────────────────────────
+section('The key in front of the session’s name')
+{
+  check('key, then title', sessionName({ key_num: 1136, title: 'id nel titolo' }), 'K1136-Id-Nel-Titolo')
+  check('no key: the title alone', sessionName({ title: 'New epic in k0' }), 'New-Epic-In-K0')
+  check('a provisional key is not put in front', sessionName({ key_num: -3, title: 'offline' }), 'Offline')
+  check('its own key at the start is not doubled', sessionName({ key_num: 1136, title: 'K1136 id nel titolo' }), 'K1136-Id-Nel-Titolo')
+  check('nor when written in lower case with a dash', sessionName({ key_num: 1136, title: 'k1136-fix' }), 'K1136-Fix')
+  check('a longer number is not its key', sessionName({ key_num: 11, title: 'K113 fix' }), 'K11-K113-Fix')
+  check('another key at the start stays', sessionName({ key_num: 12, title: 'K3 follow up' }), 'K12-K3-Follow-Up')
+  check('a title that is only the key', sessionName({ key_num: 5, title: 'K5' }), 'K5-Untitled')
+  check('an empty title', sessionName({ key_num: 5, title: '' }), 'K5-Untitled')
+  check('the board’s title rule is unchanged', titleName('fix now 2h '), 'Fix-Now-2h')
+}
+
+// ── Every session of a story carries its name ────────────────────────────────
+// The sessions that were there before the key was in the name, the older sessions of a story and
+// not only the last, a title changed, a provisional key numbered: one function brings them all
+// into line, and a second call writes nothing.
+{
+  const db = await import('../server/db.js')
+  const names = await import('../server/names.js')
+  const nameOf = (id) => transcriptName(transcriptPath(CWD, id))
+
+  const first = write([mode('normal'), { type: 'custom-title', customTitle: 'Old-Name' }])
+  const second = write([mode('normal'), { type: 'custom-title', customTitle: 'Old-Name' }])
+  const made = db.createStory({ title: 'names follow', project_path: CWD })
+  db.attachSession(made.id, first)
+  db.attachSession(made.id, second)
+  db.applyDerivedStatus(made.id, 'IDLE', false)
+  const want = `${made.key}-Names-Follow`
+
+  check('the name read back from a transcript', nameOf(first), 'Old-Name')
+  check('a transcript with no name in it reads as none', transcriptName(transcriptPath(CWD, write([mode('normal')]))), null)
+  check('a transcript that is not there reads as none', transcriptName('/nowhere/at/all.jsonl'), null)
+  check('the index finds every transcript', transcriptIndex().get(second), transcriptPath(CWD, second))
+
+  check('both sessions renamed, the older one too', names.follow(db.getStory(made.id), new Map()), 2)
+  check('the older one carries key and title', nameOf(first), want)
+  check('and so does the last', nameOf(second), want)
+  check('a second pass writes nothing', names.follow(db.getStory(made.id), new Map()), 0)
+
+  db.patchStory(made.id, { title: 'names follow again' })
+  check('a running session is left alone', names.follow(db.getStory(made.id), new Map([[second, {}]])), 1)
+  check('the closed one has the new title', nameOf(first), `${made.key}-Names-Follow-Again`)
+  check('the running one still has the old', nameOf(second), want)
+
+  // The loop's door: a first look — what a restart is — fixes what is wrong, and after that it
+  // acts only on a change.
+  names.forget(made.id)
+  names.keep(db.getStory(made.id), new Map())
+  names.roundDone()
+  check('after a restart the loop catches up the one that was running', nameOf(second), `${made.key}-Names-Follow-Again`)
+  db.patchStory(made.id, { title: 'names follow once more' })
+  names.keep(db.getStory(made.id), new Map())
+  check('and follows a title changed behind its back', nameOf(first), `${made.key}-Names-Follow-Once-More`)
+
+  // Made offline: the title alone, then the key the moment the cloud hands one out.
+  db.useCloudKeys(true)
+  const offline = db.createStory({ title: 'made offline', project_path: CWD })
+  db.useCloudKeys(false)
+  const gone = write([mode('normal')])
+  db.attachSession(offline.id, gone)
+  db.applyDerivedStatus(offline.id, 'IDLE', false)
+  check('a provisional key stays out of the name', sessionName(db.getStory(offline.id)), 'Made-Offline')
+  names.keep(db.getStory(offline.id), new Map())
+  names.roundDone()
+  check('so the session is named by its title', nameOf(gone), 'Made-Offline')
+  db.assignKey('story', offline.id, 9001)
+  names.keep(db.getStory(offline.id), new Map())
+  check('and takes the key once it is real', nameOf(gone), 'K9001-Made-Offline')
+  names.forget(offline.id)
 }
 
 // ── Importing sessions that already happened ─────────────────────────────────

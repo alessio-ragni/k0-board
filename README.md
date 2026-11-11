@@ -317,14 +317,19 @@ are still one counter for the whole board rather than one per repository, kept o
 
   The title normalises as you type: a capital at the start of every word, dashes instead of
   spaces, and the capitals you typed stay where you put them — `fix api` becomes `Fix-Api`, while
-  `Fix API` stays `Fix-API`. What you see in the field is exactly the name the session will have.
+  `Fix API` stays `Fix-API`. What you see in the field is exactly the name the session will have,
+  behind the story's key: `K1136-Fix-API`. With a dozen sessions open, the key is what ties a
+  terminal window, or a line of `claude --resume`, back to its note. A story made offline, while
+  its key is still provisional (`K~3`), names its session by the title alone, and the key goes in
+  front the moment the cloud hands out the real number. A title that already begins with its own
+  key does not get it twice. The title on the note stays as you typed it, without the key.
 
 - **the pencil** (top right of a story) — the only way to open the editor: clicking the story
   itself does nothing. On a story that is already finished, where there is nothing left to edit,
   the **bin** takes its place.
 
-  Changing the title — only the title; the prompt has nothing to do with it — renames the session
-  too, in three places at three moments. The window's title bar, **immediately**, session running
+  Changing the title — only the title; the prompt has nothing to do with it — or the key renames
+  every session the story has had, the older ones too, in three places at three moments. The window's title bar, **immediately**, session running
   or not. The session itself, if it is still running, **the first time you look at it**: when that
   window is the one in front of you and Claude Code is sitting idle with nothing under the cursor,
   k0 types `/rename` with the new name into it and presses Enter — you will see the command go by.
@@ -1890,6 +1895,9 @@ server/
                  never one marked always active (story.keep_alive). Only the deciding: it kills
                  nothing, so every rule in it can be proved without a machine
   watcher.js     reads Claude Code's own files and derives the statuses; also renames a session
+  names.js       keeps every session of every story called by its key and title: the loop asks it
+                 each round, it acts only when a story's name has changed, and its first look after
+                 a start brings the sessions that existed before into line
   usage.js       reads what every session consumed out of its transcripts, a few megabytes at a
                  time and only what is new, plus the statusline's limit samples and which account
                  is signed in; adds it up by the hour for the Usage page. Never asks a model
@@ -2126,7 +2134,10 @@ Field notes the code takes for granted.
   would have the old name written back over it, and the only way into a live one is its own
   `/rename` command — typed at the keyboard. Written into the terminal as one block (Terminal's
   `do script`, a paste) the same line reaches it as a message, and the model answers that it
-  cannot rename the session. The session file is how k0 knows the command took.
+  cannot rename the session. The session file is how k0 knows the command took. Which name a
+  closed transcript goes by is read from its last 64 KB, where those lines always are; that is how
+  the first round after a start can look at every session k0 knows and append a name only where it
+  is wrong.
 - **The transcript is not always under the repository's slug.** A session that moves into a
   worktree writes under the worktree's slug from then on, and a story only knows the repository —
   so a rename looks in the work path, then the repository, then walks the projects directory.
