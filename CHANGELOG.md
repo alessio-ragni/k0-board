@@ -6,6 +6,12 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.9.0]
+
+⌘K finds any story on the board by its number, a word of its title or of its notes, and takes you
+straight to its terminal. A story's session now carries its key in its name, everywhere it shows
+up. And k0-board.com has a short page for every feature, going online with this release.
+
 ### Added
 
 - **⌘K finds any story from anywhere on the board** (Ctrl+K on Windows and Linux). Type its
@@ -926,7 +932,9 @@ here is everything that had to change for it to be somebody else's tool as well.
 - The personal fixtures k0 grew up on. `test/clean.test.mjs` now fails the build if any of them
   come back.
 
-[Unreleased]: https://github.com/alessio-ragni/k0-board/compare/v0.7.0...HEAD
+[Unreleased]: https://github.com/alessio-ragni/k0-board/compare/v0.9.0...HEAD
+[0.9.0]: https://github.com/alessio-ragni/k0-board/compare/v0.8.0...v0.9.0
+[0.8.0]: https://github.com/alessio-ragni/k0-board/compare/v0.7.0...v0.8.0
 [0.7.0]: https://github.com/alessio-ragni/k0-board/compare/v0.6.0...v0.7.0
 [0.6.0]: https://github.com/alessio-ragni/k0-board/compare/v0.5.0...v0.6.0
 [0.5.0]: https://github.com/alessio-ragni/k0-board/compare/v0.4.0...v0.5.0
