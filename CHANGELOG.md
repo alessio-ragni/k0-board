@@ -17,6 +17,15 @@ All notable changes to this project are documented here. The format follows
 
 ### Fixed
 
+- `/k0-work` opens its worktree even when the repository has uncommitted changes. It used to
+  refuse over any of them — including the `.k0/` files the board itself had rewritten a moment
+  before — and the session ended up working in your repository instead. Now k0's own files are
+  never counted, another session's pending files are named and left alone, and the merge at the
+  end stops only if the story changed one of those same files. When a worktree really cannot be
+  opened, the session stops and says why; it no longer offers to work without one.
+- `/k0-plan` ends with one last question: carry the plan out now, or just keep the plan? "Carry it
+  out" is the suggested answer, and with it the same session stores the plan and goes straight on
+  into `/k0-work`, without planning anything twice.
 - Updating k0 no longer makes you grant dictation the Microphone and Accessibility again. The app
   used to get a new signature with every build, and macOS took it for a new app; it is now signed
   with a certificate k0 makes for your Mac once, without asking for a password. The first build

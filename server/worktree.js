@@ -42,6 +42,12 @@ import { getStory, patchSession } from './db.js'
 // about it: `merge` reports `hooks: true` whenever it made a commit, and whoever shows the result
 // tells the user their pre-commit hook ran next door.
 //
+// It does not refuse over uncommitted work that is not in its way. A repository with sessions
+// running in parallel is rarely clean, and in one that commits `.k0/` the board itself has just
+// rewritten a file there. Refusing on any change sent every session back to work in the
+// repository itself — the one thing a worktree exists to prevent. So opening only reports what is
+// pending, and the merge refuses only over a file that is both pending and changed by this work.
+//
 // It never resolves a conflict. There is no way for a program to tell a conflict it has resolved
 // correctly from one it has resolved plausibly, and taking one side to make the command succeed
 // throws away work that somebody typed. A conflict stops everything and says which files.
@@ -184,6 +190,29 @@ async function ahead(repo, base, branch) {
   return Number(out.trim()) || 0
 }
 
+// k0's own readable copy of the backlog. The board rewrites these files whenever a story changes —
+// starting a session, moving a story to Working — so in a repository that commits `.k0/` they are
+// almost always modified, by k0, a moment before the worktree is asked for. They are never written
+// inside a worktree, so they are never in the way of one.
+const OWN = /^\.k0\//
+
+/**
+ * The tracked files with uncommitted changes, staged or not, leaving out k0's own `.k0/` copy.
+ * `--no-renames` so a rename names both of its paths, and `-z` so no path comes back quoted.
+ */
+export async function pending(dir) {
+  const out = await git(['-C', dir, 'diff', '--name-only', '--no-renames', '-z', 'HEAD']).catch(() => '')
+  return out.split('\0').filter((p) => p && !OWN.test(p))
+}
+
+/** The files this branch changed since it left its base. */
+async function changedOn(repo, base, branch) {
+  const out = await git(['-C', repo, 'diff', '--name-only', '--no-renames', '-z', `${base}...${branch}`]).catch(
+    () => ''
+  )
+  return out.split('\0').filter(Boolean)
+}
+
 const branchExists = (repo, branch) =>
   git(['-C', repo, 'show-ref', '--verify', '--quiet', `refs/heads/${branch}`]).then(
     () => true,
@@ -266,13 +295,11 @@ export async function open(session, story = null) {
   if (busy) {
     return fail(`${repo} is in the middle of ${busy}. Finish that first: a worktree opened now would inherit it.`)
   }
-  if (here.dirty) {
-    return fail(
-      `There ${here.dirty === 1 ? 'is 1 change' : `are ${here.dirty} changes`} not committed in ${repo}. ` +
-        'The worktree would start from the last commit and not see them, and they would be in the way of the ' +
-        'merge at the end. Commit or stash them first.'
-    )
-  }
+  // Uncommitted work in the repository does not stop a worktree opening. The worktree starts from
+  // the last commit and will not see it, and the answer says which files those are so the session
+  // can say so; whether they are in the way is a question for the merge, and only for the files
+  // this work also touched.
+  const left = await pending(repo)
 
   const base = here.branch
   try {
@@ -297,7 +324,7 @@ export async function open(session, story = null) {
 
   await keepOutOfSight(repo, dir)
   patchSession(session.id, { work_path: dir })
-  return { ok: true, path: dir, branch, base, repo }
+  return { ok: true, path: dir, branch, base, repo, pending: left }
 }
 
 // ── The commit message ───────────────────────────────────────────────────────
@@ -489,11 +516,27 @@ export async function merge(session) {
   }
   const alsoBusy = await halfway(repo)
   if (alsoBusy) return fail(`${repo} is in the middle of ${alsoBusy}. Finish that first, then merge.`)
-  if (there.dirty) {
-    return fail(
-      `There ${there.dirty === 1 ? 'is 1 change' : `are ${there.dirty} changes`} not committed in ${repo}. ` +
-        'A merge on top of them either refuses halfway or buries them. Commit or stash them first.'
-    )
+  // Uncommitted work in the repository is only in the way when this branch changed the same files:
+  // a merge on top of those either refuses halfway or buries them. Anything else — another
+  // session's edits, k0's own `.k0/` copy — is left exactly where it is by the merge.
+  const left = await pending(repo)
+  if (left.length) {
+    const touched = new Set(await changedOn(repo, base, branch))
+    const both = left.filter((p) => touched.has(p))
+    if (both.length) {
+      return {
+        ...fail(
+          `This work changed ${both.length === 1 ? 'a file' : `${both.length} files`} that also ` +
+            `${both.length === 1 ? 'has' : 'have'} uncommitted changes in ${repo}: ${both.join(', ')}. ` +
+            'A merge on top of them either refuses halfway or buries them, so nothing was merged and the ' +
+            `worktree at ${dir} is untouched. Commit or stash those first.`
+        ),
+        overlap: both,
+        branch,
+        base,
+        path: dir,
+      }
+    }
   }
 
   if (commits) {

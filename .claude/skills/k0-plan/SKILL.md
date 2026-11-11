@@ -1,6 +1,6 @@
 ---
 name: k0-plan
-description: Plans one k0 story in plan mode, with the decisions already taken written into the plan as constraints the plan has to satisfy out loud, then stores the approved plan on the story and moves it to Planned. Use this skill when the user types "/k0-plan" or "/k0-plan K42", or says "plan this story", "let's plan K42", "make the plan before we start", "pianifica questa storia", "facciamo il piano di K42", "prepara il piano". Do not use it to discuss a story that has never been discussed (that is /k0-discuss), to break a story into tasks (/k0-split), or to write any code: this skill plans and never edits a file.
+description: Plans one k0 story in plan mode, with the decisions already taken written into the plan as constraints the plan has to satisfy out loud, then stores the approved plan on the story and moves it to Planned. Use this skill when the user types "/k0-plan" or "/k0-plan K42", or says "plan this story", "let's plan K42", "make the plan before we start", "pianifica questa storia", "facciamo il piano di K42", "prepara il piano". Do not use it to discuss a story that has never been discussed (that is /k0-discuss), to break a story into tasks (/k0-split), or to write any code: this skill plans and never edits a file itself — when the user answers its last question with "execute", it stores the plan and hands the same session over to /k0-work.
 ---
 
 # /k0-plan [key]
@@ -68,6 +68,11 @@ how to ask, and what never to ask. The path is relative to the folder this skill
 the two skills are siblings wherever k0 is installed. Read that file; it is not restated here,
 and if you cannot find it, say so and **stop**. Planning is usually two or three rounds, not
 eight: most of the unknowns were closed by the discussion.
+
+**The last question is always the same one.** However many rounds there were, the final round
+ends — before `ExitPlanMode` — with a single-choice question: *execute it too, or just the plan?*
+"Execute" is the first option and the recommended one; "Just the plan" is the second. No `preview`
+on either, so the user can still type an answer of their own. Keep the answer for §5.
 
 **Keep the planning on tasks.** The task tools work in plan mode, so before the first question
 create one task per phase — reading the story, the rounds of questions, writing the constraints
@@ -151,6 +156,16 @@ there is already a checklist, this third call does not happen at all.
 
 ## 5. Close
 
-Two lines: the story is `Planned`, and `/k0-work` is what does it. Do not start the work, do not
-open a worktree, do not touch a file. That is the next skill's job, and the separation is the
-point: a plan that begins implementing itself was never a plan.
+It depends on the answer to the last question (§2).
+
+- **Just the plan** → two lines: the story is `Planned`, and `/k0-work` is what does it — in this
+  session or any other, since everything it needs is now stored on the story. Do not start the
+  work, do not open a worktree, do not touch a file.
+- **Execute** → one line saying the plan is stored and the work starts now, then follow
+  `/k0-work` on this same story, from its §1, in this same session. Nothing is planned again: the
+  plan, the decisions and the checklist are already on the story, and the code read while planning
+  is still in context. Every step of `/k0-work` still happens — the tasks, the worktree, the Log,
+  the merge and the offer to verify. The path is `../k0-work/SKILL.md`, a sibling of this skill.
+
+What keeps a plan a plan is the order, not the session: it is approved and stored on the story
+before a single file is touched, so the work can always be held up against it afterwards.
