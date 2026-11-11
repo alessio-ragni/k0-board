@@ -1764,7 +1764,7 @@ async function api(req, res, url) {
     // left, whether the session is still alive is part of the answer, because it decides what he
     // can do about it.
     if (req.method === 'POST' && action === 'focus') {
-      const out = await focusWindow(story.terminal_window_id, story.title)
+      const out = await focusWindow(story.terminal_window_id, sessionName(story))
       if (out.handle && String(out.handle) !== String(story.terminal_window_id)) {
         db.setTerminalWindow(id, out.handle)
       }
