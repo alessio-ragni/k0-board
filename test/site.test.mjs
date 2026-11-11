@@ -166,9 +166,15 @@ check('the home page offers all the rest', grid.includes('See all features'), tr
 
 // ── Looking at it before it goes online ──────────────────────────────────────
 section('Looking at it before it goes online')
+// A folder of its own, made and removed here: the checks above are already running while this part
+// waits on the network, and the cleanup they end with would take ROOT away from under the server.
 const { serve } = await import('../site/serve.mjs')
-put('404.html', '<p>lost</p>')
-const server = serve(0, ROOT)
+const SITE = fs.mkdtempSync(path.join(os.tmpdir(), 'k0-site-serve-'))
+fs.mkdirSync(path.join(SITE, 'features', 'colours'), { recursive: true })
+fs.writeFileSync(path.join(SITE, 'index.html'), '<p>home</p>')
+fs.writeFileSync(path.join(SITE, 'features', 'colours', 'index.html'), '<p>colours</p>')
+fs.writeFileSync(path.join(SITE, '404.html'), '<p>lost</p>')
+const server = serve(0, SITE)
 await new Promise((r) => server.on('listening', r))
 const base = `http://127.0.0.1:${server.address().port}`
 const get = async (p) => {
@@ -185,3 +191,4 @@ check('with the site’s own 404 page', lost.text, '<p>lost</p>')
 check('nothing outside the folder is served', (await get('/%2e%2e/%2e%2e/etc/passwd')).status, 404)
 check('the server answers only this machine', server.address().address, '127.0.0.1')
 await new Promise((r) => server.close(r))
+fs.rmSync(SITE, { recursive: true, force: true })
