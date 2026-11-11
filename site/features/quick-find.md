@@ -5,7 +5,7 @@ summary: Press ⌘K on the k0 board to find any Claude Code session by its numbe
 kicker: type, enter, there
 home: yes
 order: 65
-since:
+since: 0.9.0
 updated: 2026-11-11
 related: terminal, views, statuses
 ---
