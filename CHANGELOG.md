@@ -6,6 +6,11 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.9.1]
+
+A story stays with its terminal through `/clear` and `/resume`, instead of being taken for dead
+and opening a second window on the conversation you had just cleared away.
+
 ### Fixed
 
 - `/clear` in a story's terminal no longer cuts the note off from it. The note used to stop
