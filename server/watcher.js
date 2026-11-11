@@ -277,6 +277,35 @@ export function forgetDeadSessions(alive) {
 }
 
 /**
+ * The conversation now running in this story's terminal, when it is not the one the story knows.
+ *
+ * Claude Code's session id belongs to a conversation, not to a process. `/compact` keeps it;
+ * `/clear` starts a new conversation in the same process, under a new id, and so does `/resume`
+ * when it switches to another one. Looked up by the old id, the story found nothing and took its
+ * terminal for dead: the post-it stopped breathing while work went on, and Resume opened a second
+ * window on a conversation that had been cleared away.
+ *
+ * The process is what stays, so the process is what is followed: the pid the story last saw alive
+ * and, where both sides know it, the time that process started — a pid is handed out again once
+ * its process has gone, and the start time is what tells a stranger from the same terminal. With
+no start time on either side there is no telling them apart, and the story is left where it is.
+ *
+ * Whatever is now running there becomes the story's, unless another story already claims it —
+ * `claimedBy` answers which story holds a session id, if any. Returns the new id, or null.
+ */
+export function followTerminal(story, live, claimedBy) {
+  if (story.completed_at || !story.session_id || !story.session_pid || !story.session_proc_start) return null
+  if (live.has(story.session_id)) return null
+  for (const s of live.values()) {
+    if (Number(s.pid) !== Number(story.session_pid) || s.procStart !== story.session_proc_start) continue
+    const owner = claimedBy(s.sessionId)
+    if (owner != null && owner !== story.id) return null
+    return s.sessionId
+  }
+  return null
+}
+
+/**
  * Something is really running behind this status. It is the one question two different places
  * ask: whether a status that survives the death of a process would be a lie, and whether a
  * session may be closed from the board — a session that is grinding away is not.

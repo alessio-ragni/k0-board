@@ -6,7 +6,15 @@ import zlib from 'node:zlib'
 import * as db from './db.js'
 import { allowed } from './guard.js'
 import { ROOT, LOG_DIR } from './paths.js'
-import { readLiveSessions, deriveStatus, forgetSession, forgetDeadSessions, renameSession, busy } from './watcher.js'
+import {
+  readLiveSessions,
+  deriveStatus,
+  followTerminal,
+  forgetSession,
+  forgetDeadSessions,
+  renameSession,
+  busy,
+} from './watcher.js'
 import {
   launch,
   focusWindow,
@@ -57,8 +65,24 @@ function tick() {
   // The directories of the sessions actually running, which is the shorter list git falls back to
   // when nobody is looking at the board. See the call to `git.watch` below.
   const working = new Set()
-  for (const story of db.listStories()) {
+  for (let story of db.listStories()) {
+    // `/clear` or `/resume` inside the story's terminal: same process, another conversation. The
+    // story follows its terminal before anything below asks whether the session is still there —
+    // otherwise the answer would be no, and everything that follows from a session ending would.
+    const moved = followTerminal(story, live, db.storyOfSession)
+    if (moved) {
+      forgetSession(story.session_id)
+      db.rebindSession(story.session_row_id, moved)
+      story = db.getStory(story.id)
+      mirrorStory(story.id)
+    }
     const { status, alive } = deriveStatus(story, live)
+    // The process behind a live session, kept so the story can find its terminal again after the
+    // conversation in it has changed id. Written only when it changed: see `setSessionProcess`.
+    const proc = alive ? live.get(story.session_id) : null
+    if (proc && (Number(proc.pid) !== story.session_pid || (proc.procStart ?? null) !== story.session_proc_start)) {
+      db.setSessionProcess(story.session_row_id, Number(proc.pid), proc.procStart ?? null)
+    }
     // The session has just gone out: now that nobody is rewriting the transcript any more, we
     // put in it the name the story has today. That is how a rename made while the session was
     // running still reaches the list of sessions you can resume.

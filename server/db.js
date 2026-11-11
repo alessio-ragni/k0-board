@@ -366,6 +366,12 @@ addColumns('session_event', [['kind', "TEXT NOT NULL DEFAULT 'session'"]])
 // Which command the interface opened this session with, when it opened it with one. NULL is the
 // ordinary case and the one every session before this had: somebody pressed Start.
 addColumns('session', [['opened_with', 'TEXT']])
+// The process the session runs in, and when that process started: the conversation id changes
+// under `/clear` and `/resume`, the process does not, and it is how the story keeps its terminal.
+addColumns('session', [
+  ['pid', 'INTEGER'],
+  ['proc_start', 'TEXT'],
+])
 
 // Renaming migrations. The loop above only ever adds columns, so anything renamed when k0
 // went from Italian to English needs its own step. These run once and then find nothing to
@@ -1083,6 +1089,7 @@ const STORY_COLUMNS = `
   v.status AS session_status, v.terminal_window_id, v.work_path, v.head_at_start,
   COALESCE(v.auto_send, 0) AS auto_send, COALESCE(v.auto_closed, 0) AS auto_closed,
   v.started_at AS session_started_at, v.ended_at AS session_ended_at, v.opened_with,
+  v.pid AS session_pid, v.proc_start AS session_proc_start,
   CASE
     WHEN s.completed_at IS NOT NULL THEN 'COMPLETED'
     WHEN v.session_id IS NULL OR v.session_id = '' THEN 'BACKLOG'
@@ -1505,6 +1512,60 @@ export function setAutoClosed(storyId, on) {
 /** Where HEAD was when the session started: everything after it is this session's doing. */
 export function setHeadAtStart(storyId, sha) {
   return setSessionColumn(storyId, 'head_at_start', sha || null)
+}
+
+/**
+ * The process the live session runs in, as Claude Code's session file reports it. Written only
+ * when it differs from what the row holds — the watching loop calls this on every live story on
+ * every round, and an update on `session` also queues the row for the cloud. Returns how many
+ * rows it wrote: none, almost always.
+ */
+export function setSessionProcess(sessionRowId, pid, procStart = null) {
+  return q(`
+    UPDATE session SET pid = ?, proc_start = ?
+    WHERE id = ? AND (pid IS NOT ? OR proc_start IS NOT ?)
+  `).run(pid ?? null, procStart ?? null, sessionRowId, pid ?? null, procStart ?? null).changes
+}
+
+/**
+ * The story's terminal has moved on to another conversation — `/clear`, or `/resume` inside it —
+ * and the story moves with it.
+ *
+ * The conversation before is closed off rather than written over, though nobody will resume it
+ * from here: its transcript is still on disk, its tokens are still on the usage page, and a row
+ * of its own is what keeps both of them the story's — and keeps `/k0-import` from offering it
+ * back as a session the board knows nothing about. The new row carries on everything that belongs
+ * to the terminal rather than to the conversation: the window, the worktree, where HEAD was, what
+ * it was opened to do, the process.
+ */
+export function rebindSession(sessionRowId, sessionId) {
+  const old = q('SELECT * FROM session WHERE id = ?').get(sessionRowId)
+  if (!old) return
+  const at = now()
+  q('UPDATE session SET alive = 0, ended_at = COALESCE(ended_at, ?) WHERE id = ?').run(at, old.id)
+  q(`
+    INSERT INTO session (story_id, session_id, alive, status, terminal_window_id, work_path, head_at_start,
+                         auto_send, opened_with, pid, proc_start, started_at)
+    VALUES (?, ?, 1, 'IDLE', ?, ?, ?, ?, ?, ?, ?, ?)
+  `).run(
+    old.story_id,
+    sessionId,
+    old.terminal_window_id,
+    old.work_path,
+    old.head_at_start,
+    old.auto_send,
+    old.opened_with,
+    old.pid,
+    old.proc_start,
+    // After the row it replaces, always: the newest row is the current session, and two rows
+    // born in the same millisecond would leave that to the id.
+    Math.max(at, old.started_at + 1)
+  )
+}
+
+/** The story holding a session id on any of its rows, or null. */
+export function storyOfSession(sessionId) {
+  return q('SELECT story_id FROM session WHERE session_id = ? LIMIT 1').get(sessionId)?.story_id ?? null
 }
 
 /** What a caller outside db.js may change on a session row, and nothing else. */

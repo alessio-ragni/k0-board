@@ -6,6 +6,16 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+### Fixed
+
+- `/clear` in a story's terminal no longer cuts the note off from it. The note used to stop
+  breathing as if the terminal had closed, and Resume opened a second window on the conversation
+  you had just cleared away. Now it follows its terminal onto the new conversation, goes on showing
+  what it is doing, and Resume picks up the one you are in. The same goes for `/resume` onto
+  another conversation inside that terminal, unless that conversation already belongs to another
+  story. `/compact` never had the problem. What the session spent before the clear still counts
+  for the story on the Usage page.
+
 ## [0.9.0]
 
 ⌘K finds any story on the board by its number, a word of its title or of its notes, and takes you
