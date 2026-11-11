@@ -36,9 +36,12 @@ const REFS = {
   story_log: { story_id: 'story' },
 }
 
-/** What stays on this machine: which terminal window, which folder, which commit it started at. */
+/**
+ * What stays on this machine: which terminal window, which folder, which commit it started at,
+ * which process it runs in.
+ */
 const LOCAL_ONLY = {
-  session: ['terminal_window_id', 'work_path', 'head_at_start'],
+  session: ['terminal_window_id', 'work_path', 'head_at_start', 'pid', 'proc_start'],
 }
 
 /**

@@ -2153,6 +2153,13 @@ Field notes the code takes for granted.
   `TaskCreate`, is told it is disabled for the session, and carries on without. The variable is
   read once, when the process starts, so a session opened before k0 set it gets the tools only by
   being resumed.
+- **`/clear` changes the session id; `/compact` does not.** The id belongs to the conversation,
+  not to the process: after `/clear` — or a `/resume` onto another conversation — the same pid's
+  `~/.claude/sessions/<pid>.json` names a new id, and looked up by the old one the story's terminal
+  seemed to have died while it went on working. So the session row remembers the pid and the time
+  that process started, and the watching loop moves the story onto whatever conversation now runs
+  in that process — unless another story already holds it. The start time is not optional: a pid
+  is handed out again once its process has gone, and without it the story is left where it is.
 - **While a dialog is open, the call that caused it is not yet in the transcript.** A plan to
   approve and a question are told apart by the `waitingFor` field of the session file:
   `permission prompt` is the plan, `input needed` is the question.

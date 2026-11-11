@@ -126,6 +126,8 @@ at a time — and the newest is "the session" everywhere else in k0.
 | `auto_send` | INTEGER | `1` if the prompt is sent without waiting for you to press Enter |
 | `auto_closed` | INTEGER | `1` when it was k0 that shut the terminal after a long silence, rather than you. Only there to choose one word over another at the bottom of the note; cleared the moment there is a window again |
 | `opened_with` | TEXT | The command the interface opened it with — `k0-plan`, `k0-discuss` — or nothing when somebody pressed Start |
+| `pid` | INTEGER | The process it runs in, as the session file last reported it while it was alive |
+| `proc_start` | TEXT | When that process started, as the session file says it. With `pid`, it tells the same terminal from a stranger that inherited the number |
 | `started_at` | INTEGER | Milliseconds |
 | `ended_at` | INTEGER | When the process went, or nothing while it is running |
 
@@ -135,6 +137,14 @@ Indexed by `(story_id, started_at DESC)`, which is how the current session is fo
 about the session that has not started yet — whether it sends its prompt by itself — which is
 before Claude Code has given it an id. The board reads a row with no session id as no session at
 all, which is exactly what it is.
+
+`pid` and `proc_start` are how a story keeps its terminal when the conversation in it changes.
+`/clear` — and `/resume` onto another conversation — gives the same process a new `session_id`;
+k0 finds the process by those two columns, closes the row it had off and opens a new one for the
+conversation now running there, carrying over the window, the worktree, `head_at_start`,
+`opened_with` and the process itself. The closed row stays so the conversation before the clear is
+still the story's on the Usage page and is not offered again by `/k0-import`. Neither column leaves
+the machine: like the window, the worktree and `head_at_start`, they mean nothing anywhere else.
 
 `opened_with` is what keeps a story from being called worked-on because somebody pressed "Discuss
 it". A live session moves a story out of `Backlog`, `Discussed` or `Planned` into `Working` by
