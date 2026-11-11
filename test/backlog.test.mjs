@@ -613,7 +613,10 @@ section('When everything is waiting on something')
   const api = db.createStory({ project_path: REPO, title: 'The API', state: 'Planned' })
   const page = db.createStory({ project_path: REPO, title: 'The page', state: 'Planned' })
   db.addDependency(api.id, page.id)
-  db.addDependency(page.id, api.id)
+  // The board refuses the second half of this now — see "Arrows" below — so it is written by
+  // hand, the way a database older than that refusal, or a hand-edited `.k0/`, would have it.
+  check('the board itself will not close the ring', db.addDependency(page.id, api.id), false)
+  byHand('INSERT INTO dependency (story_id, depends_on) VALUES (?, ?)', page.id, api.id)
 
   // Two stories waiting on each other is the shape that has no unblocked answer at all. It still
   // has to hand one back: a board that says "nothing" while two post-its are open is a board the
@@ -643,6 +646,86 @@ section('A dependency on a story that is gone')
   check('rather than leaving the story blocked by nothing',
     backlog.publicStory(db.getStory(report.id)).blocked, false)
   check('and what to do now hands it straight back', backlog.next(REPO).story.id, report.id)
+}
+
+// ── Arrows ───────────────────────────────────────────────────────────────────
+// A dependency is what the board draws as an arrow, from the story that waits to the one it
+// waits on. The story these tell is a release in one repository waiting on three pieces of work,
+// one of them next door — which is the reason arrows exist at all.
+section('Arrows')
+{
+  const HERE = '/tmp/k0-backlog-arrows-here'
+  const THERE = '/tmp/k0-backlog-arrows-there'
+  const release = db.createStory({ project_path: HERE, title: 'The release' })
+  const fix = db.createStory({ project_path: HERE, title: 'The fix' })
+  const schema = db.createStory({ project_path: THERE, title: 'The schema' })
+  const seed = db.createStory({ project_path: THERE, title: 'The seed data' })
+  const alone = db.createStory({ project_path: HERE, title: 'Nothing to do with it' })
+  const story = (s) => db.getStory(s.id)
+  const sorted = (ids) => [...ids].sort((a, b) => a - b).join(' ')
+
+  check('a key names its story from any repository', backlog.storyAnywhere(schema.key).id, schema.id)
+  check('with or without the letter', backlog.storyAnywhere(schema.key.slice(1)).id, schema.id)
+  check('a key nobody has is nobody', backlog.storyAnywhere('K999999'), null)
+  check('and so is something that is not a key', backlog.storyAnywhere('the schema'), null)
+
+  check('an arrow is drawn', backlog.link(story(release), story(fix)).ok, true)
+  check('and one into another repository', backlog.link(story(release), story(schema)).ok, true)
+  check('and one from there onwards', backlog.link(story(schema), story(seed)).ok, true)
+  check('the release waits on both', db.dependenciesOf(release.id).length, 2)
+
+  check('downstream is what it waits on, all the way down',
+    sorted(backlog.downstreamOf(release.id)), sorted([fix.id, schema.id, seed.id]))
+  check('and never what waits on it', sorted(backlog.downstreamOf(schema.id)), sorted([seed.id]))
+  check('the chain goes both ways', sorted(backlog.chainOf(seed.id)), sorted([release.id, fix.id, schema.id]))
+  check('and leaves out what is joined to nothing', backlog.chainOf(alone.id).length, 0)
+
+  // The refusals. Each has to name the stories: "a loop" tells nobody which arrow to take off.
+  const self = backlog.link(story(release), story(release))
+  check('a story cannot wait for itself', `${self.ok} ${self.code}`, 'false 400')
+  const back = backlog.link(story(fix), story(release))
+  check('the arrow straight back is refused', `${back.ok} ${back.code}`, 'false 409')
+  check('saying who already waits on whom', back.error.startsWith(`${release.key} already waits on ${fix.key}`), true)
+  const ring = backlog.link(story(seed), story(release))
+  check('and so is the one that closes a longer ring', ring.code, 409)
+  check('naming every story on the way round',
+    ring.error.startsWith(`${release.key} waits on ${schema.key} waits on ${seed.key} already`), true)
+  check('nothing was drawn by either', db.dependenciesOf(seed.id).length + db.dependenciesOf(fix.id).length, 0)
+  check('a story that is not there is said to be', backlog.link(story(release), null).code, 404)
+  check('the walk that finds the ring says nothing when there is none', db.dependencyLoop(alone.id, release.id), null)
+
+  // Turned round: what waited is now waited for.
+  check('an arrow is turned round', backlog.link(story(release), story(fix), { flip: true }).ok, true)
+  check('the fix waits on the release now', db.dependenciesOf(fix.id)[0].id, release.id)
+  check('and the release no longer on the fix', db.dependenciesOf(release.id).map((d) => d.id).join(), `${schema.id}`)
+  // seed → fix → release → schema → seed would be a ring only once this arrow is turned.
+  backlog.link(story(seed), story(fix))
+  const turned = backlog.link(story(seed), story(fix), { flip: true })
+  check('turning one round is refused when that would close a ring', turned.code, 409)
+  check('and the arrow is left as it was', db.dependenciesOf(seed.id)[0].id, fix.id)
+  backlog.link(story(seed), story(fix), { remove: true })
+  check('an arrow is taken off', db.dependenciesOf(seed.id).length, 0)
+
+  // The whole chain, for a session that has to act on it.
+  db.addLogEntry(schema.id, { text: 'migration written, not yet run' })
+  db.setState(seed.id, 'Done')
+  const view = backlog.linkedView(release.id)
+  const of = (s) => view.stories.find((x) => x.key === s.key)
+  check('the chain has everything but the story it was asked about', view.stories.length, 3)
+  check('each with the repository it is filed under', of(schema).repo, THERE)
+  check('and where it stands', of(seed).state, 'Done')
+  check('and the last thing its Log says', of(schema).last_log, 'migration written, not yet run')
+  check('an empty Log is an empty string', of(seed).last_log, '')
+  check('what the release waits on is marked downstream', of(schema).downstream && of(seed).downstream, true)
+  check('what waits on the release is not', of(fix).downstream, false)
+  check('the arrows are given by key', view.edges.some((e) => e.from === release.key && e.to === schema.key), true)
+  check('all three of them', view.edges.length, 3)
+  check('a story with no arrows has an empty chain', backlog.linkedView(alone.id).stories.length, 0)
+  check('and a story that is not there has none at all', backlog.linkedView(999999), null)
+
+  db.deleteStory(schema.id)
+  check('deleting a story takes its arrows with it, both ways',
+    db.allDependencies().some((e) => e.from === schema.id || e.to === schema.id), false)
 }
 
 // ── How far an epic has got ──────────────────────────────────────────────────

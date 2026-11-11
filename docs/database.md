@@ -279,8 +279,20 @@ The list is replaced whole, never merged: half an old list and half a new one is
 
 ## `dependency`
 
-What waits on what. Two columns, both stories, both `ON DELETE CASCADE`, and together the primary
-key. A story is *blocked* when any story it depends on is not `Done`.
+What waits on what, and what the board draws as an arrow: from `story_id`, the story that waits,
+to `depends_on`, the story it waits on. Two columns, both stories, both `ON DELETE CASCADE`, and
+together the primary key. A story is *blocked* when any story it depends on is not `Done`.
+
+The two stories may be filed under different repositories: nothing here knows about repositories,
+and a key names one story on the whole board. A row that would close a ring — a story waiting on
+itself, two waiting on each other, or a longer way round — is refused before it is written
+(`dependencyLoop` in `server/db.js`), so the table is a set of chains and never a circle; a
+database older than that refusal may still hold one, and everything that walks the table stops at
+a story it has already seen.
+
+In `.k0/` the row is the `depends_on` line of the story that waits, by key. Read back, a key that
+is not in that repository's folder is looked for on the whole board, so an arrow into another
+repository survives as long as the story it points at is there.
 
 ## `round`
 

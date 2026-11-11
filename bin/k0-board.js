@@ -302,6 +302,7 @@ const SKILLS = [
   ['k0-verify', 'the counter-check, one decision at a time'],
   ['k0-next', 'what to pick up now, and why'],
   ['k0-order', 'priority and dependencies, dictated'],
+  ['k0-arrows', 'what a story is joined to, in any repository, and the arrows themselves'],
   // Not a command but a mod: nobody types it, Claude Code loads it from the same directory and it
   // turns the files and artifacts named in a reply into links while k0 is running.
   ['k0-links', 'what the last reply pointed at, one click away above the prompt', 'mod'],

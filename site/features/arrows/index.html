@@ -1,0 +1,117 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Arrows between notes — k0</title>
+  <meta name="description" content="Draw arrows between Claude Code sessions on the k0 board, across repositories, to show which story waits on which — then close or finish a whole chain at once.">
+  <link rel="canonical" href="https://k0-board.com/features/arrows/">
+  <meta property="og:type" content="article">
+  <meta property="og:site_name" content="k0">
+  <meta property="og:url" content="https://k0-board.com/features/arrows/">
+  <meta property="og:title" content="Arrows between notes — k0">
+  <meta property="og:description" content="Draw arrows between Claude Code sessions on the k0 board, across repositories, to show which story waits on which — then close or finish a whole chain at once.">
+  <meta name="twitter:card" content="summary">
+  <meta name="theme-color" content="#f3f1ea" media="(prefers-color-scheme: light)">
+  <meta name="theme-color" content="#1b1a17" media="(prefers-color-scheme: dark)">
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Caveat:wght@500;700&family=Instrument+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap">
+  <link rel="stylesheet" href="/site.css">
+  <script type="application/ld+json">{"@context":"https://schema.org","@type":"TechArticle","headline":"Arrows between notes","description":"Draw arrows between Claude Code sessions on the k0 board, across repositories, to show which story waits on which — then close or finish a whole chain at once.","url":"https://k0-board.com/features/arrows/","dateModified":"2026-11-11","isPartOf":{"@type":"WebSite","name":"k0","url":"https://k0-board.com/"},"about":{"@type":"SoftwareApplication","name":"k0","applicationCategory":"DeveloperApplication"}}</script>
+</head>
+<body>
+  <a class="skip" href="#main">Skip to content</a>
+
+  <header class="wrap site-header">
+    <a class="logo" href="/" aria-label="k0, home">k0</a>
+    <nav class="site-nav" aria-label="Main">
+      <a href="/features/">Features</a>
+      <a href="/features/statuses/">How it works</a>
+      <a href="/#pricing">Pricing</a>
+      <a href="https://github.com/alessio-ragni/k0-board">GitHub</a>
+      <a href="/app/">Sign in</a>
+    </nav>
+    <a class="btn" href="/#access">Get early access</a>
+  </header>
+
+  <main id="main" class="wrap feature">
+    <nav class="crumbs" aria-label="Breadcrumb"><a href="/features/">Features</a> <span aria-hidden="true">/</span> <span>Arrows between notes</span></nav>
+    <div class="feature-top">
+      <div class="feature-copy">
+        <p class="kicker">this waits on that</p>
+        <h1>Arrows between notes</h1>
+        <p class="lede">Draw arrows between Claude Code sessions on the k0 board, across repositories, to show which story waits on which — then close or finish a whole chain at once.</p>
+      </div>
+      <figure class="art" aria-hidden="true">
+<div class="art-stage">
+          <div class="mini big blue"><b>K1177 · extract</b><i>Handover</i><small>waits on 2</small><svg class="mark" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="5.5" cy="18.5" r="2" fill="currentColor"/><path d="M8 16C11 13 13 11 18 6.5"/><path d="M12.5 6h6v6"/></svg></div>
+          <div class="mini yellow"><b>K1154 · one</b><i>Database errors</i><small>Your turn</small></div>
+          <div class="mini grey"><b>K1133 · one</b><i>Stuck analysis</i><small>Done</small></div>
+          <span class="chip">K1177 → K1154</span>
+          <span class="chip">Flip · Remove</span>
+        </div>
+      </figure>
+    </div>
+
+    <article class="prose">
+<h2>Work is joined up, and a board of separate notes does not say so</h2>
+<p>A handover that needs a fix in another repository first. A release that waits on three stories.
+With a dozen sessions open, which of them belong together is something you carry in your head —
+until you draw it. An arrow goes <strong>from the note that waits to the note it waits on</strong>, and it can
+leave one repository's column and land in another's.</p>
+<h2>Why it matters</h2>
+<p>The arrow is the same fact k0 already used for <em>waits on</em>: while the story at the far end is not
+<code>Done</code>, the one that waits carries a small chain mark and asks once before it is started. It is a
+note to yourself, never a lock. What is new is that you draw it with the pointer, you can see the
+whole chain at a glance, and you can act on the chain as one thing.</p>
+<h2>How to use it</h2>
+<ul><li>Put the pointer on a note: an <strong>arrow mark</strong> appears at the bottom right, left of the sun. <strong>Press it and drag</strong> onto another note, then let go. The board slides when you near an edge, so a note three columns away is reached by dragging towards it.</li><li>The board at rest shows <strong>no arrows</strong>. A note that has some keeps its mark lit, with the count. Put the pointer on it and its whole chain is drawn; click the mark and it stays until you click elsewhere.</li><li><strong>Click an arrow</strong> for two words: <strong>Flip</strong> turns it round, <strong>Remove</strong> takes it away.</li><li>On the note the arrows leave, <strong>Close</strong> offers to close the sessions of the stories it waits on, and <strong>Done</strong> offers to mark them done too. <em>Only this one</em> is always the other answer.</li><li>In a terminal, <code>/k0-arrows</code> tells Claude what the story of that session is joined to — in any repository, with where each one stands and what its log last said — and draws, removes or turns an arrow when you say so: <em>link this to K1154</em>.</li></ul>
+<h2>Small print</h2>
+<ul><li>An arrow that would leave stories waiting on each other for ever is refused, and k0 says which stories: <em>K12 already waits on K7</em>.</li><li>A finished story keeps its arrows, faded. An arrow shows only when both its notes are on the board, so with <code>Done</code> hidden those are gone. A deleted story takes its arrows with it.</li><li>Closing or finishing a chain follows the arrows the way they point, never back up them, and leaves alone any session that is working.</li><li>Arrows need the <a href="/features/backlog/">backlog</a> switched on. The list view writes them as <em>waits on</em> in the panel beside a row instead of drawing them.</li></ul>
+    </article>
+
+    <section class="more-features" aria-labelledby="more-title">
+      <h2 id="more-title">Keep reading</h2>
+      <div class="grid">
+        <a class="card feature-card" href="/features/backlog/">
+          <h3>Decide it, then check it</h3>
+          <p>Epics, stories and tasks, discussed in rounds, every decision written down — and the finished work checked against each one.</p>
+          <span class="more" aria-hidden="true">Read more →</span>
+        </a>
+        <a class="card feature-card" href="/features/statuses/">
+          <h3>Seven colours, one glance</h3>
+          <p>Every session is a sticky note, and its colour says whose move it is — yours or Claude's.</p>
+          <span class="more" aria-hidden="true">Read more →</span>
+        </a>
+        <a class="card feature-card" href="/features/idle-close/">
+          <h3>The sessions you forget, closed for you</h3>
+          <p>k0 shows what each session weighs, and after twelve idle hours closes the forgotten ones. Resume picks them up again.</p>
+          <span class="more" aria-hidden="true">Read more →</span>
+        </a>
+      </div>
+      <p class="pager">
+        <a href="/features/backlog/">← Decide it, then check it</a>
+        <a class="btn btn-outline" href="/features/">All features</a>
+        <a href="/features/worktree/">Work next door, merge back →</a>
+      </p>
+    </section>
+
+    <section class="cta" aria-label="Get early access">
+      <p>k0 is in early access. Leave your address and you will hear when your account is ready.</p>
+      <a class="btn" href="/#access">Get early access</a>
+    </section>
+  </main>
+
+  <footer class="wrap site-footer">
+    <span>k0 · source-available under the Sustainable Use License · made by Alessio Ragni</span>
+    <span class="footer-links">
+      <a href="/features/">Features</a>
+      <a href="https://github.com/alessio-ragni/k0-board">GitHub</a>
+      <a href="/privacy.html">Privacy</a>
+      <a href="/terms.html">Terms</a>
+    </span>
+  </footer>
+</body>
+</html>

@@ -6,6 +6,34 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+Arrows between notes: drag from one story to another, in the same repository or a different one,
+to say that the first waits on the second.
+
+### Added
+
+- **Arrows.** Every note has a third mark at the bottom right, left of the sun. Press it and drag
+  onto another note — the board slides when you near an edge — and an arrow is drawn from the note
+  that waits to the note it waits on, across repositories if need be. The board at rest stays
+  clean: a note with arrows keeps the mark lit, and the whole chain is drawn when the pointer is
+  on one of its notes, or stays up when you click the mark. Click an arrow for **Flip** and
+  **Remove**. Arrows into finished stories are faded, and gone when `Done` is hidden.
+- **Close and Done can take the linked stories with them.** On a note that arrows leave, Close
+  offers to close the sessions of the stories it waits on as well, and Done offers to mark them
+  `Done` too. A story that is working, or one whose counter-check found a decision broken, is left
+  alone and named.
+- **`/k0-arrows`**, a new command: what the story of this session is joined to, in any
+  repository, where each of those stands and what its Log last said — and drawing, removing or
+  turning an arrow round by saying so.
+
+### Changed
+
+- An arrow is the *waits on* k0 already had, so the chain mark and the question before starting a
+  blocked story now follow what you draw. Two stories can no longer be made to wait on each other:
+  the arrow that would close the ring is refused, with a sentence naming the stories.
+- `/k0-order` takes a dependency on a story in another repository: a key now names one story on
+  the whole board.
+- A `.k0/` folder read back keeps the arrows that point into another repository.
+
 ## [0.9.1]
 
 A story stays with its terminal through `/clear` and `/resume`, instead of being taken for dead

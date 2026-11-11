@@ -677,6 +677,36 @@ the one note k0 never closes for sitting idle — a session that never goes to r
 lit, its disc filled, once it is on. It has its own paragraph where the closing is
 explained, under *And the ones you forget, k0 closes for you*.
 
+**And left of the sun, an arrow.** Stories are joined to each other more often than a board of
+separate notes admits — a handover that needs a fix in another repository, a release that waits on
+three pieces of work — and the arrow is how you say so. Press it, drag onto another note and let
+go: the arrow is drawn **from the note that waits to the note it waits on**, and it may cross from
+one repository's column into another's. The board slides when the pointer nears an edge, so a note
+three columns away is reached by dragging towards it; a note that is not on the board — filtered
+out, or folded into `Old` — has to be brought back before anything can be joined to it.
+
+- **The board at rest shows no arrows.** A note that has any keeps its arrow mark lit, with the
+  count beside it. Put the pointer on such a note and the whole chain it belongs to is drawn —
+  every arrow that can be reached from it, either way, with the notes outlined — and goes again
+  when the pointer leaves. Click the mark and it stays until you click somewhere else.
+- **Click an arrow** and two words appear on it: **Flip**, which turns it round, and **Remove**.
+- **An arrow means "waits on"**, so it is the same fact as the warning in the foot of the note:
+  while what a story waits on is not `Done` the note carries the chain mark, and starting it asks
+  once. It is a note to yourself and not a lock.
+- **An arrow that would close a ring is refused**, with a sentence that names the stories —
+  *K12 already waits on K7* — because two stories waiting on each other wait for ever.
+- **A finished story keeps its arrows, faded.** An arrow is drawn when both its notes are on the
+  board, so with `Done` hidden the arrows into finished work are not there. A deleted story takes
+  its arrows with it.
+- **Close and Done ask, on the note the arrows leave.** If the stories it waits on still have a
+  session open, **Close** offers to close them too; if they are not finished, **Done** offers to
+  mark them `Done` as well. *Only this one* is always the other answer. It follows the arrows the
+  way they point and never back up them; a story that is working is left alone, and so is one the
+  counter-check found broken, and the board says which.
+
+The list draws no arrows: there the same fact is the line *waits on … and is waited on by …* in
+the panel beside a row. In a terminal it is [`/k0-arrows`](#the-ten-commands).
+
 **Click an epic's label and the board becomes that epic.** A strip appears under the top bar with
 its key, its title, its repository, a progress bar and `4 of 11 done`, and the way back out. Inside
 the lane the label is not drawn on the notes — everything in here belongs to the same epic, and
@@ -714,7 +744,7 @@ was always the wrong gesture — states move from the terminal, and from the Don
 
 ### The ten commands
 
-Ten you type, and the installer offers eleven — these ten plus
+Eleven you type, and the installer offers twelve — these eleven plus
 [`/k0-import`](#filling-the-board-with-what-you-have-already-done) — and one more thing that is not a
 command at all, [the `k0-links` mod](#what-claude-points-at-one-click-away). `/k0-whatsnew` and
 `/k0-changelog` are deliberately not on that list: k0 runs those two itself, out of its own
@@ -732,8 +762,10 @@ directory, and you never type them.
 | `/k0-verify` | the counter-check |
 | `/k0-next` | what to pick up now, and why |
 | `/k0-order` | priority and dependencies, dictated: *K51 to the top, K42 waits on K37, flag K19* |
+| `/k0-arrows` | what a story is joined to, in this repository or any other — where each one stands and what its Log last said — and the arrows themselves: draw one, remove it, turn it round |
 
-These ten are also the only ten a button on the board may start. They are written out by name in
+The first ten are also the only ten a button on the board may start; `/k0-arrows` is only ever
+typed. They are written out by name in
 the server and checked against that list before anything reaches a command line — and it is a list
 and not a directory listing on purpose: a folder arriving in your skills directory, from a clone or
 a package or an installer, must not thereby become something a web page can ask k0 to run.
@@ -1980,6 +2012,13 @@ web/             the pages (html, css, js served exactly as they are)
                  server learns somebody is watching
   md.js          markdown laid out, written by hand because nothing here is compiled
   recency.js     which repositories are still warm, and which fold away into `Old`
+  arrows.js      the arrows between notes, without a page: which there are (read off the `deps`
+                 every story already carries), what a story reaches along them, the arrow that
+                 would close a ring, and the curve between two rectangles
+  arrowboard.js  the same arrows on the board: an <svg> inside `#board`, so it slides and zooms
+                 with the notes, put back at the end of every render; the drag that draws a new
+                 one — the board is not redrawn while one is in the air, and view.js goes on
+                 sliding at the edges for it — and Flip and Remove where one is clicked
   fuzzy.js       searching the names: the letters you type, in the order you type them — the
                  file viewer, the repository the new story goes in, and the repository menu on
                  the bar, which is drawn here rather than left to the system
@@ -2002,6 +2041,7 @@ web/             the pages (html, css, js served exactly as they are)
   k0-verify/     the counter-check: every decision one by one, the checklist, the outcome
   k0-next/       what to pick up now, and why — the server decides, not the model
   k0-order/      priority and dependencies, dictated
+  k0-arrows/     the chain a story belongs to, across repositories, and its arrows
   k0-links/      not a skill but a mod: hooks Claude Code runs inside itself. At the end of each
                  reply it finds the addresses, folders and documents the reply named, asks the
                  disk what each path is and k0, on loopback, which documents its viewer has

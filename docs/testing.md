@@ -178,8 +178,10 @@ The two big browser files, `web/board.js` and `web/files.js`, are not tested eit
 written against the DOM, and testing them would mean either a browser or a fake one, and the fake
 one is a dependency. What was worth extracting from them already has been — the markdown
 renderer, the fuzzy search, the mentions, the references, the rule that decides which repositories
-are still warm, and the two that turn a configuration file into something readable (`web/json.js`,
-`web/conf.js`) all live in files of their own and are covered.
+are still warm, the arrows between notes (`web/arrows.js`: which there are, what a story reaches
+along them, and the curve between two rectangles — the layer that draws them, `web/arrowboard.js`,
+is DOM and is not), and the two that turn a configuration file into something readable
+(`web/json.js`, `web/conf.js`) all live in files of their own and are covered.
 
 Those last two are worth a word, because they are the shape to copy. Both take a string and return
 a string of HTML: no DOM, no page, nothing to fake. So `test/json.test.mjs` can prove the thing
