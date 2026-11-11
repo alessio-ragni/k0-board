@@ -312,7 +312,10 @@ const tieMark = (story) => {
   ].filter(Boolean)
   const how = 'Drag onto another note to draw an arrow: this one waits on that one'
   const why = n ? `${said.join(' · ')}. Click to keep the arrows showing. ${how}` : how
-  return `<button type="button" class="tie${n ? ' on' : ''}" title="${esc(why)}" aria-label="${esc(why)}">${ICON.tie}${
+  // Which way the little arrow points says which end of an arrow this note is: up and away when
+  // arrows leave it, down and in when they only arrive, both heads when it is in the middle.
+  const icon = t.in.length && t.out.length ? ICON.tieBoth : t.in.length ? ICON.tieIn : ICON.tie
+  return `<button type="button" class="tie${n ? ' on' : ''}" title="${esc(why)}" aria-label="${esc(why)}">${icon}${
     n > 1 ? n : ''
   }</button>`
 }
@@ -560,6 +563,10 @@ const ICON = {
   // note that has one: an outline on every other note is a mark that says nothing.
   // An arrow leaving a dot: what the handle does, drawn the size of the handle.
   tie: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="5.5" cy="18.5" r="2" fill="currentColor"/><path d="M8 16C11 13 13 11 18 6.5"/><path d="M12.5 6h6v6"/></svg>',
+  // The same arrow arriving: it comes down from the top left and lands on the dot.
+  tieIn: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="18.5" cy="18.5" r="2" fill="currentColor"/><path d="M5 5C9 9 11 11 15 15"/><path d="M9.5 15.5h6v-6"/></svg>',
+  // And a note in the middle of a chain, which has both: one line, a head at each end.
+  tieBoth: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 18L18 6"/><path d="M12 6h6v6"/><path d="M12 18H6v-6"/></svg>',
   flag: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 21V4"/><path d="M6 4.5h11.5l-2.4 3.8 2.4 3.7H6" fill="currentColor"/></svg>',
   // Always active: a sun that is lit, because the point is that this one never goes to rest. The
   // disc fills when it is set, so the mark reads as on from across the room and not only by colour.

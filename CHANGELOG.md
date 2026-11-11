@@ -15,7 +15,8 @@ to say that the first waits on the second.
   onto another note — the board slides when you near an edge — and an arrow is drawn from the note
   that waits to the note it waits on, across repositories if need be. The board at rest stays
   clean: a note with arrows keeps the mark lit, and the whole chain is drawn when the pointer is
-  on one of its notes, or stays up when you click the mark. Click an arrow for **Flip** and
+  on one of its notes, or stays up when you click the mark. The mark itself points up and away
+  on a note arrows leave, down and in on one they only arrive at, and both ways in between. Click an arrow for **Flip** and
   **Remove**. Arrows into finished stories are faded, and gone when `Done` is hidden.
 - **Close and Done can take the linked stories with them.** On a note that arrows leave, Close
   offers to close the sessions of the stories it waits on as well, and Done offers to mark them
