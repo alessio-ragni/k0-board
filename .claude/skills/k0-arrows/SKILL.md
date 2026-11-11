@@ -1,6 +1,6 @@
 ---
 name: k0-arrows
-description: Reads and draws the arrows between stories on the k0 board — which stories the one in this session is joined to, in this repository or any other, which way each arrow points, where each of them stands and what its Log last said — and draws, removes or turns an arrow round when the user says so. Use this skill when the user types "/k0-arrows" or "/k0-arrows K42", or says "what is this story linked to", "show me the linked stories", "check everything this release waits on", "link this to K1154", "K42 waits on K37 in the other repository", "remove the arrow to K19", "turn that arrow round", "a cosa è collegata questa storia", "fammi vedere i collegati", "controlla tutti i post-it collegati", "collega questa a K1154", "togli la freccia verso K19", "inverti la freccia". Do not use it to reorder or star stories (that is /k0-order), to decide what to work on next (/k0-next), or to close or finish the linked stories — that is a button on the board, and it asks first.
+description: Reads and draws the arrows between stories on the k0 board — which stories the one in this session is joined to, in this repository or any other, which way each arrow points, where each of them stands and what its Log last said — and draws, removes or turns an arrow round when the user says so. Use this skill when the user types "/k0-arrows" or "/k0-arrows K42", or says "what is this story linked to", "show me the linked stories", "check everything this release waits on", "link this to K58", "K42 waits on K37 in the other repository", "remove the arrow to K19", "turn that arrow round", "a cosa è collegata questa storia", "fammi vedere i collegati", "controlla tutti i post-it collegati", "collega questa a K58", "togli la freccia verso K19", "inverti la freccia". Do not use it to reorder or star stories (that is /k0-order), to decide what to work on next (/k0-next), or to close or finish the linked stories — that is a button on the board, and it asks first.
 ---
 
 # /k0-arrows [key] [what to draw, remove or turn]
@@ -53,8 +53,8 @@ An empty `stories` means the story has no arrows. Say that in one line and stop.
 
 In the user's language, the stories that are waited on first:
 
-> K1177 Handover-VP waits on K1154 Errori-DB (astika-one-vp, Working — "migration written, not
-> yet run") and on K1133 Analisi-Bloccata (astika-one-vp, Planned).
+> K61 Release 2.0 waits on K58 Rate limits (api, Working — "migration written, not yet run")
+> and on K47 New pricing page (website, Planned).
 
 Name the repository whenever it is not the one you are in. Do not print a table, and do not
 recap stories that are Done unless he asked about them — say how many are done and leave it there.
@@ -86,7 +86,7 @@ one of the keys names nothing on the board: say which, and do not guess at anoth
 
 Then one line, a receipt and not a report:
 
-> K42 now waits on K37 (astika-one-vp), which is still Planned.
+> K42 now waits on K37 (api), which is still Planned.
 
 ## Rules
 

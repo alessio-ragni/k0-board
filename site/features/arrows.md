@@ -36,7 +36,7 @@ whole chain at a glance, and you can act on the chain as one thing.
   on, and **Done** offers to mark them done too. *Only this one* is always the other answer.
 - In a terminal, `/k0-arrows` tells Claude what the story of that session is joined to — in any
   repository, with where each one stands and what its log last said — and draws, removes or
-  turns an arrow when you say so: *link this to K1154*.
+  turns an arrow when you say so: *link this to K58*.
 
 ## Small print
 

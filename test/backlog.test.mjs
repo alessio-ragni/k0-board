@@ -698,13 +698,14 @@ section('Arrows')
   check('an arrow is turned round', backlog.link(story(release), story(fix), { flip: true }).ok, true)
   check('the fix waits on the release now', db.dependenciesOf(fix.id)[0].id, release.id)
   check('and the release no longer on the fix', db.dependenciesOf(release.id).map((d) => d.id).join(), `${schema.id}`)
-  // seed → fix → release → schema → seed would be a ring only once this arrow is turned.
-  backlog.link(story(seed), story(fix))
-  const turned = backlog.link(story(seed), story(fix), { flip: true })
+  // The release waits on the seed data twice over: straight, and through the schema. Turning the
+  // straight arrow round would have the seed waiting on a release that still waits on it.
+  check('a second road to the same story is fine', backlog.link(story(release), story(seed)).ok, true)
+  const turned = backlog.link(story(release), story(seed), { flip: true })
   check('turning one round is refused when that would close a ring', turned.code, 409)
-  check('and the arrow is left as it was', db.dependenciesOf(seed.id)[0].id, fix.id)
-  backlog.link(story(seed), story(fix), { remove: true })
-  check('an arrow is taken off', db.dependenciesOf(seed.id).length, 0)
+  check('and the arrow is left as it was', db.dependenciesOf(release.id).some((d) => d.id === seed.id), true)
+  backlog.link(story(release), story(seed), { remove: true })
+  check('an arrow is taken off', db.dependenciesOf(release.id).map((d) => d.id).join(), `${schema.id}`)
 
   // The whole chain, for a session that has to act on it.
   db.addLogEntry(schema.id, { text: 'migration written, not yet run' })

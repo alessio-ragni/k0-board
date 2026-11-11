@@ -46,10 +46,10 @@
       </div>
       <figure class="art" aria-hidden="true">
 <div class="art-stage">
-          <div class="mini big blue"><b>K1177 · extract</b><i>Handover</i><small>waits on 2</small><svg class="mark" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="5.5" cy="18.5" r="2" fill="currentColor"/><path d="M8 16C11 13 13 11 18 6.5"/><path d="M12.5 6h6v6"/></svg></div>
-          <div class="mini yellow"><b>K1154 · one</b><i>Database errors</i><small>Your turn</small></div>
-          <div class="mini grey"><b>K1133 · one</b><i>Stuck analysis</i><small>Done</small></div>
-          <span class="chip">K1177 → K1154</span>
+          <div class="mini big blue"><b>K61 · website</b><i>Release 2.0</i><small>waits on 2</small><svg class="mark" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="5.5" cy="18.5" r="2" fill="currentColor"/><path d="M8 16C11 13 13 11 18 6.5"/><path d="M12.5 6h6v6"/></svg></div>
+          <div class="mini yellow"><b>K58 · api</b><i>Rate limits</i><small>Your turn</small></div>
+          <div class="mini grey"><b>K47 · website</b><i>Pricing page</i><small>Done</small></div>
+          <span class="chip">K61 → K58</span>
           <span class="chip">Flip · Remove</span>
         </div>
       </figure>
@@ -67,7 +67,7 @@ leave one repository's column and land in another's.</p>
 note to yourself, never a lock. What is new is that you draw it with the pointer, you can see the
 whole chain at a glance, and you can act on the chain as one thing.</p>
 <h2>How to use it</h2>
-<ul><li>Put the pointer on a note: an <strong>arrow mark</strong> appears at the bottom right, left of the sun. <strong>Press it and drag</strong> onto another note, then let go. The board slides when you near an edge, so a note three columns away is reached by dragging towards it.</li><li>The board at rest shows <strong>no arrows</strong>. A note that has some keeps its mark lit, with the count. Put the pointer on it and its whole chain is drawn; click the mark and it stays until you click elsewhere.</li><li><strong>Click an arrow</strong> for two words: <strong>Flip</strong> turns it round, <strong>Remove</strong> takes it away.</li><li>On the note the arrows leave, <strong>Close</strong> offers to close the sessions of the stories it waits on, and <strong>Done</strong> offers to mark them done too. <em>Only this one</em> is always the other answer.</li><li>In a terminal, <code>/k0-arrows</code> tells Claude what the story of that session is joined to — in any repository, with where each one stands and what its log last said — and draws, removes or turns an arrow when you say so: <em>link this to K1154</em>.</li></ul>
+<ul><li>Put the pointer on a note: an <strong>arrow mark</strong> appears at the bottom right, left of the sun. <strong>Press it and drag</strong> onto another note, then let go. The board slides when you near an edge, so a note three columns away is reached by dragging towards it.</li><li>The board at rest shows <strong>no arrows</strong>. A note that has some keeps its mark lit, with the count. Put the pointer on it and its whole chain is drawn; click the mark and it stays until you click elsewhere.</li><li><strong>Click an arrow</strong> for two words: <strong>Flip</strong> turns it round, <strong>Remove</strong> takes it away.</li><li>On the note the arrows leave, <strong>Close</strong> offers to close the sessions of the stories it waits on, and <strong>Done</strong> offers to mark them done too. <em>Only this one</em> is always the other answer.</li><li>In a terminal, <code>/k0-arrows</code> tells Claude what the story of that session is joined to — in any repository, with where each one stands and what its log last said — and draws, removes or turns an arrow when you say so: <em>link this to K58</em>.</li></ul>
 <h2>Small print</h2>
 <ul><li>An arrow that would leave stories waiting on each other for ever is refused, and k0 says which stories: <em>K12 already waits on K7</em>.</li><li>A finished story keeps its arrows, faded. An arrow shows only when both its notes are on the board, so with <code>Done</code> hidden those are gone. A deleted story takes its arrows with it.</li><li>Closing or finishing a chain follows the arrows the way they point, never back up them, and leaves alone any session that is working.</li><li>Arrows need the <a href="/features/backlog/">backlog</a> switched on. The list view writes them as <em>waits on</em> in the panel beside a row instead of drawing them.</li></ul>
     </article>
