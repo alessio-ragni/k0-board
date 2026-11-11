@@ -825,7 +825,88 @@ body {
 .postit.flagged.keep-alive { border-color: var(--warn); }
 /* The room the flag needs. It sits over the row of buttons, which is empty space until you hover:
    this is what stops the last of them running underneath it once they come out. */
-.postit .actions { padding-right: 48px; }
+.postit .actions { padding-right: 74px; }
+
+/* The arrow: the third of the three, one place further left. Pressed and dragged onto another
+   note it draws an arrow to it; clicked, it keeps this note's arrows showing. Lit, with the count
+   beside it, when the note has any — which is how a note says it is joined to others while the
+   arrows themselves stay out of sight. */
+.postit .tie {
+  position: absolute;
+  right: 58px;
+  bottom: 6px;
+  height: 24px;
+  min-width: 24px;
+  padding: 0 3px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 1px;
+  border-radius: 6px;
+  background: none;
+  border-color: transparent;
+  box-shadow: none;
+  color: rgba(0, 0, 0, .35);
+  font: 600 .68rem/1 var(--mono);
+  opacity: 0;
+  cursor: grab;
+  touch-action: none;
+  transition: opacity .12s ease;
+}
+.postit .tie svg { width: 16px; height: 16px; display: block; }
+.postit:hover .tie, .postit .tie:focus-visible { opacity: 1; }
+.postit .tie:hover { background: rgba(255, 255, 255, .72); border-color: rgba(0, 0, 0, .14); }
+.postit .tie.on { opacity: 1; color: var(--ink); }
+
+/* The layer the arrows are drawn on. It lies over the whole board and lets everything through
+   except the wide invisible twin of each arrow, which is what a click lands on. */
+#arrows {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+  pointer-events: none;
+  z-index: 3;
+}
+#arrows .arrow {
+  fill: none;
+  stroke: var(--ink);
+  stroke-width: 2;
+  stroke-linecap: round;
+  marker-end: url(#arrow-head);
+}
+#arrows .head { fill: var(--ink); }
+/* One of its two stories is finished: the arrow is history, and looks it. */
+#arrows .arrow.faded { opacity: .28; }
+#arrows .arrow.draft { stroke-dasharray: 6 6; }
+#arrows .hit {
+  fill: none;
+  stroke: transparent;
+  stroke-width: 16;
+  pointer-events: stroke;
+  cursor: pointer;
+}
+/* The notes of the chain that is showing, and the one an arrow in the air is over. */
+.postit.linked, .postit.link-target { box-shadow: 0 0 0 2px var(--ink), 0 6px 14px rgba(0, 0, 0, .18); }
+.postit.link-refused { box-shadow: 0 0 0 2px var(--warn); cursor: not-allowed; }
+.board.linking, .board.linking * { cursor: grabbing; user-select: none; }
+
+/* Flip and Remove, where the arrow was clicked. */
+#arrow-menu {
+  position: fixed;
+  z-index: 40;
+  transform: translate(-50%, -120%);
+  display: flex;
+  gap: 4px;
+  padding: 4px;
+  background: #fffdf7;
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, .16);
+}
+#arrow-menu button { padding: 4px 10px; font-size: .82rem; }
 
 /* ── The last column: every repository ────────────────────────────────
    Headings only, one per repository, in the order you last used them. No cards and no counts:
@@ -1202,3 +1283,5 @@ dialog.finder input:focus { outline: none; border-color: #bdb6a5; }
   color: var(--ink);
 }
 .finder kbd:not(:first-child) { margin-left: 8px; }
+
+#confirm-alt[hidden] { display: none; }

@@ -36,11 +36,12 @@ Several instructions in one breath is the normal case, not the exception.
    That one file has every key, title, state, star, `sort_hint` and dependency you need.
    Do not ask the user for any of it and do not fetch it twice.
 
-2. **Resolve what he named.** `K42` is a key; *the login one* is a title. Keys are per
-   repository, so `K42` here is not `K42` next door — resolve inside the repository you are in.
-   If a key is not on this board, say so and ask which repository; do not guess at another one.
-   If a description matches two stories, ask which. Never act on a key you have not seen in the
-   file.
+2. **Resolve what he named.** `K42` is a key; *the login one* is a title. A key names one story
+   on the whole board, whichever repository it is filed under. Position and stars are about this
+   repository's list, so a story named for those has to be in the file from step 1 — if it is
+   not, say so. A dependency may point into another repository: its far end need not be in the
+   file, and is sent by key (see step 4). If a description matches two stories, ask which. Never
+   act on a key you have not seen in an answer from the server.
 
 3. **Work out every change before sending one.** The list is small, so hold it whole: a
    contradiction inside one breath — *K7 to the top, and K7 after K12* — is caught now, and
@@ -85,7 +86,10 @@ Several instructions in one breath is the normal case, not the exception.
      -H 'content-type: application/json' -d '{"story_id": 42, "depends_on": 37}'
    ```
 
-   Removing one is the same call with `"remove": true`.
+   Removing one is the same call with `"remove": true`. When either end is in another
+   repository, send keys in place of ids — `{"story_key": "K42", "depends_on_key": "K37"}` — and
+   the server finds them wherever they are. A dependency is what the board draws as an arrow;
+   `/k0-arrows` is the skill that reads a whole chain of them.
 
 5. **Say what you did, in one line.** In his language, keys and what changed, nothing else:
 
@@ -105,9 +109,8 @@ leaves a story waiting on something unfinished, that goes in the same receipt li
 Two things are worth stopping for, and both are mistakes rather than priorities:
 
 - **a story depending on itself** — say so and do not send it;
-- **a loop** — K42 waits on K37, which already waits on K42. You can see it in the `deps` of the
-  file you read in step 1. Name the loop, do not send the call, and let him choose which edge he
-  actually meant.
+- **a loop** — K42 waits on K37, which already waits on K42. The server refuses it with a
+  sentence that names the stories; read it out and let him choose which edge he actually meant.
 
 ## Rules
 

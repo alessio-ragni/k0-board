@@ -214,8 +214,9 @@ db.exec(`
     at         INTEGER NOT NULL
   );
 
-  -- The next key to hand out in each repository. It is a counter and not a MAX(): a key is
-  -- never reused, so deleting K42 must not make the next story K42 again.
+  -- The next key to hand out. It is a counter and not a MAX(): a key is never reused, so
+  -- deleting K42 must not make the next story K42 again. Keys are one series for the whole
+  -- account now; the column is called project_path because it once was one per repository.
   CREATE TABLE IF NOT EXISTS key_seq (
     project_path TEXT PRIMARY KEY,
     next         INTEGER NOT NULL
@@ -1181,6 +1182,16 @@ export function getStoryByKey(projectPath, keyNum) {
   return q(storyQuery('WHERE s.project_path = ? AND s.key_num = ?')).get(projectPath, Number(keyNum))
 }
 
+/**
+ * The same story found by its key alone, whichever repository it is filed under.
+ *
+ * Keys are one series for the whole account, so `K42` names one story wherever it is asked from —
+ * and an arrow drawn from one repository to another has only the key to go by.
+ */
+export function getStoryByKeyAnywhere(keyNum) {
+  return q(storyQuery('WHERE s.key_num = ?')).get(Number(keyNum))
+}
+
 export function storiesOfProject(projectPath) {
   return q(storyQuery('WHERE s.project_path = ?')).all(projectPath)
 }
@@ -2128,9 +2139,46 @@ export function dependentsOf(storyId) {
   `).all(storyId)
 }
 
+/** Every arrow there is, as bare pairs: what the walks over a whole chain are made from. */
+export function allDependencies() {
+  return q('SELECT story_id AS "from", depends_on AS "to" FROM dependency').all()
+}
+
+/**
+ * The stories that would wait on each other for ever if `storyId` were made to wait on `dependsOn`.
+ *
+ * It walks from `dependsOn` along what each story waits for; arriving at `storyId` means the new
+ * arrow closes a ring. What comes back is that road — `dependsOn` first, `storyId` last — so the
+ * refusal can name the stories instead of saying "a loop", or null when the arrow is harmless.
+ */
+export function dependencyLoop(storyId, dependsOn) {
+  const from = Number(storyId)
+  const start = Number(dependsOn)
+  if (from === start) return [from]
+  const next = new Map()
+  for (const d of allDependencies()) next.set(d.from, [...(next.get(d.from) ?? []), d.to])
+  const came = new Map([[start, null]])
+  const queue = [start]
+  while (queue.length) {
+    const at = queue.shift()
+    if (at === from) {
+      const road = []
+      for (let n = at; n != null; n = came.get(n)) road.unshift(n)
+      return road
+    }
+    for (const n of next.get(at) ?? []) {
+      if (came.has(n)) continue
+      came.set(n, at)
+      queue.push(n)
+    }
+  }
+  return null
+}
+
 export function addDependency(storyId, dependsOn) {
-  // A story that waits for itself would be blocked for ever, and nothing would say why.
-  if (Number(storyId) === Number(dependsOn)) return false
+  // A story that waits for itself would be blocked for ever, and nothing would say why — and two
+  // that wait for each other, or a ring of five, are the same thing with more steps.
+  if (dependencyLoop(storyId, dependsOn)) return false
   q('INSERT OR IGNORE INTO dependency (story_id, depends_on) VALUES (?, ?)').run(storyId, dependsOn)
   return true
 }

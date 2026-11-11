@@ -45,6 +45,7 @@
     ".claude/skills/k0-discuss",
     ".claude/skills/k0-split",
     ".claude/skills/k0-order",
+    ".claude/skills/k0-arrows",
     ".claude/skills/k0-verify",
     ".claude/skills/k0-next",
     ".claude/skills/k0-whatsnew",

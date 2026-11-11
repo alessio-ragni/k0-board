@@ -7,6 +7,8 @@ import { drawList, leaveList } from '/list.js'
 import { search as fuzzy } from '/fuzzy.js'
 import { whileVisible } from '/awake.js'
 import { rank, snippet } from '/finder.js'
+import { downstream, edgesFrom, ties } from '/arrows.js'
+import { drawArrows, initArrows, linking } from '/arrowboard.js'
 
 // ── Statuses ───────────────────────────────────────────────────────
 // The order is the attention priority inside a column: first whoever is waiting for you,
@@ -81,6 +83,10 @@ const held = new Set()
 // Whether this board has a backlog behind it. The server holds the switch and says so on every
 // round; with it off the board is the board it has always been, down to the buttons on a post-it.
 let backlogOn = false
+// The stories and the arrows of the board as it was last drawn. The marks on a note and the
+// questions Close and Done ask are about more than the one story they are handed.
+let drawn = []
+let arrows = []
 
 // Which shape the same stories come in: the board as it has always been, or a list. Remembered
 // like the filters and the folded columns are, because it is the same kind of choice — how you
@@ -284,6 +290,33 @@ const keepMark = (story) => {
       title="${esc(why)}" aria-label="${esc(why)}">${ICON.keep}</button>`
 }
 
+/**
+ * The arrow, the third mark at the bottom right, left of the sun.
+ *
+ * It is the handle a new arrow is pulled out of — press, drag onto another note, let go — and the
+ * only sign, on a board at rest, that a note is joined to others: the arrows themselves are drawn
+ * when the pointer is on one of their notes, or when this is clicked, and not otherwise. An arrow
+ * says the note it leaves waits on the note it points at, so it is the same fact as the chain in
+ * the foot; the chain says "not yet", this says "to whom".
+ */
+const tieMark = (story) => {
+  const t = ties(story.id, arrows)
+  const n = t.out.length + t.in.length
+  const name = (id) => {
+    const s = drawn.find((x) => x.id === id)
+    return s ? `${s.key ?? ''} ${s.title}`.trim() : 'a story that is not on the board'
+  }
+  const said = [
+    t.out.length ? `Waits on ${t.out.map(name).join(', ')}` : '',
+    t.in.length ? `Waited on by ${t.in.map(name).join(', ')}` : '',
+  ].filter(Boolean)
+  const how = 'Drag onto another note to draw an arrow: this one waits on that one'
+  const why = n ? `${said.join(' · ')}. Click to keep the arrows showing. ${how}` : how
+  return `<button type="button" class="tie${n ? ' on' : ''}" title="${esc(why)}" aria-label="${esc(why)}">${ICON.tie}${
+    n > 1 ? n : ''
+  }</button>`
+}
+
 // ── The epic you are standing in ───────────────────────────────────
 
 function readLane() {
@@ -386,6 +419,7 @@ function postit(story, now) {
       <span class="since" title="${LABEL[story.status]} for ${since(story.status_since, now)}">${since(story.status_since, now)}</span>
     </div>
     <div class="actions"></div>
+    ${backlogOn && !story.completed_at ? tieMark(story) : ''}
     ${keepMark(story)}
     ${backlogOn ? flagMark(story) : ''}`
 
@@ -479,6 +513,9 @@ function postit(story, now) {
     setKeepAlive(story)
   }
   keep.addEventListener('dblclick', (e) => e.stopPropagation())
+  // The arrow's handle answers the pointer, in arrowboard.js; all it needs here is for a double
+  // click on it not to be taken for one on the note.
+  el.querySelector('.tie')?.addEventListener('dblclick', (e) => e.stopPropagation())
 
   // The git mark is a link: a double click on it would open two tabs and bring the terminal to
   // the front into the bargain. Double clicks do not reach it.
@@ -521,6 +558,8 @@ const ICON = {
   dep: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M10 14l4-4"/><path d="M13.5 7.5l1-1a3.5 3.5 0 1 1 5 5l-1 1"/><path d="M10.5 16.5l-1 1a3.5 3.5 0 1 1-5-5l1-1"/></svg>',
   // Flagged. Filled, and drawn once — there is no empty flag, because the mark is only ever on a
   // note that has one: an outline on every other note is a mark that says nothing.
+  // An arrow leaving a dot: what the handle does, drawn the size of the handle.
+  tie: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="5.5" cy="18.5" r="2" fill="currentColor"/><path d="M8 16C11 13 13 11 18 6.5"/><path d="M12.5 6h6v6"/></svg>',
   flag: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 21V4"/><path d="M6 4.5h11.5l-2.4 3.8 2.4 3.7H6" fill="currentColor"/></svg>',
   // Always active: a sun that is lit, because the point is that this one never goes to rest. The
   // disc fills when it is set, so the mark reads as on from across the room and not only by colour.
@@ -704,6 +743,8 @@ const byAttention = (a, b) =>
 
 function render(data) {
   const board = $('#board')
+  drawn = data.stories ?? []
+  arrows = backlogOn ? edgesFrom(drawn) : []
 
   // The list is a page that scrolls; the board is a surface that moves under a fixed window. The
   // class is what takes the one out of the other — see list.css — and it goes on before anything is
@@ -862,6 +903,8 @@ function render(data) {
   }
   showEmpty(columns.length === 0, inEpic, only)
   refit() // the board changed size: the view comes back inside its limits
+  // Last, because an arrow is drawn between where two notes ended up.
+  if (!asList) drawArrows(backlogOn ? drawn : [])
 }
 
 /**
@@ -1311,6 +1354,51 @@ function ask(text, { yes = 'Delete', destructive = true } = {}) {
   })
 }
 
+/**
+ * The same dialog with a third way out, for the one question that has three answers: this story
+ * alone, or the ones it waits on as well, or nothing after all. It answers `'one'`, `'all'` or null.
+ */
+function choose(text, { one, all }) {
+  const dlg = $('#confirm')
+  const alt = $('#confirm-alt')
+  return new Promise((resolve) => {
+    $('#confirm-text').textContent = text
+    const go = $('#confirm-yes')
+    go.textContent = all
+    go.className = 'primary'
+    alt.textContent = one
+    alt.hidden = false
+    const close = (answer) => {
+      alt.hidden = true
+      dlg.close()
+      resolve(answer)
+    }
+    go.onclick = () => close('all')
+    alt.onclick = () => close('one')
+    $('#confirm-no').onclick = () => close(null)
+    dlg.onclose = () => {
+      alt.hidden = true
+      resolve(null)
+    }
+    dlg.showModal()
+  })
+}
+
+/** The stories a story waits on, all the way down, that `keep` says there is something to do to. */
+function waitedFor(id, keep) {
+  const ids = new Set(downstream(id, arrows))
+  return drawn.filter((s) => ids.has(s.id) && keep(s))
+}
+
+const named = (stories) => stories.map((s) => `${s.key ?? ''} ${s.title}`.trim()).join(', ')
+
+/** What became of the others, in the words of the toast: how many, and which were walked past. */
+function groupSaid(verb, answer) {
+  const done = answer.done?.length ?? 0
+  const skipped = (answer.skipped ?? []).map((s) => `${s.key} (${s.why})`).join(', ')
+  return `${verb} this one and ${done} more.${skipped ? ` Left alone: ${skipped}.` : ''}`
+}
+
 async function remove(story) {
   if (!(await ask(`Delete “${story.title}”?`))) return
   // A delete that cannot go through must say so. Without this the confirmation closed, the note
@@ -1328,10 +1416,21 @@ async function remove(story) {
  * to leave and given the time to — so it says what it is doing while it waits.
  */
 async function closeSession(id) {
+  // Asked only where arrows leave: the story that waits is the one that knows what it waits on.
+  const open = waitedFor(id, (s) => s.session_id && s.session_alive && !s.completed_at)
+  let all = false
+  if (open.length) {
+    const answer = await choose(`This one waits on ${named(open)}, still open. Close ${open.length === 1 ? 'it' : 'them'} too?`, {
+      one: 'Only this one',
+      all: `Close all ${open.length + 1}`,
+    })
+    if (!answer) return
+    all = answer === 'all'
+  }
   toast('Closing the terminal…', 10000)
   try {
-    await api(`/api/story/${id}/close`, { method: 'POST' })
-    toast('Closed. Resume picks the conversation up where it was')
+    const answer = await api(`/api/story/${id}/close`, { method: 'POST', body: JSON.stringify({ downstream: all }) })
+    toast(all ? groupSaid('Closed', answer) : 'Closed. Resume picks the conversation up where it was', all ? 8000 : 4000)
   } catch (e) {
     toast(`Couldn't do it: ${e.message}`, 8000)
   }
@@ -1348,8 +1447,21 @@ async function closeSession(id) {
  * because it is a paragraph and not an acknowledgement.
  */
 async function setCompleted(id, completed) {
+  let all = false
+  if (completed) {
+    const open = waitedFor(id, (s) => !s.completed_at)
+    if (open.length) {
+      const answer = await choose(`This one waits on ${named(open)}, not done yet. Mark ${open.length === 1 ? 'it' : 'them'} Done too?`, {
+        one: 'Only this one',
+        all: `Done, all ${open.length + 1}`,
+      })
+      if (!answer) return
+      all = answer === 'all'
+    }
+  }
   try {
-    await api(`/api/story/${id}`, { method: 'PATCH', body: JSON.stringify({ completed }) })
+    const answer = await api(`/api/story/${id}`, { method: 'PATCH', body: JSON.stringify({ completed, downstream: all }) })
+    if (all) toast(groupSaid('Done:', answer), 8000)
   } catch (e) {
     toast(refusal(e), 12000)
   }
@@ -2015,6 +2127,9 @@ async function refresh() {
         c.epic_key,
         c.epic_title,
         c.blocked,
+        // Which stories, and not only whether: an arrow turned round or moved to another note
+        // leaves `blocked` exactly as it was and the board would go on drawing the old one.
+        (c.deps ?? []).map((d) => `${d.id}:${d.state}`).join(),
         // The label on the one button that says what to do next. It can change without anything
         // else on the row changing, and a suggestion nothing noticed would stay wrong until
         // something else moved. The command as well as the label, because `Ultracode` appears and
@@ -2027,7 +2142,9 @@ async function refresh() {
       data.columns.map((col) => [col.path, gitSig(col.git), serverSig(col.server)]),
       (data.projects ?? []).map((p) => [p.path, gitSig(p.git)]),
     ])
-    if (sig !== lastSignature) {
+    // An arrow in the air is held by a note, and a redraw would take that note out from under
+    // it. The signature is left alone too, so the change is drawn the moment the arrow lands.
+    if (sig !== lastSignature && !linking()) {
       lastSignature = sig
       render(data)
     }
@@ -2051,6 +2168,14 @@ async function loadProjects() {
 
 async function boot() {
   initView() // before anything else: render() assumes the view is already there
+  initArrows({
+    api,
+    toast,
+    redraw: () => {
+      lastSignature = ''
+      refresh()
+    },
+  })
   renderFilters()
   renderColumnsSwitch() // hidden until the first answer says there is a backlog
   wireFinder()

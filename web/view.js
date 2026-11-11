@@ -114,7 +114,11 @@ function velocity() {
   // browser cancels the pointer when it starts and reports no move until it ends, so `held` goes
   // false and the last position before the drag stands. Without this the board slides under
   // whatever is in the air, on the reading of where the pointer was a second ago.
-  if (scrolling() || held || !inside || document.querySelector('dialog[open], .dragging')) return [0, 0]
+  // An arrow being drawn is a button held down too, and it is the one case where the board must
+  // go on sliding: the note the arrow is for may be three columns off the screen, and dragging to
+  // the edge is the only way there. arrowboard.js puts the class on for exactly as long as that.
+  const stay = held && !board.classList.contains('linking')
+  if (scrolling() || stay || !inside || document.querySelector('dialog[open], .dragging')) return [0, 0]
   const ramp = (d) => {
     const t = 1 - d / EDGE
     return t > 0 ? t * t : 0

@@ -1009,8 +1009,15 @@ function restore(repoPath, report) {
     if (parent && parent !== id && !descends(parent, id)) db.patchStory(id, { parent_story_id: parent })
     else if (parent) report.skipped.push({ file: `stories/K${f.key}`, why: 'its parent is one of its own tasks' })
     for (const dep of listValue(f.data.depends_on)) {
-      const on = storyIds.get(keyNumber(dep))
-      if (on) db.addDependency(id, on)
+      // An arrow may point into another repository, whose folder is not the one being read: the
+      // key is then looked for on the whole board, where it names the same story. A story that
+      // is not there yet stays unlinked — this file is the only place that arrow is written.
+      const on = storyIds.get(keyNumber(dep)) ?? db.getStoryByKeyAnywhere(keyNumber(dep))?.id
+      if (!on) continue
+      if (!db.addDependency(id, on)) {
+        const why = `waiting on ${dep} would close a ring of stories waiting on each other`
+        report.skipped.push({ file: `stories/K${f.key}`, why })
+      }
     }
   }
 

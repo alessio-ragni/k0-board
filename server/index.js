@@ -986,6 +986,53 @@ function sweepRepo(repo) {
   mirror.syncRepo(repo)
 }
 
+// ── A story and what it waits for, together ───────────────────────────────────
+/** Stops a story's session and shuts its window, and forgets the window: Resume opens a new one. */
+async function closeStorySession(story) {
+  const pid = readLiveSessions().get(story.session_id)?.pid
+  const out = await closeTerminal({ winId: story.terminal_window_id, pid })
+  db.setTerminalWindow(story.id, null)
+  db.setAutoClosed(story.id, false) // this one was you: the post-it must not say otherwise
+  return out
+}
+
+/**
+ * Does one thing to every story downstream of `id`, and keeps the two lists the answer needs:
+ * which it was done to, and which were walked past and why. `act` answers with a reason to skip,
+ * with `false` for a story there was nothing to do to, or with nothing at all when it did it.
+ */
+async function overDownstream(id, act) {
+  const done = []
+  const skipped = []
+  for (const n of backlog.downstreamOf(id)) {
+    const s = db.getStory(n)
+    if (!s) continue
+    const why = await act(s)
+    if (why === false) continue
+    if (why) skipped.push({ key: s.key, title: s.title, why })
+    else done.push({ key: s.key, title: s.title })
+  }
+  return { done, skipped }
+}
+
+async function closeLinked(s) {
+  if (!s.session_id || !(s.session_alive || s.terminal_window_id)) return false
+  if (busy(s.status)) return 'it is working'
+  await closeStorySession(s)
+}
+
+async function finishLinked(s) {
+  if (s.completed_at) return false
+  if (backlog.enabled()) {
+    const may = backlog.mayFinish(s.id)
+    if (!may.ok) return 'its last counter-check found a decision broken'
+  }
+  if (s.session_id && busy(s.status)) return 'it is working'
+  if (s.session_id) await closeStorySession(s)
+  db.setCompleted(s.id, true)
+  mirrorStory(s.id)
+}
+
 async function backlogApi(req, res, url, seg) {
   // Switched off, every door answers the same way and none of them answers with an empty backlog:
   // "there is nothing here" and "you turned this off" look identical to a skill and read identically
@@ -1155,6 +1202,7 @@ async function backlogApi(req, res, url, seg) {
 
     if (!third && req.method === 'GET') return send(res, 200, backlog.storyView(id))
     if (third === 'live' && req.method === 'GET') return send(res, 200, backlog.liveView(id))
+    if (third === 'linked' && req.method === 'GET') return send(res, 200, backlog.linkedView(id))
 
     if (!third && req.method === 'PATCH') {
       const fields = { ...body }
@@ -1335,14 +1383,18 @@ async function backlogApi(req, res, url, seg) {
 
   // ── What waits on what ───────────────────────────────────────────────────
   if (kind === 'dependency' && req.method === 'POST') {
-    const from = db.getStory(Number(body.story_id))
-    const on = db.getStory(Number(body.depends_on))
-    if (!from || !on) return send(res, 404, { error: 'One of those stories is not on the board' })
-    if (body.remove) db.removeDependency(from.id, on.id)
-    else if (!db.addDependency(from.id, on.id)) {
-      return send(res, 400, { error: 'A story cannot wait for itself' })
-    }
-    return wrote(res, backlog.publicStory(db.getStory(from.id)), mirrorStory(from.id))
+    // By id from the board, which drew the post-its and has them; by key from a skill, which has
+    // what the user said out loud — and a key is looked for in every repository, because the
+    // point of an arrow is that it may leave the one it starts in.
+    const named = (id, key) => (id != null ? db.getStory(Number(id)) : backlog.storyAnywhere(key))
+    const from = named(body.story_id, body.story_key)
+    const on = named(body.depends_on, body.depends_on_key)
+    const done = backlog.link(from, on, { remove: !!body.remove, flip: !!body.flip })
+    if (!done.ok) return send(res, done.code, { error: done.error })
+    // Both files: `depends_on` is written on the story that waits, and a flip changes which that is.
+    const note = mirrorStory(from.id)
+    if (body.flip) mirrorStory(on.id)
+    return wrote(res, backlog.publicStory(db.getStory(from.id)), note)
   }
 
   // ── The worktree ─────────────────────────────────────────────────────────
@@ -1751,6 +1803,11 @@ async function api(req, res, url) {
         await closeTerminal({ winId: story.terminal_window_id, pid: readLiveSessions().get(story.session_id)?.pid })
       }
       if ('completed' in b) updated = db.setCompleted(id, done)
+      // Done asked for the stories this one was waiting for as well. Each is put through the same
+      // door — the refusal over a broken decision, the terminal closed first — and one that is
+      // refused does not stop the others: it is named in the answer.
+      const group = done && b.downstream ? await overDownstream(id, finishLinked) : null
+      if (group) updated = { ...updated, ...group }
       followName(story, updated)
       // The readable copy follows an edit made on the board exactly as it follows one made by a
       // skill: the title in the file's name is the title, and a story renamed here would otherwise
@@ -1805,16 +1862,17 @@ async function api(req, res, url) {
     // session, shut its window — and none of the marking. The story stays where it is, with the
     // status it had, and Resume picks the conversation up where it was.
     if (req.method === 'POST' && action === 'close') {
+      const b = await readBody(req).catch(() => ({}))
       if (!story.session_id) return send(res, 400, { error: 'This story has no session' })
       // The board is up to a second behind, so a story that was idle when it was clicked may have
       // started thinking since. Nothing that is working gets stopped from here.
       if (busy(story.status)) return send(res, 409, { error: 'It is working: let it finish' })
-      const pid = readLiveSessions().get(story.session_id)?.pid
-      const out = await closeTerminal({ winId: story.terminal_window_id, pid })
-      db.setTerminalWindow(id, null) // that window is gone; Resume opens a new one
-      db.setAutoClosed(id, false) // this one was you: the post-it must not say otherwise
+      const out = await closeStorySession(story)
+      // Asked from the story the arrows leave: what it waits for is closed with it. The ones that
+      // are working are walked past and named, for the same reason this one would have been.
+      const group = b?.downstream ? await overDownstream(id, closeLinked) : null
       tick() // so the answer already carries the closed story, without waiting for the loop
-      return send(res, 200, { ...out, story: db.getStory(id) })
+      return send(res, 200, { ...out, ...(group ?? {}), story: db.getStory(id) })
     }
 
     if (req.method === 'POST' && (action === 'start' || action === 'resume')) {

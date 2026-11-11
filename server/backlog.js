@@ -93,6 +93,108 @@ export function backlogRepo(raw) {
   }
 }
 
+/** A story by key alone: keys are one series for the account, so an arrow may name any repository. */
+export function storyAnywhere(key) {
+  const n = keyNumber(key)
+  return n == null ? null : (db.getStoryByKeyAnywhere(n) ?? null)
+}
+
+// ── Arrows ───────────────────────────────────────────────────────────────────
+// An arrow on the board is a row of `dependency`: the story it leaves waits on the story it
+// points at. Everything here is about more than one arrow at a time — what a story reaches by
+// following them, what it belongs to when they are followed both ways — which is why it is walked
+// in memory over one query, and not asked of the database a hop at a time.
+
+function reach(id, edges, { back = false } = {}) {
+  const next = new Map()
+  const put = (a, b) => next.set(a, [...(next.get(a) ?? []), b])
+  for (const e of edges) {
+    put(e.from, e.to)
+    if (back) put(e.to, e.from)
+  }
+  const seen = new Set([Number(id)])
+  const queue = [Number(id)]
+  const found = []
+  while (queue.length) {
+    for (const n of next.get(queue.shift()) ?? []) {
+      if (seen.has(n)) continue
+      seen.add(n)
+      found.push(n)
+      queue.push(n)
+    }
+  }
+  return found
+}
+
+/** What a story is waiting for, and what those are waiting for: the arrows followed their own way. */
+export const downstreamOf = (id, edges = db.allDependencies()) => reach(id, edges)
+
+/** Everything a story is joined to, whichever way the arrows point. The story itself is not in it. */
+export const chainOf = (id, edges = db.allDependencies()) => reach(id, edges, { back: true })
+
+/**
+ * The whole chain a story belongs to, for somebody who has to act on it: every story with its
+ * repository, where it stands, whether its session is open and the last thing its Log says, and
+ * the arrows between them by key.
+ */
+export function linkedView(id) {
+  const story = db.getStory(id)
+  if (!story) return null
+  const edges = db.allDependencies()
+  const ids = new Set([story.id, ...chainOf(story.id, edges)])
+  const stories = [...ids].map((n) => db.getStory(n)).filter(Boolean)
+  const keyOf = new Map(stories.map((s) => [s.id, s.key]))
+  const down = new Set(downstreamOf(story.id, edges))
+  return {
+    story: { id: story.id, key: story.key, title: story.title },
+    edges: edges
+      .filter((e) => keyOf.has(e.from) && keyOf.has(e.to))
+      .map((e) => ({ from: keyOf.get(e.from), to: keyOf.get(e.to) })),
+    stories: stories
+      .filter((s) => s.id !== story.id)
+      .map((s) => ({
+        id: s.id,
+        key: s.key,
+        title: s.title,
+        repo: s.project_path,
+        repo_name: projectName(s.project_path),
+        state: s.state,
+        status: s.session_status ?? null,
+        session_alive: !!s.session_alive,
+        // Downstream is what this story waits for, directly or not; the rest of the chain is
+        // either waiting for it or only shares a neighbour with it.
+        downstream: down.has(s.id),
+        last_log: db.listLog(s.id).at(-1)?.text ?? '',
+      })),
+  }
+}
+
+/**
+ * Draws, removes or turns an arrow, and says no in a sentence that names the stories.
+ *
+ * The refusal is worked out here and not in the route so that the board, the skill and the tests
+ * all get the same words: "a loop" explains nothing, "K12 already waits on K7" does.
+ */
+export function link(from, on, { remove = false, flip = false } = {}) {
+  if (!from || !on) return { ok: false, code: 404, error: 'One of those stories is not on the board' }
+  if (remove) {
+    db.removeDependency(from.id, on.id)
+    return { ok: true }
+  }
+  if (from.id === on.id) return { ok: false, code: 400, error: 'A story cannot wait for itself' }
+  const [waits, target] = flip ? [on, from] : [from, on]
+  if (flip) db.removeDependency(from.id, on.id)
+  const road = db.dependencyLoop(waits.id, target.id)
+  if (road) {
+    if (flip) db.addDependency(from.id, on.id)
+    const keys = road.map((n) => db.getStory(n)?.key ?? '?')
+    const how = keys.length === 2 ? `${keys[0]} already waits on ${keys[1]}` : `${keys.join(' waits on ')} already`
+    return { ok: false, code: 409, error: `${how}: this arrow would leave them waiting on each other for ever` }
+  }
+  db.addDependency(waits.id, target.id)
+  return { ok: true }
+}
+
 // ── What a story looks like from outside ─────────────────────────────────────
 
 /**

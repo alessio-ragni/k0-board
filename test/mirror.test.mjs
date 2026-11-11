@@ -729,6 +729,39 @@ section('Files somebody edited by hand')
   check('none of which is worth skipping the file over', why(report, 'stories/K7-orphan.md'), 'not skipped')
 }
 {
+  // An arrow into another repository. The file that carries it is in the folder of the story that
+  // waits; the story it waits on is in another folder altogether, and only on the board.
+  const HERE = repo()
+  const THERE = repo()
+  const schema = db.createStory({ project_path: THERE, title: 'The schema' })
+  const release = db.createStory({ project_path: HERE, title: 'The release' })
+  const fix = db.createStory({ project_path: HERE, title: 'The fix' })
+  db.addDependency(release.id, schema.id)
+  db.addDependency(release.id, fix.id)
+  mirror.writeStory(release.id)
+  mirror.writeStory(fix.id)
+  forget(HERE)
+  check('with the story gone, nothing waits on the other repository',
+    db.allDependencies().some((e) => e.to === schema.id), false)
+
+  // And a ring, which only a hand could have written: the fix waiting on the release that waits on it.
+  const file = fs.readdirSync(k0(HERE, 'stories')).find((n) => n.startsWith(`${fix.key}-`))
+  fs.writeFileSync(k0(HERE, 'stories', file),
+    read(k0(HERE, 'stories', file)).replace('depends_on: []', `depends_on: [${release.key}]`))
+
+  const report = mirror.importRepo(HERE)
+  const back = db.getStoryByKey(HERE, Number(release.key.slice(1)))
+  const fixed = db.getStoryByKey(HERE, Number(fix.key.slice(1)))
+  check('an arrow into another repository comes back with its story',
+    db.dependenciesOf(back.id).some((d) => d.key === schema.key), true)
+  // Which of the two halves of the ring is kept depends on the order the files are read in, and
+  // that is not the point: the point is that only one of them is.
+  check('of a ring written by hand only one arrow is drawn',
+    db.dependenciesOf(fixed.id).length + db.dependenciesOf(back.id).filter((d) => d.key === fix.key).length, 1)
+  check('and the report says a file asked for the other',
+    report.skipped.some((x) => x.why.includes('would close a ring')), true)
+}
+{
   // The counter-check and the log, written by hand, with everything about them that is not the
   // shape this module prints.
   const REPO = repo()
