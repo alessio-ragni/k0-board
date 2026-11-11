@@ -19,6 +19,12 @@ All notable changes to this project are documented here. The format follows
 
 ### Changed
 
+- **A session carries its story's key.** A story's session is now called `K1136-Fix-API` instead
+  of `Fix-API`: in the terminal's title bar, in the session itself and in `claude --resume`. It
+  follows a title you change and a key that changes, and the older sessions of a story are renamed
+  too. The sessions you already had are renamed the first time k0 starts after this update; the
+  ones still running take the new name the first time you look at them. A story made offline gets
+  its key in the name once the cloud gives it a real number.
 - **The always-active mark is a sun.** The loop at the bottom right of every note, next to the
   flag, is now a sun, and its disc fills in once the note is always active: a session that never
   goes to rest. What it does has not changed.
