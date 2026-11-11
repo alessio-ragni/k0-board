@@ -47,6 +47,7 @@ export function readFeature(file, text, art = '') {
     kicker: data.kicker || '',
     order: Number(data.order) || 999,
     status: data.status === 'coming' ? 'coming' : 'live',
+    home: /^(yes|true)$/i.test(String(data.home || '')),
     since: data.since || '',
     updated: data.updated || HOME_LASTMOD,
     stories: list(data.stories),
@@ -191,7 +192,7 @@ ${f.since ? `        <p class="small">Since k0 ${esc(f.since)}</p>\n` : ''}     
 ${f.art ? `      <figure class="art" aria-hidden="true">\n${f.art}\n      </figure>\n` : ''}    </div>
 
     <article class="prose">
-${render(f.body)}
+${swatches(render(f.body))}
     </article>
 
     <section class="more-features" aria-labelledby="more-title">
@@ -239,14 +240,28 @@ ${footer()}`
 }
 
 /** The cards on the home page, between the two markers. */
+// The home page shows only the features marked `home: yes`, and never more than two rows of four,
+// so it stays a taste and not a list of everything; /features/ has the rest. With none marked it
+// takes the first ones in order.
+export const HOME_MAX = 8
 export function homeGrid(all) {
-  const ordered = [...all.filter((f) => f.status === 'live'), ...all.filter((f) => f.status === 'coming')]
+  const shown = all.some((f) => f.home) ? all.filter((f) => f.home) : all
+  const ordered = [...shown.filter((f) => f.status === 'live'), ...shown.filter((f) => f.status === 'coming')].slice(0, HOME_MAX)
   return `${START}
       <div class="grid grid-compact">
 ${ordered.map((f) => card(f)).join('\n')}
       </div>
-      <p class="see-all"><a class="btn btn-outline" href="/features/">All features</a></p>
+      <p class="see-all"><a class="btn btn-outline" href="/features/">See all features</a></p>
       ${END}`
+}
+
+// A table cell that is nothing but the name of a board colour is shown on that colour, like a
+// small note, so a table of statuses reads at a glance instead of as a list of words.
+const COLOURS = { grey: 'grey', red: 'red', amber: 'amber', yellow: 'yellow', blue: 'blue', 'light blue': 'sky', green: 'green' }
+export function swatches(html) {
+  return html.replace(/<td([^>]*)>(grey|red|amber|yellow|blue|light blue|green)<\/td>/g, (_, attrs, word) =>
+    `<td${attrs}><span class="swatch ${COLOURS[word]}">${word}</span></td>`
+  )
 }
 
 /** The home page with its grid replaced. Without the markers it is a mistake, not a no-op. */

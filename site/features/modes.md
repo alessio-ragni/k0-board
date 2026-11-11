@@ -3,6 +3,7 @@ title: Four modes, from asleep to across the room
 card: Sleep, Away, Nerd, Driving: one click says how awake the machine stays while Claude Code works, lid closed included.
 summary: Four modes set how awake the machine stays while Claude Code sessions work, even with the lid shut, and Driving makes everything big enough to read from across the room.
 kicker: where you are
+home: yes
 order: 30
 since: 0.1.0
 updated: 2026-11-02

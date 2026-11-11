@@ -47,6 +47,10 @@ All notable changes to this project are documented here. The format follows
 - **The always-active mark is a sun.** The loop at the bottom right of every note, next to the
   flag, is now a sun, and its disc fills in once the note is always active: a session that never
   goes to rest. What it does has not changed.
+- k0's own column on the board has a globe: one click shows k0-board.com on `localhost:8080`,
+  with the feature pages rebuilt first. On the site, the home page explains the three steps before
+  the features and shows only eight of them, with a button to see all, and the table of statuses
+  shows each colour on its own colour.
 - k0-board.com has a short page for every feature of k0, at `k0-board.com/features/`, with the
   cards on the home page leading to them and a new icon in the browser tab. They are made from one
   file per feature and go online with each release; nothing changes in k0 itself.

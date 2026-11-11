@@ -60,6 +60,7 @@
     "coverage": "node --test --experimental-test-coverage --test-coverage-exclude=\"platform/**\" --test-coverage-exclude=\"test/**\" \"test/*.test.mjs\"",
     "doctor": "node bin/k0-board.js doctor",
     "site": "node site/build.mjs",
-    "site:deploy": "sh site/deploy.sh"
+    "site:deploy": "sh site/deploy.sh",
+    "serve": "node site/build.mjs && node site/serve.mjs"
   }
 }

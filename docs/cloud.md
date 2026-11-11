@@ -77,7 +77,7 @@ address in the sitemap; the release runs it. By hand:
 
 ```bash
 export AWS_PROFILE=raypath AWS_REGION=eu-west-1 APP=d2a5vvbyu1rsx6
-(cd site && rm -f /tmp/k0-site.zip && zip -qr /tmp/k0-site.zip . -x README.md build.mjs deploy.sh 'features/*.md' 'features/*.art.html')
+(cd site && rm -f /tmp/k0-site.zip && zip -qr /tmp/k0-site.zip . -x README.md build.mjs serve.mjs deploy.sh 'features/*.md' 'features/*.art.html')
 read JOB URL < <(aws amplify create-deployment --app-id $APP --branch-name main --query '[jobId,zipUploadUrl]' --output text)
 curl -sS -X PUT -T /tmp/k0-site.zip "$URL" && aws amplify start-deployment --app-id $APP --branch-name main --job-id $JOB
 ```

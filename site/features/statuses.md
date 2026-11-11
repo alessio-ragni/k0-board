@@ -3,6 +3,7 @@ title: Seven colours, one glance
 card: Every session is a sticky note, and its colour says whose move it is — yours or Claude's.
 summary: Every Claude Code session on the k0 board is a sticky note whose colour is its status — red when it asks you something, amber when a plan waits for your yes, blue while it works, green when it is done.
 kicker: how it works
+home: yes
 order: 10
 since: 0.1.0
 updated: 2026-11-02

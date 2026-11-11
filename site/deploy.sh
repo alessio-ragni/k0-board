@@ -18,7 +18,7 @@ node build.mjs --check
 
 rm -f "$ZIP"
 # The Markdown and the drawings are the sources of the feature pages, not pages: they stay home.
-zip -qr "$ZIP" . -x README.md build.mjs deploy.sh 'features/*.md' 'features/*.art.html'
+zip -qr "$ZIP" . -x README.md build.mjs serve.mjs deploy.sh 'features/*.md' 'features/*.art.html'
 
 set -- $(aws amplify create-deployment --app-id "$APP" --branch-name main --query '[jobId,zipUploadUrl]' --output text)
 JOB=$1 URL=$2

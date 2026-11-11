@@ -26,9 +26,10 @@ The pages that need data talk to Supabase directly from the browser with `fetch`
 ## The feature pages
 
 Every feature of k0 has a short page at `/features/<slug>/`, and they are all listed at
-`/features/` and as cards on the home page. None of these is written by hand:
+`/features/`; eight of them are cards on the home page as well. None of these is written by hand:
 
 - **`features/<slug>.md`** — one feature: a header with its title, card text, summary, order,
+  whether it is one of the eight shown on the home page (`home: yes`),
   version and related features, then a few hundred words of Markdown. A feature marked
   `status: coming` gets a card that says *coming soon* and no page.
 - **`features/<slug>.art.html`** — the drawing beside it, built only from the pieces at the end of
@@ -63,9 +64,11 @@ served at `https://k0-board.com/app/`, which is where *Sign in* on the home page
 ## Trying it locally
 
 ```sh
-python3 -m http.server -d site 8080
+npm run serve
 ```
 
+or click the globe on the `k0` column of the board, which runs the same thing: the feature pages
+are rebuilt, then `site/serve.mjs` serves the folder on `127.0.0.1:8080` (`PORT` changes it).
 Then open <http://localhost:8080/> for the site and <http://localhost:8080/app/> for the board.
 Signing in works from there: the Supabase redirect allow-list already includes
 `http://localhost:*/app/**` and `https://k0-board.com/**`. Until a sign-in provider is switched
@@ -78,7 +81,7 @@ would not mind seeing there.
 
 The folder is deployed as it is, as static files on AWS Amplify — there is no build. Whatever is
 in `site/` is what is served, except the files that only exist to make it: this README,
-`build.mjs`, `deploy.sh` and the feature sources.
+`build.mjs`, `serve.mjs`, `deploy.sh` and the feature sources.
 
 ```sh
 npm run site:deploy

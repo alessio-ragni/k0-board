@@ -3,6 +3,7 @@ title: Find any story with ⌘K
 card: Press ⌘K, type a number, a word of the title or of the notes, and go straight to that session's terminal.
 summary: Press ⌘K on the k0 board to find any Claude Code session by its number, a word of its title or its notes — then jump to its terminal or open it.
 kicker: type, enter, there
+home: yes
 order: 65
 since:
 updated: 2026-11-11
