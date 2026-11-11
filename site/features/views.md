@@ -3,6 +3,7 @@ title: Kanban to work, List to plan
 card: The same stories two ways: a board of notes for the day's work, and rows of epics, stories and tasks for planning it.
 summary: k0 shows your Claude Code stories two ways — Kanban, a column of notes per repository, and List, every epic, story and task as rows to plan with.
 kicker: same stories, two shapes
+home: yes
 order: 20
 since: 0.5.0
 updated: 2026-11-02

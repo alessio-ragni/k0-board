@@ -3,6 +3,7 @@ title: Dictation that stays on your Mac
 card: Hold Control, speak, let go — the text lands where the cursor is. Offline, in place of Wispr Flow.
 summary: Offline dictation on macOS 26 in place of Wispr Flow — hold Control, talk to Claude Code, let go. Nothing you say leaves the Mac.
 kicker: hold control, speak
+home: yes
 order: 90
 since: 0.8.0
 updated: 2026-11-02

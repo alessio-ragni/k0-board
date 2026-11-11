@@ -145,3 +145,43 @@ try {
   markerless = e.message
 }
 check('a home page without the markers is a mistake, not a no-op', markerless.startsWith('index.html has no'), true)
+
+// ── The colours and the home page ────────────────────────────────────────────
+section('The colours and the home page')
+check(
+  'a cell that names a board colour is shown on it',
+  site.swatches('<td>light blue</td><td style="x">red</td>'),
+  '<td><span class="swatch sky">light blue</span></td><td style="x"><span class="swatch red">red</span></td>'
+)
+check('a cell that only mentions a colour is left alone', site.swatches('<td>a red note</td>'), '<td>a red note</td>')
+
+const many = Array.from({ length: 12 }, (_, i) =>
+  site.readFeature(`f${i}.md`, feature({ title: `F${i}`, card: 'c', summary: 's', order: i, ...(i % 2 ? { home: 'yes' } : {}) }))
+)
+const grid = site.homeGrid(many)
+check('the home page shows only the features marked for it', grid.includes('/features/f1/') && !grid.includes('/features/f0/'), true)
+const unmarked = site.homeGrid(many.map((f) => ({ ...f, home: false })))
+check('with none marked it shows two rows at most', (unmarked.match(/feature-card/g) || []).length, site.HOME_MAX)
+check('the home page offers all the rest', grid.includes('See all features'), true)
+
+// ── Looking at it before it goes online ──────────────────────────────────────
+section('Looking at it before it goes online')
+const { serve } = await import('../site/serve.mjs')
+put('404.html', '<p>lost</p>')
+const server = serve(0, ROOT)
+await new Promise((r) => server.on('listening', r))
+const base = `http://127.0.0.1:${server.address().port}`
+const get = async (p) => {
+  const r = await fetch(base + p)
+  return { status: r.status, type: r.headers.get('content-type'), text: await r.text() }
+}
+const page = await get('/features/colours/')
+check('a folder answers with its page', page.status, 200)
+check('a page is served as HTML', page.type, 'text/html; charset=utf-8')
+check('the home page answers', (await get('/')).status, 200)
+const lost = await get('/features/nowhere/')
+check('a page that is not there answers 404', lost.status, 404)
+check('with the site’s own 404 page', lost.text, '<p>lost</p>')
+check('nothing outside the folder is served', (await get('/%2e%2e/%2e%2e/etc/passwd')).status, 404)
+check('the server answers only this machine', server.address().address, '127.0.0.1')
+await new Promise((r) => server.close(r))

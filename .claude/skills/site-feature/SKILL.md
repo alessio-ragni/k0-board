@@ -54,6 +54,7 @@ related: views, terminal, modes
 | `summary` | one or two sentences, at most 200 characters — the search result. Say *Claude Code* where it is natural: that is what people type |
 | `kicker` | two to four lowercase words, drawn by hand above the title |
 | `order` | where it sits in the grid, in tens |
+| `home` | `yes` to show the card on the home page too. At most eight do — two rows — so a new feature takes the place of one, or stays on `/features/` only |
 | `status` | `coming` for a feature that does not exist yet: a card marked *coming soon*, no page |
 | `since` | the version it arrived in; left empty until the release sets it |
 | `updated` | the day the page last changed |
@@ -75,7 +76,7 @@ existing drawings before making a new one: they are meant to look like one set.
 
 ```bash
 npm run site                                   # builds every page from the Markdown
-python3 -m http.server -d site 8080            # http://localhost:8080/features/<slug>/
+npm run serve            # rebuilds, then http://localhost:8080/features/<slug>/ (or the globe on the k0 column)
 ```
 
 Give Alessio that address. The rebuilt pages are committed with the work; `node site/build.mjs

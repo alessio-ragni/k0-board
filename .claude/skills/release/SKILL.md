@@ -210,7 +210,7 @@ is where that is checked, before the number is closed:
 3. **Set `since: x.y.z`** on every page that is new in this release, `updated:` to today on every
    page that changed, and run `npm run site`.
 4. **Ask Alessio to look at them**, once, with the local addresses
-   (`python3 -m http.server -d site 8080`, then `http://localhost:8080/features/<slug>/` for each):
+   (`npm run serve`, or the globe on the k0 column of the board, then `http://localhost:8080/features/<slug>/` for each):
    *these pages go online with the release — anything to change?* Changes are made and the pages
    rebuilt before going on. When no page is new or changed there is nothing to ask, and nothing is
    asked.

@@ -3,6 +3,7 @@ title: The real terminal, one click away
 card: Every note is a real Claude Code session in its own terminal window. Double-click the note and that window is in front.
 summary: k0 runs each Claude Code session in a real terminal window: double-click its note to bring it back, Shift+Enter for a new line, Cmd+V for text and images.
 kicker: double-click, you're there
+home: yes
 order: 60
 since: 0.1.0
 updated: 2026-11-02

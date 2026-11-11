@@ -3,6 +3,7 @@ title: Keep one session always on
 card: Mark a note always active and k0 never closes its terminal for sitting idle — for a session left watching a deploy.
 summary: Mark a Claude Code session always active and k0 never closes it for sitting idle: the sun on its note lights up and the note takes a dashed border.
 kicker: leave this one running
+home: yes
 order: 40
 since: 0.8.0
 updated: 2026-11-02

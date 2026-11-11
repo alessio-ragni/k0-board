@@ -2037,7 +2037,8 @@ site/            k0-board.com: static pages, deployed as they are. index.html is
                  site) turns them into /features/<slug>/, the index, the cards on the home page
                  and the sitemap — written once and committed, so there is still nothing to build
                  when it is deployed. deploy.sh (npm run site:deploy) puts it online and asks the
-                 live site whether it arrived
+                 live site whether it arrived; serve.mjs (npm run serve, which is also what gives
+                 the k0 column its globe) shows it on localhost:8080 first
 docs/
   database.md    the shape of the database as it is now, table by table, column by column
   method.md      why a decision has to be an object, what a round of questions is for, and
