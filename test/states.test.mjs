@@ -339,6 +339,7 @@ section('The key in front of the session’s name')
   const db = await import('../server/db.js')
   const names = await import('../server/names.js')
   const nameOf = (id) => transcriptName(transcriptPath(CWD, id))
+  fs.mkdirSync(dir, { recursive: true }) // the transcripts' section above tidied it away
 
   const first = write([mode('normal'), { type: 'custom-title', customTitle: 'Old-Name' }])
   const second = write([mode('normal'), { type: 'custom-title', customTitle: 'Old-Name' }])
