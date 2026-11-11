@@ -618,7 +618,9 @@ discussion half way through would leave a story sitting in `Working` with nothin
 
 **You work in the terminal, and only in the terminal.** The discussion asks its rounds and writes
 each one down as it is answered; the plan comes back for your approval with the standing decisions
-written into it as constraints; `/k0-work` opens a worktree, does the work, keeps the log, and
+written into it as constraints, and its last question is whether to carry it out straight away — say
+yes and the same session stores the plan and goes on into the work, with nothing planned twice;
+`/k0-work` opens a worktree, does the work, keeps the log, and
 merges it back; `/k0-verify` walks the result past every decision one at a time. None of that
 needs the board. You can leave the tab open and watch the rounds land — it follows a live
 discussion once a second — but nothing asks you to.
@@ -917,8 +919,14 @@ makes one when it needs one, and it is the only command here that does: the othe
 story rather than change it, and a discussion held inside somebody else's working copy is a
 discussion about a copy.
 
-It will not open one over uncommitted work, and it says how much there is. And three things it
-never does, each of which has already cost somebody a day:
+Uncommitted work in the repository does not stop it. Other sessions are usually busy in the same
+checkout, and in a repository that commits `.k0/` the board has just rewritten a story's file there
+— so the worktree opens anyway, from the last commit, and names the files it will not see. k0's own
+`.k0/` files are never counted. The merge at the end goes through over pending work too, and stops
+only when the story changed one of those same files: then it names them, merges nothing and leaves
+the worktree standing. When a worktree cannot be opened at all, the session says why and stops; it
+never falls back to working in your repository instead. And three things it never does, each of
+which has already cost somebody a day:
 
 - **It never pushes and never opens a pull request.** The merge stops on this machine. Publishing
   is a decision you make when you are ready to make it.

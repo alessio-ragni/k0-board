@@ -253,14 +253,18 @@ if (ready) {
 
   check('merging again has nothing to merge', (await wt.merge(db.currentSession(story.id))).ok, false)
 
-  // A repository with work in it that nobody has committed: a merge on top of it either refuses
-  // halfway or buries it.
+  // A repository with work in it that nobody has committed — another session's, usually. The
+  // worktree still opens, from the last commit, and says which files it will not see.
   const second = db.createStory({ project_path: REPO, title: 'Something else' })
   db.attachSession(second.id, 'session-two')
   fs.writeFileSync(path.join(REPO, 'README.md'), '# changed by hand\n')
   const dirty = await wt.open(db.currentSession(second.id), db.getStory(second.id))
-  check('a worktree is not opened over uncommitted work', dirty.ok, false)
-  check('and it says how much of it there is', dirty.error.includes('is 1 change not committed'), true)
+  check('a worktree opens over uncommitted work that is not its own', dirty.ok, true)
+  check('and names the files it will not see', dirty.pending.join(','), 'README.md')
+  check('which stay where they were', fs.readFileSync(path.join(REPO, 'README.md'), 'utf8'), '# changed by hand\n')
+  check('and the copy starts from the last commit',
+    fs.readFileSync(path.join(dirty.path, 'README.md'), 'utf8') === '# changed by hand\n', false)
+  check('a worktree with nothing in it goes away again', (await wt.merge(db.currentSession(second.id))).ok, true)
   git(['checkout', '--', 'README.md'], REPO)
 }
 
@@ -350,9 +354,28 @@ if (ready) {
   fs.writeFileSync(path.join(many, 'one.txt'), 'changed\n')
   fs.writeFileSync(path.join(many, 'two.txt'), 'changed\n')
   const story = storyIn(many, 'Tidy the exporter')
-  const refused = await wt.open(live(story), db.getStory(story.id))
-  check('uncommitted work is counted, not just noticed',
-    refused.error.includes('are 2 changes not committed'), true)
+  fs.mkdirSync(path.join(many, '.k0', 'stories'), { recursive: true })
+  fs.writeFileSync(path.join(many, '.k0', 'stories', 'K1.md'), 'one\n')
+  git(['add', '.k0'], many)
+  git(['commit', '-qm', 'chore: the board copy'], many)
+  fs.writeFileSync(path.join(many, '.k0', 'stories', 'K1.md'), 'rewritten by the board\n')
+  const opened = await wt.open(live(story), db.getStory(story.id))
+  check('uncommitted work is listed, file by file', opened.pending.join(','), 'one.txt,two.txt')
+  check("and k0's own copy of the board is not counted as anybody's work",
+    opened.pending.some((p) => p.startsWith('.k0/')), false)
+  git(['checkout', '--', 'one.txt', 'two.txt'], many)
+  check('a repository where only the board has written has nothing pending', (await wt.pending(many)).length, 0)
+
+  // The merge, with both kinds of pending work in the repository and neither in its way.
+  fs.writeFileSync(path.join(opened.path, 'three.txt'), 'the session\n')
+  fs.writeFileSync(path.join(many, 'one.txt'), 'another session\n')
+  const done = await wt.merge(live(story))
+  check('a merge goes through over uncommitted work it does not touch', done.ok, true)
+  check('the work arrived', fs.readFileSync(path.join(many, 'three.txt'), 'utf8'), 'the session\n')
+  check("the other session's edit is still there", fs.readFileSync(path.join(many, 'one.txt'), 'utf8'),
+    'another session\n')
+  check("and so is the board's", fs.readFileSync(path.join(many, '.k0', 'stories', 'K1.md'), 'utf8'),
+    'rewritten by the board\n')
 }
 
 if (ready) {
@@ -521,9 +544,14 @@ if (ready) {
   git(['checkout', '-q', opened.base], repo)
 
   fs.writeFileSync(path.join(repo, 'README.md'), '# changed by hand\n')
+  fs.writeFileSync(path.join(opened.path, 'README.md'), '# changed by the session\n')
   const messy = await wt.merge(live(story))
-  check('a merge is not laid on top of uncommitted work', messy.ok, false)
-  check('and the one change is counted as one', messy.error.includes('is 1 change not committed'), true)
+  check('a merge is not laid on top of uncommitted work in the same file', messy.ok, false)
+  check('and the file is named', messy.overlap.join(','), 'README.md')
+  check('in the sentence too', messy.error.includes('README.md'), true)
+  check('the uncommitted edit is untouched', fs.readFileSync(path.join(repo, 'README.md'), 'utf8'),
+    '# changed by hand\n')
+  check('and the worktree is still standing', fs.existsSync(opened.path), true)
   git(['checkout', '--', 'README.md'], repo)
 
   const alsoBusy = { ...live(story) }

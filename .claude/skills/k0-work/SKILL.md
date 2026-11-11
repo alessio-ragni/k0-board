@@ -117,11 +117,19 @@ curl -sS --max-time 30 -X POST "http://127.0.0.1:$PORT/api/backlog/worktree" \
 not `session.session_id`, which is the Claude Code session's own long text id — the field is
 called `session` and takes a number so the two cannot be confused.
 
-The answer is `{"ok": true, "path": "…", "branch": "wt-K42", "base": "…"}`. **`path` is the
-worktree**, and it is the only place you may write from here on; call it `$WORK`. If `ok` is
-false, the answer says why in a sentence meant to be read out — say it and stop. Do not guess a
-directory and do not fall back to the repository: that is the one thing this step exists to
-prevent.
+The answer is `{"ok": true, "path": "…", "branch": "wt-K42", "base": "…", "pending": […]}`.
+**`path` is the worktree**, and it is the only place you may write from here on; call it `$WORK`.
+
+`pending` lists the files with uncommitted changes in the repository — another session's work,
+usually. They do not stop anything: say in one line which they are, that the worktree starts from
+the last commit and does not see them, and carry on. k0's own `.k0/` files are never in that list
+and never in the way.
+
+If `ok` is false, the answer says why in a sentence meant to be read out — say it and **stop**.
+Do not guess a directory, and **never offer to do the work in the repository or on the branch you
+are on instead**, not even as a question with a recommended answer: working without the worktree
+is the one thing this step exists to prevent. The user fixes what the sentence names and asks
+again.
 
 k0 branches **from the branch you are on** — not from `main`, not from `origin`. Do not check out
 another branch first, do not `git pull`, do not `git fetch`. If the user is on a feature branch,
@@ -190,6 +198,11 @@ trap as §5, arriving from the other direction, and the run that counts is the o
 **Never `git push`. Never a pull request.** Not with a flag, not because the user's branch tracks
 a remote, not to be helpful. What leaves this machine leaves it through `/release`, and
 only when the user asks.
+
+Uncommitted changes in the repository do not stop the merge unless this work changed the same
+files. When it did, the answer is `ok: false` with those files in `overlap`: nothing was merged and
+the worktree is untouched. Say which files, and that whoever left them pending has to commit or
+stash them before the merge is asked for again — they are not this session's to move.
 
 If the merge comes back with a conflict, **stop**. Say which files, leave the worktree standing,
 and let the user decide. Do not guess a resolution and do not delete anything.
