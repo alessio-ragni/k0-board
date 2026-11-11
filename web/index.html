@@ -205,6 +205,14 @@
     </footer>
   </dialog>
 
+  <!-- ⌘K / Ctrl+K: find a story by its number, its title, its notes, or a repository. -->
+  <dialog id="finder" class="finder" aria-label="Find a story">
+    <input id="finder-q" autocomplete="off" spellcheck="false" placeholder="K42, a word of the title or the notes, a repository…"
+      role="combobox" aria-controls="finder-rows">
+    <div id="finder-rows" class="rows" role="listbox"></div>
+    <footer><kbd>↵</kbd> Terminal <kbd>⌘↵</kbd> Open <kbd>↑↓</kbd> move <kbd>esc</kbd> close</footer>
+  </dialog>
+
   <div id="toast" class="toast"></div>
   <script type="module" src="/board.js"></script>
   <script type="module" src="/account.js"></script>
