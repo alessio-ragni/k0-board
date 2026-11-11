@@ -57,6 +57,14 @@ export function readFeature(file, text, art = '') {
   }
 }
 
+/**
+ * A file as text with Unix line endings. Git on Windows checks the whole tree out with CRLF, the
+ * Markdown and the pages already built alike: read as they are, every page there would look
+ * out of date next to the one the same sources make on a Mac, and the check would fail on a
+ * site that is perfectly up to date.
+ */
+const text = (p) => fs.readFileSync(p, 'utf8').replace(/\r\n/g, '\n')
+
 /** Every feature in the folder, in the order they are meant to be read. */
 export function readFeatures(dir) {
   if (!fs.existsSync(dir)) return []
@@ -65,8 +73,8 @@ export function readFeatures(dir) {
     .filter((f) => f.endsWith('.md'))
     .map((f) => {
       const artFile = path.join(dir, f.replace(/\.md$/, '.art.html'))
-      const art = fs.existsSync(artFile) ? fs.readFileSync(artFile, 'utf8').trim() : ''
-      return readFeature(f, fs.readFileSync(path.join(dir, f), 'utf8'), art)
+      const art = fs.existsSync(artFile) ? text(artFile).trim() : ''
+      return readFeature(f, text(path.join(dir, f)), art)
     })
   out.sort((a, b) => a.order - b.order || a.slug.localeCompare(b.slug))
   const live = new Set(out.filter((f) => f.status === 'live').map((f) => f.slug))
@@ -294,7 +302,7 @@ export function build(root) {
   const files = new Map()
   for (const f of all.filter((x) => x.status === 'live')) files.set(`features/${f.slug}/index.html`, featurePage(f, all))
   files.set('features/index.html', indexPage(all))
-  files.set('index.html', withGrid(fs.readFileSync(path.join(root, 'index.html'), 'utf8'), all))
+  files.set('index.html', withGrid(text(path.join(root, 'index.html')), all))
   files.set('sitemap.xml', sitemap(all))
   return { all, files }
 }
@@ -306,9 +314,9 @@ export function build(root) {
 export function stale(root) {
   const { files } = build(root)
   const out = []
-  for (const [rel, text] of files) {
+  for (const [rel, page] of files) {
     const p = path.join(root, rel)
-    if (!fs.existsSync(p) || fs.readFileSync(p, 'utf8') !== text) out.push(rel)
+    if (!fs.existsSync(p) || text(p) !== page) out.push(rel)
   }
   for (const rel of orphans(root, files)) out.push(rel)
   return out
@@ -327,11 +335,11 @@ export function write(root) {
   const { files } = build(root)
   for (const rel of orphans(root, files)) fs.rmSync(path.join(root, rel), { recursive: true, force: true })
   const changed = []
-  for (const [rel, text] of files) {
+  for (const [rel, page] of files) {
     const p = path.join(root, rel)
-    if (fs.existsSync(p) && fs.readFileSync(p, 'utf8') === text) continue
+    if (fs.existsSync(p) && text(p) === page) continue
     fs.mkdirSync(path.dirname(p), { recursive: true })
-    fs.writeFileSync(p, text)
+    fs.writeFileSync(p, page)
     changed.push(rel)
   }
   return changed

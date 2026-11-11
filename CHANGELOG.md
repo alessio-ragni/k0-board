@@ -54,6 +54,8 @@ All notable changes to this project are documented here. The format follows
 - k0-board.com has a short page for every feature of k0, at `k0-board.com/features/`, with the
   cards on the home page leading to them and a new icon in the browser tab. They are made from one
   file per feature and go online with each release; nothing changes in k0 itself.
+- The check that k0-board.com's pages were rebuilt no longer fails on Windows over line endings
+  alone, so the tests pass there again. Nothing changes in k0 itself.
 - The command that ships k0, for whoever works on it, is now called `/release`; it used to be
   `/commit-push-deploy`. The two commands k0 installs that mention it say so. Nothing changes for
   anybody using k0.

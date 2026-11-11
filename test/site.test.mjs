@@ -127,6 +127,15 @@ section('Keeping it honest')
 check('a second run writes nothing', site.write(ROOT).length, 0)
 check('a site just built is not stale', site.stale(ROOT).length, 0)
 
+// What a Windows checkout looks like: git has turned every line ending into CRLF, the sources and
+// the pages already built alike. Nothing has really changed, so nothing may be stale.
+{
+  const crlf = (rel) => put(rel, read(rel).replace(/\r?\n/g, '\r\n'))
+  for (const rel of ['features/modes.md', 'features/modes/index.html', 'index.html', 'sitemap.xml']) crlf(rel)
+  check('a checkout with Windows line endings is not stale', site.stale(ROOT).length, 0)
+  check('and building it again rewrites nothing', site.write(ROOT).length, 0)
+}
+
 put('features/modes.md', read('features/modes.md').replace('Four modes', 'Four modes, one lit'))
 check('an edited feature makes its own page stale', site.stale(ROOT).includes('features/modes/index.html'), true)
 site.write(ROOT)
