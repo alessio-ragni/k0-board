@@ -26,7 +26,7 @@ const stories = [
 ]
 const columns = [
   { path: '/r/board', name: 'board' },
-  { path: '/r/astika-import', name: 'astika-import' },
+  { path: '/r/payments-api', name: 'payments-api' },
 ]
 const keys = (q) =>
   rank({ stories, columns }, q)
@@ -56,7 +56,7 @@ check('a hit in the title does not', rank({ stories }, 'login')[0].notes, false)
 check('a title hit outranks a notes hit', keys('chart'), 'K9')
 
 section('Repositories and finished stories')
-check('a repository by its name', first('astika'), 'repo:astika-import')
+check('a repository by its name', first('payments'), 'repo:payments-api')
 check('a repository comes after the open stories', keys('board'), 'K42 repo:board')
 check('a finished story comes after everything open', keys('permissions'), 'K7')
 check('and after the open ones when both match', keys('i').split(' ').pop(), 'K7')
