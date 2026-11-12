@@ -6,6 +6,13 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.11.0]
+
+An arrow can now point at a story that is not written yet: let it go over a repository's `+` or
+name and the new story is written there with the arrow already drawn. A session still running a
+command in the background stays blue instead of asking for you, and a copied image pastes into
+every session, not only the first.
+
 ### Added
 
 - **An arrow let go over a repository writes the story it points at.** Drag a note's arrow onto
@@ -1014,7 +1021,9 @@ here is everything that had to change for it to be somebody else's tool as well.
 - The personal fixtures k0 grew up on. `test/clean.test.mjs` now fails the build if any of them
   come back.
 
-[Unreleased]: https://github.com/alessio-ragni/k0-board/compare/v0.9.0...HEAD
+[Unreleased]: https://github.com/alessio-ragni/k0-board/compare/v0.11.0...HEAD
+[0.11.0]: https://github.com/alessio-ragni/k0-board/compare/v0.10.0...v0.11.0
+[0.10.0]: https://github.com/alessio-ragni/k0-board/compare/v0.9.0...v0.10.0
 [0.9.0]: https://github.com/alessio-ragni/k0-board/compare/v0.8.0...v0.9.0
 [0.8.0]: https://github.com/alessio-ragni/k0-board/compare/v0.7.0...v0.8.0
 [0.7.0]: https://github.com/alessio-ragni/k0-board/compare/v0.6.0...v0.7.0

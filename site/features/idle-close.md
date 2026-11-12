@@ -5,7 +5,7 @@ summary: k0 shows what each Claude Code session really weighs, and after twelve 
 kicker: memory comes back
 order: 50
 since: 0.3.0
-updated: 2026-11-02
+updated: 2026-11-12
 related: always-on, statuses, modes
 ---
 
