@@ -172,7 +172,9 @@ section('A story cannot be finished over a broken decision')
   check('a broken decision stands between the story and Done', refused.ok, false)
   check('and it is named rather than counted', refused.violations[0].label, 'D1')
   check('with the sentence the user agreed to', refused.violations[0].text, 'A failed send is tried again three times.')
-  check('and the refusal says which run found it', refused.why.includes('Run 1'), true)
+  check('and the refusal says which run found it', refused.why.includes('run 1'), true)
+  check('and that it is the counter-check, not an arrow, in the way', refused.why.startsWith('Held back by the counter-check'), true)
+  check('with nothing it waits on finished since, it says nothing about one', refused.closed_since.length, 0)
 
   // The failure this is written against: run 2 answers the other decision and passes over the
   // broken one. Nothing has been put right, so nothing may be cleared.
@@ -199,6 +201,36 @@ section('A story cannot be finished over a broken decision')
   check('a decision found broken again is in the way again', backlog.mayFinish(story.id).ok, false)
   db.supersedeDecision(rule.id, late.id)
   check('superseding it is the other answer', backlog.mayFinish(story.id).ok, true)
+}
+
+// ── Something it waits on is finished after the run ──────────────────────────
+section('The refusal says when something it waits on has been finished since')
+{
+  // The case that looked like a broken arrow: a decision found broken because its last piece
+  // had been handed to another story, and that story has been finished since.
+  const story = db.createStory({ project_path: REPO, title: 'The removed listing' })
+  const handed = db.createStory({ project_path: REPO, title: 'The label on the site' })
+  const before = db.createStory({ project_path: REPO, title: 'Finished long ago' })
+  const open = db.createStory({ project_path: REPO, title: 'Still going' })
+  for (const d of [handed, before, open]) db.addDependency(story.id, d.id)
+  const rule = db.addDecision(story.id, { text: 'The team sees the listing as removed, with its date.' })
+
+  db.setCompleted(before.id, true)
+  db.restoreTimes('story', before.id, { completed_at: 1000 })
+  db.recordRunChecks(story.id, 1, [{ decision_id: rule.id, verdict: 'violated', evidence: 'handed over' }])
+  const runAt = db.listDecisionChecks(story.id)[0].at
+
+  check('with nothing finished since the run, nothing is named', backlog.mayFinish(story.id).closed_since.length, 0)
+
+  db.setCompleted(handed.id, true)
+  db.restoreTimes('story', handed.id, { completed_at: runAt + 1000 })
+  const refused = backlog.mayFinish(story.id)
+  check('the story finished after the run is named', refused.closed_since.map((s) => s.title), ['The label on the site'])
+  check('in the sentence as well', refused.why.includes(`${handed.key} The label on the site`), true)
+  check('and the way out it points at is the counter-check', refused.why.includes('run the counter-check again'), true)
+  check('one finished before the run is not', refused.why.includes('Finished long ago'), false)
+  check('nor one that is still open', refused.why.includes('Still going'), false)
+  check('and naming it clears nothing: Done is still refused', refused.ok, false)
 }
 
 // ── The story as a skill reads it ────────────────────────────────────────────

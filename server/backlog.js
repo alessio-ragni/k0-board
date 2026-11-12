@@ -706,16 +706,27 @@ function reasonFor(c) {
  */
 export function mayFinish(id) {
   const open = db.openViolations(id)
-  if (!open.length) return { ok: true, why: null, violations: [] }
+  if (!open.length) return { ok: true, why: null, violations: [], closed_since: [] }
   // The run that found it, which is not always the last one there has been: a later run that
   // passed over this decision left the verdict standing without saying anything about it.
   const run = Math.max(...open.map((v) => v.run))
+  // Something it waits on, finished after that run, is the commonest reason a broken decision is
+  // no longer broken: the work was handed elsewhere and has since been done. It is said, never
+  // acted on — only a new run that finds the decision kept can clear it.
+  const at = Math.max(...open.map((v) => Number(v.at) || 0))
+  const since = db.dependenciesFinishedSince(id, at)
+  const finished = since.length
+    ? ` Since then ${since.map((s) => `${s.key} ${s.title}`).join(', ')} ${since.length === 1 ? 'has' : 'have'} ` +
+      'been finished: if that is what it was waiting for, run the counter-check again.'
+    : ''
   return {
     ok: false,
     why:
-      `Run ${run} found ${open.length === 1 ? 'a decision' : `${open.length} decisions`} broken, and ` +
+      'Held back by the counter-check, not by anything it waits on: ' +
+      `run ${run} found ${open.length === 1 ? 'a decision' : `${open.length} decisions`} broken, and ` +
       'nothing has answered it since. Put it right and run the counter-check again, or supersede the ' +
-      'decision if it is the decision that was wrong.',
+      `decision if it is the decision that was wrong.${finished}`,
     violations: open.map((v) => ({ decision_id: v.decision_id, label: v.label, text: v.decision_text })),
+    closed_since: since.map((s) => ({ key: s.key, title: s.title })),
   }
 }
