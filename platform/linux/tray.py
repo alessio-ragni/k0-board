@@ -64,13 +64,14 @@ CACHE = os.path.join(
 
 # The same colours and the same order of urgency as the board and the macOS menu bar icon.
 # ASK first because a question blocks everything behind it; COMPLETED never gets here.
-URGENCY = ["ASK", "PLANNED", "IDLE", "WORKING", "PLANNING"]
+URGENCY = ["ASK", "PLANNED", "IDLE", "WORKING", "PLANNING", "BACKGROUND"]
 COLOURS = {
     "ASK": (0xE8, 0x6A, 0x33),
     "PLANNED": (0x6C, 0x8E, 0xBF),
     "IDLE": (0xE0, 0xC0, 0x4A),
     "WORKING": (0x5B, 0xA8, 0x6A),
     "PLANNING": (0x8E, 0x7C, 0xC3),
+    "BACKGROUND": (0x5B, 0xA8, 0x6A),
     "quiet": (0x9A, 0x9A, 0x9A),
     "down": (0xB0, 0x50, 0x50),
 }
@@ -80,6 +81,7 @@ LABELS = {
     "IDLE": "Your turn",
     "WORKING": "Working",
     "PLANNING": "Planning",
+    "BACKGROUND": "Working in the background",
 }
 MODES = [("sleep", "Sleep"), ("away", "Away"), ("nerd", "Nerd"), ("driving", "Driving")]
 

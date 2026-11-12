@@ -600,6 +600,7 @@ body {
 .postit.IDLE { background: var(--IDLE); }
 .postit.WORKING { background: var(--WORKING); }
 .postit.PLANNING { background: var(--PLANNING); }
+.postit.BACKGROUND { background: var(--BACKGROUND); }
 .postit.BACKLOG { background: var(--BACKLOG); }
 .postit.COMPLETED { background: var(--COMPLETED); opacity: .6; }
 .postit.COMPLETED .title { text-decoration: line-through; }
@@ -611,7 +612,7 @@ body {
    under pressure that was the most expensive thing k0 did, and none of it was in k0's own process:
    the bill arrived under the browser's name. The ring sits just inside the edge rather than just
    outside it, because the post-it clips what overflows it. */
-.postit.WORKING::after, .postit.PLANNING::after {
+.postit.WORKING::after, .postit.PLANNING::after, .postit.BACKGROUND::after {
   content: '';
   position: absolute;
   inset: 0;
@@ -622,6 +623,9 @@ body {
   will-change: opacity;
   animation: breathe 2.6s ease-in-out infinite;
 }
+/* A command left running behind a finished turn breathes at half the pace: something is going
+   on in there, and it is not the model thinking. */
+.postit.BACKGROUND::after { animation-duration: 5.2s; }
 @keyframes breathe { 50% { opacity: 1; } }
 
 /* The repository's name and, beside it, how it is doing: the two read together. */
@@ -1258,6 +1262,7 @@ dialog.finder input:focus { outline: none; border-color: #bdb6a5; }
 .finder .what.s-IDLE { background: var(--IDLE); }
 .finder .what.s-WORKING { background: var(--WORKING); }
 .finder .what.s-PLANNING { background: var(--PLANNING); }
+.finder .what.s-BACKGROUND { background: var(--BACKGROUND); }
 .finder .what.s-COMPLETED { background: var(--COMPLETED); }
 .finder .row.repo .what { background: none; border: 1px solid var(--line); font-weight: 600; }
 .finder .body { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }

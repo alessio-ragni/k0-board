@@ -14,6 +14,7 @@ const COLOR = {
   IDLE: '#ebb308',
   WORKING: '#3b82f5',
   PLANNING: '#3b82f5',
+  BACKGROUND: '#3b82f5',
 }
 const QUIET = '#9ca3b0'
 

@@ -281,6 +281,7 @@
 }
 .sess[data-status='WORKING'] { background: var(--WORKING); }
 .sess[data-status='PLANNING'] { background: var(--PLANNING); }
+.sess[data-status='BACKGROUND'] { background: var(--BACKGROUND); }
 .sess[data-status='PLANNED'] { background: var(--PLANNED); }
 .sess[data-status='ASK'] { background: var(--ASK); }
 

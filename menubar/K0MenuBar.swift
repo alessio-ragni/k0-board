@@ -61,8 +61,8 @@ func colour(_ state: String?) -> NSColor {
     case "ASK":      return NSColor(srgbRed: 0.94, green: 0.27, blue: 0.27, alpha: 1) // red
     case "PLANNED":  return NSColor(srgbRed: 0.98, green: 0.45, blue: 0.09, alpha: 1) // orange
     case "IDLE":     return NSColor(srgbRed: 0.92, green: 0.70, blue: 0.03, alpha: 1) // yellow
-    case "WORKING",
-         "PLANNING": return NSColor(srgbRed: 0.23, green: 0.51, blue: 0.96, alpha: 1) // blue
+    case "WORKING", "PLANNING",
+         "BACKGROUND": return NSColor(srgbRed: 0.23, green: 0.51, blue: 0.96, alpha: 1) // blue
     default:         return NSColor(srgbRed: 0.61, green: 0.64, blue: 0.69, alpha: 1) // grey
     }
 }
@@ -74,6 +74,7 @@ let label: [String: String] = [
     "IDLE": "Your turn",
     "WORKING": "Working",
     "PLANNING": "Planning",
+    "BACKGROUND": "Working in the background",
 ]
 
 /// The notifications switch, which stays as it was left even after a restart. Switched off, the
@@ -102,8 +103,19 @@ enum Notifications {
 /// clipboard is saved to a file and its path is put in its place. So your ordinary Cmd+V pastes
 /// the path, and Claude Code recognises it and attaches it as `[Image #1]`. The moment you leave
 /// Terminal the image goes back on the clipboard exactly as you copied it.
+///
+/// What is tracked is what is on the clipboard *now* — the image as you copied it, its path, or
+/// the image put back — and not whether a swap ever happened. It used to be the second, so the
+/// path went on once per copy: leave Terminal for the board, open another session, and Cmd+V
+/// pasted nothing, because the clipboard still held the image and nothing was going to swap it
+/// again. The same slip put the image back on the clipboard at every tick for as long as you
+/// stayed outside Terminal, three times a second.
 final class ImagePaste {
+    private enum Holding { case original, path, restored }
+
     private var image: Data?         // the real image, set aside
+    private var file: URL?           // where that image was written, once per copy
+    private var holding = Holding.original
     private var ourChange = -1       // the changeCount of the swap we made
     private var counter = 0
 
@@ -128,23 +140,33 @@ final class ImagePaste {
         // The clipboard changed at somebody else's hand: read what is on it now.
         if pb.changeCount != ourChange {
             image = imageOnClipboard(pb)
+            file = nil
+            holding = .original
             ourChange = -1
         }
 
         guard let png = image else { return }
 
-        if inTerminal && ourChange == -1 {
-            // You come into Terminal with an image copied: the path goes in its place.
-            counter += 1
-            let file = folder.appendingPathComponent("clipboard-\(counter).png")
-            guard (try? png.write(to: file)) != nil else { return }
+        if inTerminal && holding != .path {
+            // You come into Terminal with an image copied — for the first time or the fifth: the
+            // path goes in its place. The file is written once per copy, so every session you
+            // paste into is handed the same one.
+            if file == nil {
+                counter += 1
+                let fresh = folder.appendingPathComponent("clipboard-\(counter).png")
+                guard (try? png.write(to: fresh)) != nil else { return }
+                file = fresh
+            }
+            guard let file = file else { return }
             pb.clearContents()
             pb.setString(file.path, forType: .string)
+            holding = .path
             ourChange = pb.changeCount
-        } else if !inTerminal && ourChange != -1 {
-            // You have left Terminal: the image goes back where it was.
+        } else if !inTerminal && holding == .path {
+            // You have left Terminal: the image goes back where it was, once.
             pb.clearContents()
             pb.setData(png, forType: .png)
+            holding = .restored
             ourChange = pb.changeCount
         }
     }

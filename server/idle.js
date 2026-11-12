@@ -19,8 +19,8 @@ const HOUR = 3600000
  * because of what closing them would destroy: a question and a finished plan are drawn by the
  * terminal and are not in the transcript yet, so shutting that window throws away the very thing
  * it was showing you. `WORKING` and `PLANNING` are somebody mid-thought. And a session Claude
- * Code reports as `shell` is a shell you dropped into, which may well have a command of yours
- * running in it — k0 does not know what, so k0 does not touch it.
+ * Code reports as `shell` — `BACKGROUND` on the board — has a command still running behind a
+ * finished turn: k0 does not know what, so k0 does not touch it.
  *
  * And whatever you have marked always active, at any age. A session watching something — a
  * deploy, a queue, a mailbox — wakes every couple of hours and sits at the prompt in between,

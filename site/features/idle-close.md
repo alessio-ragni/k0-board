@@ -33,7 +33,7 @@ Only yellow — *Your turn* — is ever touched. The rest is left alone, each fo
 |---|---|
 | Working, Planning | somebody mid-thought: stopping it is work lost |
 | Needs answer, Needs approval | the question or plan is not saved until answered |
-| a session sitting in a shell | a command of yours may be running in it |
+| Working in the background | a command it started is still running |
 | a note marked [always active](/features/always-on/) | you said so |
 
 A window you used an hour ago is never closed either: k0 keeps four clocks for a session and the
