@@ -61,8 +61,8 @@ func colour(_ state: String?) -> NSColor {
     case "ASK":      return NSColor(srgbRed: 0.94, green: 0.27, blue: 0.27, alpha: 1) // red
     case "PLANNED":  return NSColor(srgbRed: 0.98, green: 0.45, blue: 0.09, alpha: 1) // orange
     case "IDLE":     return NSColor(srgbRed: 0.92, green: 0.70, blue: 0.03, alpha: 1) // yellow
-    case "WORKING", "PLANNING",
-         "BACKGROUND": return NSColor(srgbRed: 0.23, green: 0.51, blue: 0.96, alpha: 1) // blue
+    case "WORKING",
+         "PLANNING": return NSColor(srgbRed: 0.23, green: 0.51, blue: 0.96, alpha: 1) // blue
     default:         return NSColor(srgbRed: 0.61, green: 0.64, blue: 0.69, alpha: 1) // grey
     }
 }
@@ -74,7 +74,6 @@ let label: [String: String] = [
     "IDLE": "Your turn",
     "WORKING": "Working",
     "PLANNING": "Planning",
-    "BACKGROUND": "Working in the background",
 ]
 
 /// The notifications switch, which stays as it was left even after a restart. Switched off, the

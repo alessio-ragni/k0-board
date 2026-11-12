@@ -46,8 +46,7 @@ session is doing** are two different questions, and they live in two different p
   Any of them may follow any other — no transition is required, and `Backlog` straight to `Done`
   is a legal thing to do. `Done` is only ever set by you.
 - A **session** has a `status`: `WORKING` · `PLANNING` · `PLANNED` (a plan is on screen waiting
-  for you) · `ASK` (a question is on screen) · `IDLE` (your move) · `BACKGROUND` (the turn is over and
-  a command it started is still running). All six are derived once a
+  for you) · `ASK` (a question is on screen) · `IDLE` (your move). All five are derived once a
   second from what Claude Code writes about the live process.
 
 The board still draws one word per post-it, and it is the two of them put back together in one
@@ -120,7 +119,7 @@ at a time — and the newest is "the session" everywhere else in k0.
 | `story_id` | INTEGER | The story it belongs to. `ON DELETE CASCADE` |
 | `session_id` | TEXT | Claude Code's own session id, or nothing yet |
 | `alive` | INTEGER | `1` while that session's process is running |
-| `status` | TEXT | What it is doing. One of the six. Defaults to `IDLE` |
+| `status` | TEXT | What it is doing. One of the five. Defaults to `IDLE` |
 | `terminal_window_id` | TEXT | The terminal window it opened, so a double click can raise it |
 | `work_path` | TEXT | Where it really works, when that is not the repository — an isolated worktree has a working tree of its own |
 | `head_at_start` | TEXT | Where the repository stood when it started: everything after it is this session's doing |

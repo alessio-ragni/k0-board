@@ -1,12 +1,12 @@
 ---
-title: Eight colours, one glance
+title: Seven colours, one glance
 card: Every session is a sticky note, and its colour says whose move it is — yours or Claude's.
 summary: Every Claude Code session on the k0 board is a sticky note whose colour is its status — red when it asks you something, amber when a plan waits for your yes, blue while it works, green when it is done.
 kicker: how it works
 home: yes
 order: 10
 since: 0.1.0
-updated: 2026-11-12
+updated: 2026-11-02
 related: views, terminal, modes
 ---
 
@@ -24,15 +24,9 @@ its status**, and the colour changes by itself while the session runs.
 | yellow | **Your turn** | the terminal is idle, waiting for you to say something |
 | blue | **Working** | it is working |
 | light blue | **Planning** | it is working inside a plan |
-| sky blue | **Working in the background** | its turn is over, but a command it started is still running |
 | green | **Done** | you closed it |
 
-The first four are your move; the three blues are Claude's.
-
-**Working in the background** is the one that keeps yellow honest. A session that ends its turn
-while a test run or a deploy check is still going will carry on by itself when that finishes — so
-it is not your move, it is not counted among the notes waiting for you, and it sends no
-notification.
+The first four are your move; the two blues are Claude's.
 
 ## Why colours and not a row of tabs
 

@@ -19,20 +19,19 @@ $Base = "http://127.0.0.1:$Port"
 
 # The same colours and the same order of urgency as the board. ASK first because a question
 # blocks everything behind it; COMPLETED never gets here.
-$Urgency = @('ASK', 'PLANNED', 'IDLE', 'WORKING', 'PLANNING', 'BACKGROUND')
+$Urgency = @('ASK', 'PLANNED', 'IDLE', 'WORKING', 'PLANNING')
 $Colours = @{
   ASK      = @(232, 106, 51)
   PLANNED  = @(108, 142, 191)
   IDLE     = @(224, 192, 74)
   WORKING  = @(91, 168, 106)
   PLANNING = @(142, 124, 195)
-  BACKGROUND = @(91, 168, 106)
   quiet    = @(154, 154, 154)
   down     = @(176, 80, 80)
 }
 $Labels = @{
   ASK = 'Needs answer'; PLANNED = 'Needs approval'; IDLE = 'Your turn'
-  WORKING = 'Working'; PLANNING = 'Planning'; BACKGROUND = 'Working in the background'
+  WORKING = 'Working'; PLANNING = 'Planning'
 }
 $Modes = [ordered]@{ sleep = 'Sleep'; away = 'Away'; nerd = 'Nerd'; driving = 'Driving' }
 

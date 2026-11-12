@@ -21,7 +21,7 @@ export const DAY = 24 * 60 * 60 * 1000
  * click away. Nothing is closed either way: the terminal is still open, and the story is still
  * exactly where you left it.
  */
-const DEMANDING = new Set(['ASK', 'PLANNED', 'WORKING', 'PLANNING', 'BACKGROUND'])
+const DEMANDING = new Set(['ASK', 'PLANNED', 'WORKING', 'PLANNING'])
 
 /** The last time each repository was touched: the freshest of its stories. */
 export function lastTouched(stories) {

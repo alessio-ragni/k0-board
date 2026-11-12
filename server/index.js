@@ -636,17 +636,14 @@ function boardAnswer(since) {
   return { ...settled, stamp, ...living }
 }
 
-// Attention order, most urgent first. These six are everything a live session can be doing.
+// Attention order, most urgent first. These five are everything a live session can be doing.
 //
 // `BACKLOG` and `COMPLETED` used to sit at the end of this list and they never belonged in it:
 // they are not things a session does, they are what the board calls a story with no session and a
 // story you have ticked off. Neither can be waiting for you, and `attention` never sees one — it
 // looks only at stories whose session is alive and which are not finished. The story's own six
 // states are the other axis entirely and are not sorted here at all.
-//
-// `BACKGROUND` is not in `WAITING`, and that is the point of it: a session whose turn ended with a
-// command still running will carry on by itself, so it neither counts nor notifies.
-const ORDER = ['ASK', 'PLANNED', 'IDLE', 'WORKING', 'PLANNING', 'BACKGROUND']
+const ORDER = ['ASK', 'PLANNED', 'IDLE', 'WORKING', 'PLANNING']
 const WAITING = new Set(['ASK', 'PLANNED', 'IDLE'])
 
 /**
@@ -684,9 +681,7 @@ function attention(all) {
     .filter((s) => WAITING.has(s.status))
     .sort((a, b) => ORDER.indexOf(a.status) - ORDER.indexOf(b.status) || (a.status_since ?? 0) - (b.status_since ?? 0))
   // If nothing is waiting but something is running, the icon still stays lit.
-  // The model at work comes before a command left in the background.
-  const busy =
-    live.find((s) => s.status === 'WORKING' || s.status === 'PLANNING') ?? live.find((s) => s.status === 'BACKGROUND')
+  const busy = live.find((s) => s.status === 'WORKING' || s.status === 'PLANNING')
   return { urgent: waiting[0]?.status ?? busy?.status ?? null, waiting }
 }
 

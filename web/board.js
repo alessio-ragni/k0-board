@@ -14,7 +14,7 @@ import { drawArrows, initArrows, linking } from '/arrowboard.js'
 // The order is the attention priority inside a column: first whoever is waiting for you,
 // then whoever is grinding away, backlog at the bottom. Change it here and the dashboard changes.
 // The codes stay the database's own: only the label you see is in English.
-const ORDER = ['ASK', 'PLANNED', 'IDLE', 'WORKING', 'PLANNING', 'BACKGROUND', 'BACKLOG', 'COMPLETED']
+const ORDER = ['ASK', 'PLANNED', 'IDLE', 'WORKING', 'PLANNING', 'BACKLOG', 'COMPLETED']
 
 const LABEL = {
   ASK: 'Needs answer',
@@ -22,15 +22,12 @@ const LABEL = {
   IDLE: 'Your turn',
   WORKING: 'Working',
   PLANNING: 'Planning',
-  BACKGROUND: 'Working in the background',
   BACKLOG: 'Backlog',
   COMPLETED: 'Done',
 }
 
 // The statuses where something is really running. The server holds the same rule — a browser
 // cannot import a module that reads the filesystem — the way `ORDER` is already written twice.
-// `BACKGROUND` stays out: a command left running may be a server that never ends, and a session
-// holding one still has to be closable from here.
 const BUSY = new Set(['WORKING', 'PLANNING'])
 
 const $ = (s) => document.querySelector(s)

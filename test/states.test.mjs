@@ -22,9 +22,8 @@ process.env.USERPROFILE = FAKE_HOME
 // `db.js` now stops by itself if anybody tries again, but this is the right way round.
 process.env.K0_DB = path.join(os.tmpdir(), `k0-test-${process.pid}.db`)
 
-const {
-  deriveStatus, transcriptPath, projectSlug, renameSession, findTranscript, busy, running, transcriptName, transcriptIndex,
-} = await import('../server/watcher.js')
+const { deriveStatus, transcriptPath, projectSlug, renameSession, findTranscript, busy, transcriptName, transcriptIndex } =
+  await import('../server/watcher.js')
 const { sessionName, titleName, promptText, promptIsEmpty, renameDue, RENAME_RETRY_MS } = await import('../server/launcher.js')
 const { capabilities } = await import('../platform/index.js')
 const { scanSessions } = await import('../server/sessions.js')
@@ -178,15 +177,16 @@ check(
   check('a status nobody has heard of -> IDLE', deriveStatus(story(s), live(s, 'something-new')).status, 'IDLE')
 }
 
-// BACKGROUND: the turn is over and a command it left behind is still running. Claude Code calls
-// that `shell`, and it is not your move — the session answers by itself when the command ends.
+// The turn is over and a command it left behind is still running. Claude Code calls that
+// `shell`, and it is not your move — the session answers by itself when the command ends. It
+// reads as Working, not as a status of its own.
 {
   const s = write([])
   const d = deriveStatus(story(s), live(s, 'shell'))
-  check('shell -> BACKGROUND', d.status, 'BACKGROUND')
+  check('shell -> WORKING', d.status, 'WORKING')
   check('and the session is alive', d.alive, true)
   const p = write([mode('plan')])
-  check('in plan mode too', deriveStatus(story(p), live(p, 'shell')).status, 'BACKGROUND')
+  check('in plan mode too', deriveStatus(story(p), live(p, 'shell')).status, 'WORKING')
 }
 
 // Process dead: it keeps only the statuses that say something about you
@@ -198,7 +198,6 @@ check(
   const dead = (was) => deriveStatus(story(s, { session_status: was }), new Map()).status
   check('closed while working -> IDLE', dead('WORKING'), 'IDLE')
   check('closed while planning -> IDLE', dead('PLANNING'), 'IDLE')
-  check('closed with a command in the background -> IDLE', dead('BACKGROUND'), 'IDLE')
   check('closed with a question open: stays ASK', dead('ASK'), 'ASK')
   check('closed at your turn: stays IDLE', dead('IDLE'), 'IDLE')
 }
@@ -213,11 +212,6 @@ check(
   check('a question waiting can be closed', busy('ASK'), false)
   check('a plan waiting can be closed', busy('PLANNED'), false)
   check('a story with nothing running has nothing to close', busy('BACKLOG'), false)
-  // A command in the background may be a server that never ends: it has to stay closable.
-  check('a command in the background can be closed', busy('BACKGROUND'), false)
-  check('but it is running, not waiting for you', running('BACKGROUND'), true)
-  check('working is running', running('WORKING'), true)
-  check('your turn is not running', running('IDLE'), false)
 }
 
 // Transcript truncated or recreated: it must not get stuck

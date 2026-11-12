@@ -311,22 +311,14 @@ export function followTerminal(story, live, claimedBy) {
  * Something is really running behind this status. It is the one question two different places
  * ask: whether a status that survives the death of a process would be a lie, and whether a
  * session may be closed from the board — a session that is grinding away is not.
- *
- * `BACKGROUND` is deliberately not here, and `running` below is the wider question. A command
- * left in the background may be a check that ends in a minute or a server that never ends, and
- * k0 cannot tell which: refuse to close that one and a session with a server in it could never
- * be closed from the board again.
  */
 export const busy = (status) => status === 'WORKING' || status === 'PLANNING'
 
-/** Not waiting for you: the model is thinking, or a command it left behind is still going. */
-export const running = (status) => busy(status) || status === 'BACKGROUND'
-
 /**
- * Translates Claude Code's signals into the board's six live statuses.
+ * Translates Claude Code's signals into the board's five live statuses.
  * Returns { status, alive }.
  *
- * Six, not eight: `BACKLOG` and `COMPLETED` were never things a session does — one means the
+ * Five, not seven: `BACKLOG` and `COMPLETED` were never things a session does — one means the
  * story has no session at all, the other means you have ticked it off — and they are the story's
  * business now, on the other axis. What is left here is what the process is actually doing.
  */
@@ -340,11 +332,10 @@ export function deriveStatus(story, live) {
   const session = live.get(story.session_id)
   if (!session) {
     // Process dead: the session can still be resumed. We keep the last status only if it said
-    // something about you (an open question, a plan left sitting there); WORKING, PLANNING and
-    // BACKGROUND would be a lie, nothing is grinding away any more — a background command dies
-    // with the session that started it.
+    // something about you (an open question, a plan left sitting there); WORKING and PLANNING
+    // would be a lie, nothing is grinding away any more.
     const last = story.session_status || 'IDLE'
-    return { status: running(last) ? 'IDLE' : last, alive: false }
+    return { status: busy(last) ? 'IDLE' : last, alive: false }
   }
 
   const t = scanTranscript(session.cwd || story.project_path, story.session_id)
@@ -366,7 +357,8 @@ export function deriveStatus(story, live) {
       // The turn is over and nothing is on screen, which used to read as yellow — but a command
       // is still running in the background and the session answers by itself when it ends. It is
       // not your move, and a board that says it is sends you to a terminal with nothing to do.
-      return { status: 'BACKGROUND', alive: true }
+      // It is `Working` and nothing finer: one more status would be one more thing to read.
+      return { status: 'WORKING', alive: true }
 
     default: // idle — no dialog open, nothing running, the ball is in your court
       return { status: 'IDLE', alive: true }
