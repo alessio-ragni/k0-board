@@ -6,8 +6,12 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.10.0]
+
 Arrows between notes: drag from one story to another, in the same repository or a different one,
-to say that the first waits on the second.
+to say that the first waits on the second — then close or finish a whole chain at once, and ask
+Claude what a story is joined to with `/k0-arrows`. Stories made by the commands get a short title
+and a one-sentence summary, and `k0-board skills` brings the commands themselves up to date.
 
 ### Added
 
@@ -16,12 +20,15 @@ to say that the first waits on the second.
   that waits to the note it waits on, across repositories if need be. The board at rest stays
   clean: a note with arrows keeps the mark lit, and the whole chain is drawn when the pointer is
   on one of its notes, or stays up when you click the mark. The mark itself points up and away
-  on a note arrows leave, down and in on one they only arrive at, and both ways in between. Click an arrow for **Flip** and
-  **Remove**. Arrows into finished stories are faded, and gone when `Done` is hidden.
+  on a note arrows leave, down and in on one they only arrive at, and both ways in between. Click
+  an arrow for **Flip** and **Remove**. Arrows into finished stories are faded, and gone when
+  `Done` is hidden.
 - **Close and Done can take the linked stories with them.** On a note that arrows leave, Close
   offers to close the sessions of the stories it waits on as well, and Done offers to mark them
   `Done` too. A story that is working, or one whose counter-check found a decision broken, is left
   alone and named.
+- **`k0-board skills`** copies the `/k0-*` commands for Claude Code, or brings the ones you
+  already have up to date, without reinstalling anything.
 - **`/k0-arrows`**, a new command: what the story of this session is joined to, in any
   repository, where each of those stands and what its Log last said — and drawing, removing or
   turning an arrow round by saying so.
@@ -33,7 +40,12 @@ to say that the first waits on the second.
   the arrow that would close the ring is refused, with a sentence naming the stories.
 - `/k0-order` takes a dependency on a story in another repository: a key now names one story on
   the whole board.
-- A `.k0/` folder read back keeps the arrows that point into another repository.
+- A board rebuilt from the readable copy each repository keeps of its stories still has the arrows
+  that point into another repository.
+- Stories made by `/k0-story`, `/k0-epic` and `/k0-split` get a short title in the board's own
+  shape — two to four words joined by dashes, never a sentence cut off on the note — and open
+  with a one-sentence TLDR. That sentence is what the note shows; the rest sits under it and
+  reaches the session when you press Plan or Quick Start. `/k0-discuss` keeps the TLDR first.
 
 ## [0.9.1]
 

@@ -4,8 +4,8 @@ card: Drag an arrow from one note to another, across repositories, to say this o
 summary: Draw arrows between Claude Code sessions on the k0 board, across repositories, to show which story waits on which — then close or finish a whole chain at once.
 kicker: this waits on that
 order: 125
-since:
-updated: 2026-11-11
+since: 0.10.0
+updated: 2026-11-12
 related: backlog, statuses, idle-close
 ---
 

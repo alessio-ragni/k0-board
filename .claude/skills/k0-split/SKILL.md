@@ -64,7 +64,9 @@ that already apply to it — so the first thing a task does is not re-explain th
 4. **Propose the tasks.** Two to five. More than five and you are not splitting the story, you
    are rewriting the epic — say that instead and stop. For each one:
 
-   - a title of a handful of words, in his language;
+   - a title of 2 to 4 short words in his language, with capitals and joined by dashes
+     (`Export-Retries`), 40 characters at most, no accents — the shape of every other note on
+     the board;
    - one line saying what it finishes — a piece that can reach `Done` on its own;
    - **the decisions it inherits, by label**: `D1, D4, D7`. A superseded decision is never
      inherited; the one that superseded it is.
@@ -94,7 +96,8 @@ that already apply to it — so the first thing a task does is not re-explain th
      -H 'content-type: application/json' -d @"$SCRATCH/k0-task-1.json"
    ```
 
-   `body` is the context the task inherits, in the user's language: why the parent exists,
+   `body` opens with **`TLDR: `** and the one line saying what the task finishes, then a blank
+   line and the context the task inherits, in the user's language: why the parent exists,
    condensed to what this task needs, and the sentence that says which slice it owns. It is
    written so that somebody opening the task alone, six weeks from now, does not have to open
    the parent to understand it.

@@ -593,6 +593,7 @@ ${bold('k0-board')} — a board of sticky notes that drives your Claude Code ses
   ${bold('k0-board restart')}     restart the service
   ${bold('k0-board status')}      is it running?
   ${bold('k0-board doctor')}      what this machine can and cannot do, and why
+  ${bold('k0-board skills')}      copy the k0 commands for Claude Code, or bring them up to date
   ${bold('k0-board login')}       sign in to k0 Cloud with GitHub or Google (on the board)
   ${bold('k0-board logout')}      sign out; the board stays on this machine
 
@@ -604,7 +605,19 @@ Options
 `)
 }
 
-const commands = { install, uninstall, start, restart, status, doctor, login, logout, 'shift-enter': shiftEnter }
+/**
+ * The commands for Claude Code, and nothing else: no service, no browser, no board.
+ *
+ * `install` is the only other door to `offerSkill`, and nobody runs `install` twice — least of all
+ * somebody running k0 from its own source, where a command written this morning is not in
+ * `~/.claude/skills/` until something puts it there. This is that something.
+ */
+async function skills() {
+  await offerSkill()
+  ok('the commands for Claude Code are up to date')
+}
+
+const commands = { install, uninstall, start, restart, status, doctor, skills, login, logout, 'shift-enter': shiftEnter }
 
 if (flag('help') || flag('h') || command === 'help') {
   usage()

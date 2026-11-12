@@ -60,6 +60,20 @@ rules about tone live. It ships with the repository, not with the package.
 - **The server answers only itself.** Loopback bind plus a `Host`/`Origin` allowlist. Do not add
   a CORS header to make something work.
 
+## The commands on this machine
+
+Claude Code reads a `/k0-*` command from the repository it is opened in or from
+`~/.claude/skills/`, and the second is a **copy**, made by the installer. A command added or
+changed here is therefore invisible from every other repository until the copy is made again —
+which is how `/k0-arrows` came to exist for a whole evening without anybody being able to type it.
+
+- A new command goes in `SKILLS` in `bin/k0-board.js` and in `files` in `package.json`, or the
+  installer does not know it exists.
+- Any piece of work that adds or changes something under `.claude/skills/k0-*` ends with
+  `node bin/k0-board.js skills --yes`, run from the base branch after the merge. The release runs
+  it too, as a net.
+- Never copy a command across by hand, and never leave it to Alessio to do.
+
 ## The site
 
 `k0-board.com` has a short page for every feature, made from `site/features/<slug>.md` by

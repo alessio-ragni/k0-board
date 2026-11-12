@@ -120,6 +120,17 @@ node site/build.mjs --check
 It fails when a feature's Markdown in `site/features/` changed and its pages were not rebuilt.
 The answer is `npm run site`, and the rebuilt pages go into the same commit.
 
+And the commands, which live in this tree and are read from somewhere else:
+
+```bash
+node bin/k0-board.js skills --yes
+```
+
+It copies any `/k0-*` command that was added or changed into `~/.claude/skills/`, where Claude Code
+reads it from every other repository. The work that touched a command should already have run it
+(*The commands on this machine* in `CLAUDE.md`); this is the net under that. Say in the report
+which ones it brought up to date, if any.
+
 ### 3 · The commit
 
 One line, Conventional Commits, imperative, English, saying what changed **for the person using

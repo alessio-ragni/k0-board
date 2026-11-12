@@ -50,12 +50,22 @@ the same.
 
 ## Write it
 
-- **`title`** — 2 to 6 words, 60 characters at most, the thing itself. Readable, not a slug.
-- **`body`** — the *why*, in one or two sentences: what he wants and what it is for. **His
-  words, his language**, tidied but not translated and not padded. If he said one sentence, the
-  body is one sentence.
+- **`title`** — 2 to 4 short words, the thing itself, each with a capital and joined by dashes:
+  `Annuncio-PVP-Eliminato`, `Fix-Invoice-Export`. 40 characters at most, no accents, no
+  punctuation. It is the shape every other note on the board has — the dashboard's title field
+  and the session name both come out this way — and a sentence does not fit on a post-it: it is
+  cut off after five words. If it needs a colon or a verb clause, it is a TLDR, not a title.
+- **`body`** — opens with **`TLDR: `** and one sentence saying what the story is. Then a blank
+  line and the rest: the *why*, the context, what he said about it. **His words, his
+  language**, tidied but not translated and not padded. If he said one sentence, the body is
+  the TLDR line and nothing else.
 - **`lang`** — the language he spoke: `it`, `en`, and so on.
-- **`prompt`** — only when the story is starting now: the instruction the session opens with.
+- **`prompt`** — always: the instruction a session opened on this story starts from, whether it
+  starts now or from the board's button later. Its **first line is the same TLDR sentence,
+  without the `TLDR: ` label, and nothing else** — the post-it shows the prompt, so that line is
+  what anybody reading the board sees. After a blank line, one more: the context is on the
+  story, so `/k0-plan` is where to begin. No key in it — it does not exist before the `POST`,
+  and a session opened on a story already knows which one it is.
 
 Do not invent scope. If he described half a thing, the story is half a thing — a story is
 allowed to be thin, and `/k0-discuss` exists for the rest.
@@ -67,7 +77,7 @@ curl -sS --max-time 30 -X POST "http://127.0.0.1:$PORT/api/backlog/story" \
   -H 'content-type: application/json' -d @"$SCRATCH/k0-story.json"
 ```
 
-with `{ "project_path": "…", "title": "…", "body": "…", "lang": "it", "epic_key": "K7" }` —
+with `{ "project_path": "…", "title": "…", "body": "…", "prompt": "…", "lang": "it", "epic_key": "K7" }` —
 `project_path` is `REPO`, and `epic_key` only when there is one. Write the JSON to a file and
 send it with `-d @file`: a body dictated by voice will have quotes and newlines in it and will
 not survive being pasted inline.
@@ -89,7 +99,7 @@ asked. A story created and left on the board is the normal case.
 
 In his language, and one line is the whole report:
 
-> **K42 · 1.12** — Fix the invoice export. On the board, in Backlog.
+> **K42 · 1.12** — Fix-Invoice-Export. On the board, in Backlog.
 
 Add *and the session is running* when you started one. Nothing else: no summary of what you
 understood, no list of what he might want next, no offer to discuss it.

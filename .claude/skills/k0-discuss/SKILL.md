@@ -94,6 +94,10 @@ refuse the address outright, and one with a `#` in it quietly sends half.
   a `DELETE`.
 - **The body is his, not yours.** If the discussion changes what the story is fundamentally
   about, `PATCH` the `body` — but with his sentences, in his language, and say that you did.
+  The body opens with **`TLDR: `** and one sentence saying what the story is, then a blank line
+  and the rest: keep that line first, and rewrite it when the story has changed under it. A body
+  from before this rule gets its TLDR line the first time you patch it, never as a patch of its
+  own.
 - **A story mid-flight is still discussable.** `Working` or `Review` is not a reason to refuse.
   It is a reason to read the log first, and to say out loud that work has already started, so
   that a new decision contradicting what is built is recognised as the rework it is.

@@ -69,7 +69,7 @@ features as `[text](/features/<slug>/)`. No HTML: the Markdown is escaped.
 
 `site/features/<slug>.art.html`, optional, beside the Markdown. It is static HTML made only of the
 pieces at the end of `site/site.css` — `.art-stage` around it, `.mini` notes in the seven status
-colours, `.screen` windows, `.pill`, `.chip`. No pictures, no scripts, nothing fetched. Look at two
+colours, `.screen` windows, `.pill`, `.chip`, `.art-arrow`. No pictures, no scripts, nothing fetched. Look at two
 existing drawings before making a new one: they are meant to look like one set.
 
 ## Then

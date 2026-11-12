@@ -72,6 +72,7 @@ that and went out from a laptop.)
 | `k0-board restart` | restart the service |
 | `k0-board status` | is it running? exits 0 if it is, 1 if it is not |
 | `k0-board doctor` | what this machine can and cannot do, and why — and where k0 Cloud stands |
+| `k0-board skills` | copy the `/k0-*` commands into `~/.claude/skills/`, or bring the ones already there up to date — the installer's question, on its own |
 | `k0-board login` | sign in to [k0 Cloud](#k0-cloud) with GitHub or Google: opens the board, where the buttons are |
 | `k0-board logout` | sign out; the board stays on this machine and stops syncing |
 
@@ -572,7 +573,9 @@ Copying them out is **one question, asked by the installer**, right after it sta
   Install 11 commands and the mod for Claude Code? (Y/n)
 ```
 
-Say yes and they are there in every repository you ever open. It is worth saying plainly what
+Say yes and they are there in every repository you ever open. `k0-board skills` asks the same
+question by itself, without touching the service: it is how the commands are brought up to date
+after an upgrade, and how one written this morning reaches a k0 that runs from its own source. It is worth saying plainly what
 happens if you do not, because it is what happened to this feature the first time round: the
 commands were written and they worked — inside a clone of k0, and nowhere else on the machine.
 From any other repository the board offered *Discuss*, the terminal opened, and Claude Code had

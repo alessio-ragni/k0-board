@@ -545,7 +545,8 @@ a.feature-card:hover { transform: translateY(-2px); box-shadow: 0 10px 22px var(
 .cta .btn, .cta .btn:hover { background: var(--yellow); color: var(--note-ink); }
 
 /* The drawings on the feature pages, made of the same paper as the notes in the hero. The pieces:
-   .mini — a small note; .screen — a window with its title bar; .pill — the dictation pill. */
+   .mini — a small note; .screen — a window with its title bar; .pill — the dictation pill;
+   .art-arrow — an arrow from one note to the next. */
 
 .art-stage {
   position: relative;
@@ -588,6 +589,9 @@ a.feature-card:hover { transform: translateY(-2px); box-shadow: 0 10px 22px var(
 .mini.big i { font-size: 34px; }
 .mini.big b, .mini.big small { font-size: 14px; }
 .mini .mark { position: absolute; right: 8px; bottom: 8px; width: 20px; height: 20px; }
+/* An arrow between two notes, standing in the row between them. It is drawn in the page's ink and
+   not the note's, because it lies on the page: dark on the light scheme, light on the dark one. */
+.art-arrow { flex: none; width: 44px; height: 104px; color: var(--ink); }
 
 .screen {
   width: 100%;

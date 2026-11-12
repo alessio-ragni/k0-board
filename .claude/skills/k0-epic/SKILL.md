@@ -128,7 +128,10 @@ decisions, carry on at the next number, and say where you are picking up from.
 Only when the rounds have stopped. One message, in his language:
 
 - the epic, one line;
-- the stories, in the order they would be done — **title, then one line saying what it is**;
+- the stories, in the order they would be done — **title, then one line saying what it is**.
+  The title is 2 to 4 short words with capitals, joined by dashes (`Export-Retries`), 40
+  characters at most, no accents — the shape of every other note on the board; the line after
+  it is the story's TLDR;
 - under each, the dependency when there is one: *needs the first one done*;
 - what you have deliberately left out, if anything, one line.
 
@@ -150,11 +153,14 @@ In this order:
 
 1. **The stories.** One `POST /api/backlog/story` each, with `project_path`, `title`, `body`,
    `lang`, `epic_key` — the epic's key from step 2 — and a **`prompt`**: the sentence a session
-   opening on that story starts from. Two lines is enough, in his language, and it always says
-   the same two things: what this story is, and that the plan and the standing decisions are on
-   the story, so `/k0-plan K42` or `/k0-work K42` is where to begin. Without it a session started
-   from the board's button opens cold, and ten minutes of discussion reach the terminal by luck.
-   Send each one with `-d @file`.
+   opening on that story starts from. The `title` is the dashed one from the tree. The `body`
+   opens with **`TLDR: `** and the one sentence from the tree, then a blank line and the rest.
+   The `prompt` is in his language and its **first line is that same TLDR sentence and nothing
+   else** — the post-it shows the prompt, and the first line is what the board reads as. On the
+   lines after it, everything else: that the plan and the standing decisions are on the story, so
+   `/k0-plan K42` or `/k0-work K42` is where to begin, and any context worth having. Without it a
+   session started from the board's button opens cold, and ten minutes of discussion reach the
+   terminal by luck. Send each one with `-d @file`.
 2. **The decisions: nothing to do.** They were written on the epic in step 3, as they were taken,
    and every story carrying `epic_key` inherits them. `GET /api/backlog/story/:id` returns them
    in the same `decisions` array as the story's own, marked `"owner": "epic"` and labelled

@@ -33,7 +33,7 @@ Every feature of k0 has a short page at `/features/<slug>/`, and they are all li
   version and related features, then a few hundred words of Markdown. A feature marked
   `status: coming` gets a card that says *coming soon* and no page.
 - **`features/<slug>.art.html`** — the drawing beside it, built only from the pieces at the end of
-  `site.css` (`.mini` notes, `.screen`, `.pill`, `.chip`): no pictures, nothing fetched.
+  `site.css` (`.mini` notes, `.screen`, `.pill`, `.chip`, `.art-arrow`): no pictures, nothing fetched.
 - **`build.mjs`** — reads them with the board's own Markdown renderer (`web/md.js`) and writes
   `features/<slug>/index.html`, `features/index.html`, the cards between the
   `<!-- features:start -->` and `<!-- features:end -->` markers in `index.html`, and
