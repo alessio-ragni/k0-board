@@ -1519,9 +1519,8 @@ rest is left alone, and each for its own reason:
 - **Needs answer** and **Needs approval** would lose the very thing they were showing you. A
   question and a finished plan are drawn by the terminal and are not written to the transcript
   until they are answered, so closing that window throws the question away.
-- A session sitting in a **shell** is left alone as well. That is a shell you dropped into, and
-  there may be a command of yours running in it; k0 cannot see what it is, so k0 does not touch it.
-  On the board it reads as yellow like any other, which is exactly why this one has to be said.
+- **Working in the background** is left alone as well. The turn is over but a command it started
+  is still running; k0 cannot see what it is, so k0 does not touch it.
 - A note you have marked **always active** is never closed, however long it sits there. A session
   left watching something — a deploy, a queue, a mailbox — wakes every couple of hours, does its
   turn and goes back to the prompt, and whatever it prints in between moves none of the clocks
@@ -1581,8 +1580,8 @@ real machine that separated 145 genuine sessions from 867 automated ones, and it
 
 A story **is** the colour of its status — there is nothing else to read. On the left is the code
 k0 speaks internally — the API, the menu bar icon and the colours in `web/base.css` all say these
-seven words — then how it reads on screen. None of the seven is a column in the database: `BACKLOG`
-and `COMPLETED` are worked out from the story (no session, and closed), and the other five belong
+eight words — then how it reads on screen. None of the eight is a column in the database: `BACKLOG`
+and `COMPLETED` are worked out from the story (no session, and closed), and the other six belong
 to the live session, not to the story. See [`docs/database.md`](docs/database.md) for where each
 half really lives.
 
@@ -1594,9 +1593,20 @@ half really lives.
 | `IDLE` | **Your turn** | yellow | the terminal is idle, waiting for you to say something |
 | `WORKING` | **Working** | blue | it is working |
 | `PLANNING` | **Planning** | light blue | it is working inside a plan |
+| `BACKGROUND` | **Working in the background** | sky blue | its turn is over, but a command it started is still running and it will carry on by itself when that ends |
 | `COMPLETED` | **Done** | green | you closed it |
 
-The first four are your move; the two blues are its move.
+The first four are your move; the three blues are its move.
+
+**Working in the background** is what Claude Code's footer calls *1 shell still running*: a test
+run, a deploy being watched, a check on a pull request. It used to read as yellow, which sent you
+to a terminal with nothing in it for you to do. Now it breathes like a working note, at half the
+pace, it is not counted among the ones waiting for you in the menu bar, and it sends no
+notification. Unlike **Working** it can still be closed from the board — the command left running
+may be a server that never ends, and k0 cannot tell the two apart. One limit, said plainly: k0
+knows this from Claude Code, which reports a background *command*. A turn that ends waiting on
+something else — a background agent, a wake-up it scheduled for itself — is only blue if Claude
+Code reports it the same way; where it reports the session as idle, the note stays yellow.
 
 ---
 
@@ -1859,6 +1869,10 @@ Worth knowing:
   **while Terminal is in front**, an image on the clipboard is saved to `~/.k0/cache/images/` and
   its path is put in its place. Your Cmd+V pastes that path, and Claude Code recognises it and
   attaches it as `[Image #1]`. The moment you switch to another application, the image comes back.
+
+  This happens every time Terminal comes to the front, not only the first: copy a screenshot,
+  paste it into one session, go back to the board, open another session and paste it there too.
+  The file is written once per copy, so both sessions are handed the same one.
 
   An honest side effect: if you copy an image, go into Terminal, and **from there** switch to
   another application and paste within a third of a second, you may paste the path instead of the

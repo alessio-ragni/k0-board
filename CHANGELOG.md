@@ -6,6 +6,26 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+### Added
+
+- **Working in the background**, an eighth status, in sky blue. A session whose turn has ended
+  while a command it started is still running — Claude Code's *1 shell still running* — used to
+  turn yellow, as if it were your move, when it was going to carry on by itself. Now the note
+  breathes slowly in blue, it is not counted among the ones waiting for you in the menu bar or the
+  tray, and it sends no notification. It can still be closed from the board, because the command
+  may be a server that never ends. A turn that ends waiting on a background agent or a scheduled
+  wake-up, with no command running, may still read as yellow: k0 shows what Claude Code reports.
+
+### Fixed
+
+- **An image copied once pastes into every session.** With a screenshot on the clipboard, Cmd+V
+  attached it in the first terminal you went into and did nothing in the next one if you had
+  passed through the board, or any other application, on the way. It now works each time Terminal
+  comes to the front, and every session is handed the same file. On macOS the menu bar app is
+  rebuilt for this, so macOS may ask for its permissions again.
+- k0 no longer rewrites the clipboard three times a second while an image is on it and Terminal
+  is not in front.
+
 ## [0.10.0]
 
 Arrows between notes: drag from one story to another, in the same repository or a different one,
