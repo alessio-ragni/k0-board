@@ -62,6 +62,7 @@ function refusal(e) {
 
 let projects = []
 let editing = null // id of the story open in the editor, null = a new one
+let pendingArrow = null // the story an arrow was dragged from onto a repository: it waits on the new one
 let editingStory = null // the whole story: Start needs to know whether a session exists already
 let chosenProject = null
 let lastSignature = ''
@@ -892,6 +893,9 @@ function render(data) {
     wrap.innerHTML = `<h2><button class="add" title="${add}" aria-label="${add}">${
       ICON.plus
     }</button>${fold}${name}${gitChip(col.git, col.path)}${serverChip(col.server, col.path)}</h2>`
+    // The path on the header is for an arrow let go over the `+` or the name: arrowboard.js reads
+    // it to know which repository the new story it asks for goes into.
+    wrap.querySelector('h2').dataset.p = col.path
     wrap.querySelector('.add').onclick = () => openEditor(null, col.path)
     const folder = wrap.querySelector('.fold')
     if (folder) folder.onclick = () => putAway(col.path)
@@ -1515,13 +1519,21 @@ function openEpicDialog() {
  * `presetPath` is the repository of the column you pressed "+" on: it arrives already chosen and
  * the cursor jumps straight to the title, which is the only thing missing.
  */
-function openEditor(story, presetPath = null) {
+function openEditor(story, presetPath = null, arrowFrom = null) {
   editing = story?.id ?? null
   editingStory = story ?? null
+  pendingArrow = story ? null : arrowFrom
   // A repository typed by hand does not count: only a real path counts, taken from the list or
   // handed over by the column.
   chosenProject = story?.project_path ?? presetPath ?? null
-  $('#editor-title').textContent = story ? 'Story' : 'New story'
+  // The only sign that an arrow is waiting for this story: without it, the dialog would look exactly
+  // like the `+` and the arrow would appear afterwards out of nowhere.
+  const waiter = pendingArrow == null ? null : drawn.find((s) => s.id === pendingArrow)
+  $('#editor-title').textContent = story
+    ? 'Story'
+    : pendingArrow == null
+      ? 'New story'
+      : `New story — ${waiter?.key ?? 'the note'} will wait on it`
   $('#f-project').value = chosenProject ? nameOf(chosenProject) : ''
   // Session already started: the repository cannot be moved out from under Claude's feet.
   $('#f-project').disabled = !!story?.session_id
@@ -1762,6 +1774,21 @@ async function save() {
       ? await api(`/api/story/${editing}`, { method: 'PATCH', body: JSON.stringify(payload) })
       : await api('/api/story', { method: 'POST', body: JSON.stringify(payload) })
     await stampBacklog(saved.id, editingStory)
+    // The arrow that was let go over the repository, drawn now that its end exists. It goes before
+    // Quick Start or Discuss open anything, since both wait on this. If it fails the story stays:
+    // it was asked for, and an arrow can be drawn by hand afterwards.
+    if (!editing && pendingArrow != null) {
+      const from = pendingArrow
+      pendingArrow = null
+      try {
+        await api('/api/backlog/dependency', {
+          method: 'POST',
+          body: JSON.stringify({ story_id: from, depends_on: saved.id }),
+        })
+      } catch (e) {
+        toast(`Couldn't draw the arrow: ${e.message}`, 8000)
+      }
+    }
     $('#editor').close()
     lastSignature = ''
     refresh()
@@ -2178,6 +2205,7 @@ async function boot() {
   initArrows({
     api,
     toast,
+    newFrom: (from, path) => openEditor(null, path, from),
     redraw: () => {
       lastSignature = ''
       refresh()
@@ -2336,6 +2364,10 @@ async function boot() {
     if ($('#f-project-list').hidden) return
     e.preventDefault()
     $('#f-project-list').hidden = true
+  }
+  // However the dialog goes away without the story being saved, the arrow waiting for it goes too.
+  $('#editor').onclose = () => {
+    pendingArrow = null
   }
 
   // The title is normalised as you type. The cursor is put back by normalising the part before

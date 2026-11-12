@@ -1,5 +1,5 @@
 import { check, section } from './harness.mjs'
-import { chain, downstream, edgesFrom, hitsLoop, route, ties, within } from '../web/arrows.js'
+import { chain, downstream, dropOf, edgesFrom, hitsLoop, route, ties, within } from '../web/arrows.js'
 
 // ── Arrows, without a page ───────────────────────────────────────────────────
 // The half of the arrows that decides something: which there are, what a story reaches along
@@ -57,6 +57,17 @@ section('The arrow that must not be drawn')
   check('across the chain is fine', hitsLoop(2, 5, edges), false)
   check('and so is the same arrow again', hitsLoop(RELEASE, 2, edges), false)
   check('and anything to a note on its own', hitsLoop(9, RELEASE, edges), false)
+}
+
+section('Letting go of an arrow')
+{
+  const show = (d) => (d ? `${d.kind} ${d.to ?? d.path}` : 'nothing')
+  check('on another note it is an arrow to that note', show(dropOf({ note: 4 }, RELEASE)), 'link 4')
+  check('on a repository it is a new story there', show(dropOf({ repo: '/work/shop' }, RELEASE)), 'new /work/shop')
+  check('on the note it left from it is nothing', show(dropOf({ note: RELEASE }, RELEASE)), 'nothing')
+  check('on empty board it is nothing', show(dropOf({}, RELEASE)), 'nothing')
+  check('with nothing handed over at all it is nothing', show(dropOf(undefined, RELEASE)), 'nothing')
+  check('a note wins over a repository', show(dropOf({ note: 4, repo: '/work/shop' }, RELEASE)), 'link 4')
 }
 
 section('The curve between two notes')

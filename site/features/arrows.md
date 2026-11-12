@@ -28,6 +28,10 @@ whole chain at a glance, and you can act on the chain as one thing.
 - Put the pointer on a note: an **arrow mark** appears at the bottom right, left of the sun.
   **Press it and drag** onto another note, then let go. The board slides when you near an edge, so
   a note three columns away is reached by dragging towards it.
+- **The story it waits on is not written yet?** Let go over the `+` at the head of a repository's
+  column, or over its name, instead of a note. The new-story dialog opens on that repository and
+  says which note will wait on it; start the story and the arrow is already there. Close the
+  dialog and nothing is left behind.
 - The board at rest shows **no arrows**. A note that has some keeps its mark lit, with the count.
   Put the pointer on it and its whole chain is drawn; click the mark and it stays until you click
   elsewhere.

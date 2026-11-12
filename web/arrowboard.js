@@ -7,7 +7,7 @@
 // board is emptied and rebuilt on every change, and the layer goes with it: `drawArrows` is called
 // at the end of every render and puts it back, with whatever was showing still showing.
 
-import { chain, edgesFrom, hitsLoop, route, within } from '/arrows.js'
+import { chain, dropOf, edgesFrom, hitsLoop, route, within } from '/arrows.js'
 
 const NS = 'http://www.w3.org/2000/svg'
 const $ = (s) => document.querySelector(s)
@@ -18,7 +18,7 @@ let pinned = null // the note whose arrows were asked to stay
 let hideTimer = 0
 let drag = null // { from, x0, y0, x, y, live, target }
 let frame = 0
-let hooks = { api: null, toast: () => {}, redraw: () => {} }
+let hooks = { api: null, toast: () => {}, redraw: () => {}, newFrom: () => {} }
 
 const board = () => $('#board')
 const note = (id) => board().querySelector(`.postit[data-id="${id}"]`)
@@ -127,9 +127,18 @@ function hideSoon() {
 }
 
 // ── Drawing a new one ─────────────────────────────────────────────────
+// The places in a repository's header that mean "a new story here": the `+` and the name, on an open
+// column and on the rows of the two folded columns on the right. Whatever is lit is the whole header
+// or the whole row, the element that carries the repository's path.
+const REPO_SPOT = '.column > h2 .add, .column > h2 .name, .repo .add, .repo .name'
+
+/** What is under the pointer: `{ el, drop }`, the element to light up and what letting go means. */
 function under(x, y) {
-  const el = document.elementFromPoint(x, y)?.closest?.('.postit')
-  return el && Number(el.dataset.id) !== drag.from ? el : null
+  const hit = document.elementFromPoint(x, y)
+  const card = hit?.closest?.('.postit')
+  const zone = card ? null : hit?.closest?.(REPO_SPOT)?.closest('[data-p]')
+  const drop = dropOf({ note: card ? Number(card.dataset.id) : null, repo: zone?.dataset.p }, drag.from)
+  return drop ? { el: card ?? zone, drop } : null
 }
 
 function follow() {
@@ -143,9 +152,11 @@ function follow() {
   const from = note(drag.from)
   if (!from) return
   const target = under(drag.x, drag.y)
-  drag.target = target ? Number(target.dataset.id) : null
-  if (target) target.classList.add(hitsLoop(drag.from, drag.target, edges) ? 'link-refused' : 'link-target')
-  svg.append(path('arrow draft', route(rect(from), target ? rect(target) : point(drag.x, drag.y))))
+  drag.target = target?.drop ?? null
+  // A story that does not exist yet waits on nothing, so an arrow to one can never close a loop.
+  const refused = target?.drop.kind === 'link' && hitsLoop(drag.from, target.drop.to, edges)
+  if (target) target.el.classList.add(refused ? 'link-refused' : 'link-target')
+  svg.append(path('arrow draft', route(rect(from), target ? rect(target.el) : point(drag.x, drag.y))))
   // The board slides under a pointer that is standing still near an edge, so the arrow has to be
   // redrawn on every frame and not only when the pointer reports a move.
   frame = requestAnimationFrame(follow)
@@ -198,8 +209,7 @@ function onMove(e) {
 function onUp() {
   if (!drag) return
   const { from, live, x, y } = drag
-  const target = live ? under(x, y) : null
-  const to = target ? Number(target.dataset.id) : null
+  const drop = live ? under(x, y)?.drop : null
   endDrag()
   if (!live) {
     // A plain click: the arrows of this note stay up until something else is clicked.
@@ -207,9 +217,15 @@ function onUp() {
     paint()
     return
   }
-  if (to == null) return hooks.redraw()
-  send({ story_id: from, depends_on: to }, "Couldn't draw the arrow")
+  if (!drop) return hooks.redraw()
   pinned = from
+  // Onto a repository: the story the arrow points at is written first, in the same dialog the `+`
+  // opens, and the arrow is drawn when it is saved. Closing the dialog leaves neither behind.
+  if (drop.kind === 'new') {
+    hooks.newFrom(from, drop.path)
+    return hooks.redraw()
+  }
+  send({ story_id: from, depends_on: drop.to }, "Couldn't draw the arrow")
 }
 
 // ── The two words on an arrow ─────────────────────────────────────────
