@@ -2106,6 +2106,22 @@ export function dependenciesOf(storyId) {
 }
 
 /**
+ * The stories this one waits on that were finished after a given moment.
+ *
+ * Asked by the refusal of Done: a counter-check that found a decision broken because something
+ * elsewhere was not done yet is not answered by that something getting done, but the user has to
+ * be told it happened — otherwise the refusal reads as though the arrow were the thing in the way.
+ */
+export function dependenciesFinishedSince(storyId, at) {
+  return q(`
+    SELECT s.id, ${keyText('s.key_num')} AS "key", s.title, s.completed_at
+    FROM dependency d JOIN story s ON s.id = d.depends_on
+    WHERE d.story_id = ? AND s.completed_at IS NOT NULL AND s.completed_at > ?
+    ORDER BY s.completed_at, s.id
+  `).all(storyId, Number(at) || 0)
+}
+
+/**
  * The same question asked once for the whole board instead of once per story.
  *
  * `dependenciesOf` above is right for a story you have opened. Asked from the loop that builds the

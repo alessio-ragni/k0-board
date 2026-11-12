@@ -935,7 +935,10 @@ Three rules make it worth something rather than a ceremony:
   leaves it exactly where it was. This is the only refusal in the whole feature, and it applies to
   whatever is asking: the Done button on the note, the one at the end of a row in the list, a
   command. It comes back as a sentence saying which decision, from which run, and what to do about
-  it.
+  it — opening with the fact that it is the counter-check in the way and not an arrow. When a story
+  it waits on has been finished since that run, the sentence names it and says to run the
+  counter-check again: work handed elsewhere and since done is the usual reason a broken decision
+  no longer is. It only says so; the refusal stands until a run finds the decision kept.
 
 There are exactly two ways to answer it, and both are honest: **put the work right and run the
 counter-check again**, or **supersede the decision** if it turns out the decision was the thing that

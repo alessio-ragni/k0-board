@@ -6,6 +6,14 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+### Changed
+
+- **Done refused over a broken decision says so, and says what changed since.** The sentence now
+  opens by saying it is the counter-check in the way, not an arrow. And when a story this one waits
+  on has been finished after the run that found the decision broken, it names that story and tells
+  you to run the counter-check again — the refusal itself stands until a run finds the decision
+  kept.
+
 ## [0.11.0]
 
 An arrow can now point at a story that is not written yet: let it go over a repository's `+` or
