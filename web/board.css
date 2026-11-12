@@ -891,6 +891,9 @@ body {
 /* The notes of the chain that is showing, and the one an arrow in the air is over. */
 .postit.linked, .postit.link-target { box-shadow: 0 0 0 2px var(--ink), 0 6px 14px rgba(0, 0, 0, .18); }
 .postit.link-refused { box-shadow: 0 0 0 2px var(--warn); cursor: not-allowed; }
+/* A repository's header, or its row on the right, under an arrow: letting go there writes a new
+   story in it. Lit with the same ring as a note, so it reads as the same kind of target. */
+.column > h2.link-target, .repo.link-target { box-shadow: 0 0 0 2px var(--ink); border-radius: 6px; }
 .board.linking, .board.linking * { cursor: grabbing; user-select: none; }
 
 /* Flip and Remove, where the arrow was clicked. */

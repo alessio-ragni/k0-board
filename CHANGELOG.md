@@ -6,6 +6,15 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+### Added
+
+- **An arrow let go over a repository writes the story it points at.** Drag a note's arrow onto
+  the `+` at the head of a column, or onto the repository's name — in `Old` and `Others` too —
+  and the new-story dialog opens on that repository, saying which note will wait on it. Start the
+  story and the arrow is already drawn; close the dialog and nothing is left behind. For the
+  moment finishing one story shows it waits on work in another repository that is not on the
+  board yet.
+
 ### Fixed
 
 - **A session with a command still running in the background reads as Working, not as Your

@@ -688,6 +688,13 @@ one repository's column into another's. The board slides when the pointer nears 
 three columns away is reached by dragging towards it; a note that is not on the board — filtered
 out, or folded into `Old` — has to be brought back before anything can be joined to it.
 
+- **Let go over a repository instead of a note** — the `+` at the head of its column, or its name,
+  or the same on its row in `Old` or `Others` — and the story at the other end does not exist yet:
+  the header lights up, and on release the usual new-story dialog opens on that repository,
+  titled *New story — K42 will wait on it*. Write the title, press Quick Start or Discuss, and
+  the arrow is already there. Close the dialog instead and nothing is left behind, neither story
+  nor arrow. It is the quick way when finishing one story shows it waits on work in another
+  repository that nobody has written down.
 - **The board at rest shows no arrows.** A note that has any keeps its arrow mark lit, with the
   count beside it. Put the pointer on such a note and the whole chain it belongs to is drawn —
   every arrow that can be reached from it, either way, with the notes outlined — and goes again
@@ -2031,11 +2038,15 @@ web/             the pages (html, css, js served exactly as they are)
   recency.js     which repositories are still warm, and which fold away into `Old`
   arrows.js      the arrows between notes, without a page: which there are (read off the `deps`
                  every story already carries), what a story reaches along them, the arrow that
-                 would close a ring, and the curve between two rectangles
+                 would close a ring, what letting go means (a note, or a repository and so a new
+                 story), and the curve between two rectangles
   arrowboard.js  the same arrows on the board: an <svg> inside `#board`, so it slides and zooms
                  with the notes, put back at the end of every render; the drag that draws a new
                  one — the board is not redrawn while one is in the air, and view.js goes on
-                 sliding at the edges for it — and Flip and Remove where one is clicked
+                 sliding at the edges for it — and Flip and Remove where one is clicked. Let go
+                 over a repository's `+` or name (the header carries its path in `data-p`), it
+                 asks board.js for the new-story dialog with the arrow pending; `save()` draws the
+                 arrow once the story exists, and closing the dialog forgets it
   fuzzy.js       searching the names: the letters you type, in the order you type them — the
                  file viewer, the repository the new story goes in, and the repository menu on
                  the bar, which is drawn here rather than left to the system

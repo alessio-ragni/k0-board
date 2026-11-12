@@ -62,6 +62,20 @@ export function ties(id, edges) {
  */
 export const hitsLoop = (from, to, edges) => from === to || downstream(to, edges).includes(from)
 
+/**
+ * What letting go of an arrow means, given what is under the pointer: another note is an arrow to
+ * it; a repository — its `+` or its name — is a new story there, which the arrow will point at
+ * once it exists; the note the arrow left from, or nothing at all, is nothing.
+ *
+ * A note wins over a repository, though the page never hands over both: the header and the notes
+ * do not overlap, and a note is the thing somebody aiming at a note meant.
+ */
+export function dropOf({ note = null, repo = null } = {}, from) {
+  if (note != null) return note === from ? null : { kind: 'link', to: note }
+  if (repo) return { kind: 'new', path: repo }
+  return null
+}
+
 const r1 = (n) => Math.round(n * 10) / 10
 
 /**
