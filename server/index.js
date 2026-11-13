@@ -14,6 +14,7 @@ import {
   forgetDeadSessions,
   renameSession,
   busy,
+  resumeFindsItRunning,
 } from './watcher.js'
 import {
   launch,
@@ -829,11 +830,31 @@ function whatsNew(asked = null) {
  * and a worktree is recorded against a session, so without this it had nothing to do but refuse.
  * A second copy of forty lines that attach a session, mark HEAD and open a terminal would be a
  * second place for the undo on a failed launch to be forgotten.
+ *
+ * A story that is Done is reopened by it. A terminal open on a finished story is a state the board
+ * has no way to draw: with Done hidden there is no note to show it on, and the watching loop takes
+ * every finished story for dead, so the window went on working where nobody could see it. Pressing
+ * Resume — on the card, or on the row in ⌘K — is the user saying the work is not over after all.
  */
 async function startSession(res, id, body = {}, { resume = false, prompt = null, command = null } = {}) {
   const story = db.getStory(id)
   if (!story) return send(res, 404, { error: 'Story not found' })
   const resuming = resume && !!story.session_id
+  const wasDone = !!story.completed_at
+  // Resumed once already while it was Done: the terminal is still there, and a second
+  // `claude --resume` on the same conversation would be one window too many. The story comes back
+  // and the window it already has is brought up front instead.
+  if (resumeFindsItRunning(story, readLiveSessions(), resuming)) {
+    db.setCompleted(id, false)
+    tick()
+    const note = mirrorStory(id)
+    const shown = await focusWindow(story.terminal_window_id, sessionName(story))
+    if (shown.handle && String(shown.handle) !== String(story.terminal_window_id)) {
+      db.setTerminalWindow(id, shown.handle)
+    }
+    const answer = { name: sessionName(story), up: true, focused: !!shown.ok, reopened: true }
+    return wrote(res, { ...answer, story: db.getStory(id), session: db.currentSession(id) }, note)
+  }
   const sessionId = resuming ? story.session_id : crypto.randomUUID()
   // Whether the prompt is sent by itself belongs to the session that is about to start, so it is
   // taken here, before there is a session, and lands on the row `attachSession` makes.
@@ -864,6 +885,9 @@ async function startSession(res, id, body = {}, { resume = false, prompt = null,
     const out = await launch({ story: opening, sessionId, mode: resuming ? 'resume' : 'start' })
     db.setTerminalWindow(id, out.winId)
     db.setAutoClosed(id, false) // there is a window again: whoever shut the last one is history
+    // Reopened only now that the terminal is really there: a launch that fails leaves the story
+    // Done, as it was, with nothing to put back.
+    if (wasDone) db.setCompleted(id, false)
     // After `tick`, not before it: the round is what notices the session has gone live and — where
     // it was opened to do the work rather than to talk about it — moves the story to `Working`, and
     // the `.k0/` file has both that state and the session's id in its header. Written here rather
@@ -871,7 +895,7 @@ async function startSession(res, id, body = {}, { resume = false, prompt = null,
     // business touching a disk.
     tick()
     const note = mirrorStory(id)
-    return wrote(res, { ...out, story: db.getStory(id), session: db.currentSession(id) }, note)
+    return wrote(res, { ...out, reopened: wasDone, story: db.getStory(id), session: db.currentSession(id) }, note)
   } catch (err) {
     // The terminal did not open: the story must not stay attached to a session that was never
     // born, or it would offer a "resume" that cannot work.
