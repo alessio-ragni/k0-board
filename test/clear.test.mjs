@@ -15,7 +15,7 @@ process.env.USERPROFILE = FAKE_HOME
 process.env.K0_DB = path.join(os.tmpdir(), `k0-clear-test-${process.pid}.db`)
 
 const store = await import('../server/db.js')
-const { followTerminal } = await import('../server/watcher.js')
+const { followTerminal, resumeFindsItRunning } = await import('../server/watcher.js')
 
 const REPO = path.join(FAKE_HOME, 'repo')
 const START = 'Wed Nov 11 09:25:27 2026'
@@ -128,6 +128,28 @@ check('and still the story’s, for the usage page and the import', store.storyO
 check('the new one is the story’s too', store.storyOfSession('after-clear'), made.id)
 check('a session nobody holds belongs to nobody', store.storyOfSession('nobody'), null)
 check('a row that is not there is left alone', store.rebindSession(999999, 'x'), undefined)
+
+// ── Resuming a story that is Done ────────────────────────────────────────────
+// Resume on a finished story reopens it. When it was resumed once already and the terminal is still
+// there, the window is brought up instead of a second `claude --resume` on the same conversation.
+section('resuming a story that is done')
+
+const finished = { id: 7, session_id: 'kept', completed_at: Date.now() }
+const running = liveOf({ pid: 1, procStart: START, sessionId: 'kept' })
+
+check(
+  'done, resumed, its terminal still running: that terminal is brought up',
+  resumeFindsItRunning(finished, running, true),
+  true
+)
+check('done, resumed, nothing running: a terminal is opened', resumeFindsItRunning(finished, liveOf(), true), false)
+check('a fresh start is never this', resumeFindsItRunning(finished, running, false), false)
+check(
+  'a story that is not done has no Resume over a live session',
+  resumeFindsItRunning({ ...finished, completed_at: null }, running, true),
+  false
+)
+check('no session, nothing to find', resumeFindsItRunning({ ...finished, session_id: null }, running, true), false)
 
 after(() => {
   store.close()

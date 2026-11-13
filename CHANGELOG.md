@@ -15,6 +15,17 @@ All notable changes to this project are documented here. The format follows
   kept.
 - The test for that refusal compares the story it names by value. Nothing you will notice.
 
+### Fixed
+
+- **Resume on a finished story brings it back.** Resuming a story that was Done, from its card,
+  opened its terminal and left the story Done: with Done hidden there was no note to show it on,
+  and the board took the session for dead while it went on working. Resume now reopens the story,
+  so the note and its arrows are back on the board with the terminal. If that terminal is still
+  open from an earlier try, it is brought up front instead of opening a second one.
+- **⌘K has a Resume button on finished stories.** It used to be a greyed-out Terminal telling you
+  to reopen the story from its note — a note you could not see. Enter and the double click still
+  open the story.
+
 ## [0.11.0]
 
 An arrow can now point at a story that is not written yet: let it go over a repository's `+` or

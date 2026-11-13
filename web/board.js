@@ -1218,6 +1218,13 @@ function launched(r) {
   // like a launch with no window in it, and without this the user would be told the opposite of
   // what happened about a session that was never opened.
   if (r.enabled === false) return toast(r.why || 'The k0 backlog is switched off.', 8000)
+  // Resumed from Done with its terminal still open: nothing was launched, the story came back and
+  // the window it had was brought up front — or could not be, which is worth a sentence.
+  if (r.reopened && 'focused' in r) {
+    if (r.focused) return toast(`${r.name} was still open: it is back on the board`)
+    const why = 'its window could not be brought up front'
+    return toast(`${r.name} is back on the board and still running, but ${why}`, 8000)
+  }
   if (!r.up) return toast(`${r.name} was launched, but I didn't see it come up within 30s`)
   // `autoSent` before `pasted`, and they are not exclusive: a prompt sent with the session goes on
   // the command line, which counts as pasted too. Asking somebody to hit enter on a session that
@@ -1897,13 +1904,14 @@ const LIST = {
 // how it ranks — so nothing is asked of the server while you type.
 //
 // Enter goes to the terminal, because the question you open it with is nearly always "what is that
-// one doing". ⌘Enter opens the story to edit it. A finished story has no terminal to go to: there
-// Enter opens it instead, and the Terminal button says why it is off.
+// one doing". ⌘Enter opens the story to edit it. A finished story is not where you meant to go
+// most of the time, so there Enter and the double click open it instead; its button says Resume,
+// and pressing it reopens the story — the server does that — and puts it back on the board with
+// its terminal. It used to be greyed out, telling you to reopen it from its note: with Done hidden
+// there is no note.
 
 let finderRows = []
 let finderAt = 0
-
-const DONE_NO_TERMINAL = 'This story is done — reopen it from its note first'
 
 function openFinder() {
   if (!lastBoard) return
@@ -1963,7 +1971,13 @@ function paintFinder() {
         </span>
         <span class="acts">
           <button type="button" data-act="open">Open</button>
-          <button type="button" data-act="terminal"${done ? ` disabled title="${DONE_NO_TERMINAL}"` : ''}>Terminal</button>
+          ${
+            done
+              ? `<button type="button" data-act="reopen" title="Reopens the story and its terminal">${
+                  s.session_id ? 'Resume' : 'Start'
+                }</button>`
+              : '<button type="button" data-act="terminal">Terminal</button>'
+          }
         </span>
       </div>`
     })
@@ -1977,7 +1991,10 @@ function markFinder() {
   rows[finderAt]?.scrollIntoView({ block: 'nearest' })
 }
 
-/** What a row does. `act` is `terminal`, `open` or `repo`; Enter passes the row's default. */
+/**
+ * What a row does. `act` is `terminal`, `open`, `reopen` or `repo`; Enter passes the row's default.
+ * `reopen` is only ever the button on a finished story: Enter and the double click there open it.
+ */
 function actFinder(i, act) {
   const r = finderRows[i]
   if (!r) return
@@ -1989,6 +2006,7 @@ function actFinder(i, act) {
     return
   }
   const story = r.item
+  if (act === 'reopen') return start(story.id, story.session_id ? 'resume' : 'start')
   if (act === 'open' || story.completed_at) return openEditor(story)
   goToWork(story)
 }

@@ -308,6 +308,19 @@ export function followTerminal(story, live, claimedBy) {
 }
 
 /**
+ * Whether a Resume pressed on this story should bring up the terminal that is already there rather
+ * than open a second one on the same conversation.
+ *
+ * Only a finished story can be asked this with its process still running. Everywhere else a live
+ * session has no Resume to press — but a story ticked off reads as dead to the board whatever is
+ * behind it (see `deriveStatus`), so the button is there, and a terminal resumed earlier, from the
+ * story's card or by hand, may still be open. Two `claude --resume` on one conversation would write
+ * the same transcript from two windows.
+ */
+export const resumeFindsItRunning = (story, live, resuming) =>
+  !!resuming && !!story.completed_at && !!story.session_id && live.has(story.session_id)
+
+/**
  * Something is really running behind this status. It is the one question two different places
  * ask: whether a status that survives the death of a process would be a lie, and whether a
  * session may be closed from the board — a session that is grinding away is not.

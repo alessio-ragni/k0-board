@@ -375,7 +375,10 @@ are still one counter for the whole board rather than one per repository, kept o
   in the way.
 
 - **Done** — closes the work **and its terminal**, with no questions: undo it with **Reopen**, and
-  pick the conversation up again with **Resume**. On a story that has never been started there is
+  pick the conversation up again with **Resume**. Resume on a finished story — on its card, or on
+  its row in ⌘K — reopens it too: a terminal at work on a story the board has put away is one
+  nobody can see. If that story's terminal is somehow still open, it is brought up front rather
+  than opened a second time. On a story that has never been started there is
   no terminal to close, and the button is there anyway as long as there is a backlog behind the
   board — a story planned here and then worked on in a terminal you opened yourself has to be
   closable, and `Done` is the only thing in k0 that closes one. With the backlog switched off it
@@ -469,8 +472,10 @@ note does: its terminal up front if one is running, the conversation it left beh
 closed, a new session if there was never one. **Open** opens the story to edit it. **Enter** — or
 a double click on the row — is Terminal, **⌘Enter** is Open, the arrows move, Esc shuts it.
 
-Finished stories are in the list too, after everything still open and in grey; they have no
-terminal to go to, so there Enter opens them and the Terminal button says why it is off. With the
+Finished stories are in the list too, after everything still open and in grey. Enter and the
+double click open them, since a finished story is rarely where you meant to go; their button says
+**Resume** instead of Terminal, and pressing it reopens the story and puts it back on the board
+with its terminal — **Start** for one that never had a session. With the
 backlog on, repositories come up as well: choosing one filters the board on it, the same as the
 repository menu on the bar. With nothing typed the box lists the open stories you touched last,
 so ⌘K and Enter is the way back to whatever you were just on.
