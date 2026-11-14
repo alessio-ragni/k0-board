@@ -19,7 +19,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Caveat:wght@500;700&family=Instrument+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap">
   <link rel="stylesheet" href="/site.css">
-  <script type="application/ld+json">{"@context":"https://schema.org","@type":"TechArticle","headline":"Kanban to work, List to plan","description":"k0 shows your Claude Code stories two ways — Kanban, a column of notes per repository, and List, every epic, story and task as rows to plan with.","url":"https://k0-board.com/features/views/","dateModified":"2026-11-02","isPartOf":{"@type":"WebSite","name":"k0","url":"https://k0-board.com/"},"about":{"@type":"SoftwareApplication","name":"k0","applicationCategory":"DeveloperApplication"}}</script>
+  <script type="application/ld+json">{"@context":"https://schema.org","@type":"TechArticle","headline":"Kanban to work, List to plan","description":"k0 shows your Claude Code stories two ways — Kanban, a column of notes per repository, and List, every epic, story and task as rows to plan with.","url":"https://k0-board.com/features/views/","dateModified":"2026-11-14","isPartOf":{"@type":"WebSite","name":"k0","url":"https://k0-board.com/"},"about":{"@type":"SoftwareApplication","name":"k0","applicationCategory":"DeveloperApplication"}}</script>
 </head>
 <body>
   <a class="skip" href="#main">Skip to content</a>
@@ -72,10 +72,12 @@
 of what you are looking at and never <em>what</em> you are looking at: the state pills, the repository
 and the epic lane apply to both, so nothing appears or vanishes when you switch.</p>
 <p><strong>Kanban is for working.</strong> The board you already know — one column per repository, notes that
-reorder themselves by who is waiting for you. With a <a href="/features/backlog/">backlog</a> behind it a note
-grows four marks and no more: its <strong>key</strong>, like <code>K42</code>; its <strong>epic</strong>, as a small label in the epic's
-own colour; a <strong>flag</strong> in the bottom corner; and a warning when something it <strong>waits on</strong> is not
-finished.</p>
+reorder themselves by who is waiting for you. A note at rest is small: its <strong>key</strong>, like <code>K42</code>, and
+how long it has been in its state on the top line, the title, and one thin line under it. The
+repository is not repeated on it — it is at the top of the column — so a column holds many more.
+With a <a href="/features/backlog/">backlog</a> behind it a note carries four marks and no more: the key; its
+<strong>epic</strong>, as a small label in the epic's own colour; a <strong>flag</strong> in the bottom corner; and a warning
+when something it <strong>waits on</strong> is not finished.</p>
 <p><strong>List is for planning.</strong> The same stories as rows, every repository at once: a heading per
 repository, epics that open and close with their progress bar, stories under them, and tasks
 indented beneath the story they were cut from. A row carries key, title, state, flag, how many
@@ -85,7 +87,7 @@ decisions are still standing and how much of the checklist has passed.</p>
 board of coloured notes answers that from across the room. While planning it is <em>what is left, and
 in what order</em>, and that wants everything at once, in rows you can run your eye down.</p>
 <h2>How to use it</h2>
-<ul><li>Click <strong>Kanban</strong> or <strong>List</strong> in the top bar.</li><li>Hover a note and click the flag in its bottom corner. Once on, the note takes a border in the flag's colour, so you can find it from across the room; click again to take it off.</li><li>Click an epic's label and the board becomes that epic: a strip under the top bar shows a progress bar, <code>4 of 11 done</code>, and the way back out. It survives a reload.</li><li>In List, click a row and the story opens <strong>beside it</strong> — its rounds, decisions, plan, checklist and log — so the rows you were comparing stay on screen.</li><li>Drag a row to reorder it, or onto another epic to move it there.</li><li>Open a story with the pencil to keep <strong>notes</strong> on it: they sit on the post-it for you and are never sent to Claude Code.</li></ul>
+<ul><li>Stop the pointer on a note and it opens: its notes, its epic and its buttons come out, and the notes below move down. It stays open while the pointer is in that column; leave the column and they all close.</li><li>Click <strong>Kanban</strong> or <strong>List</strong> in the top bar.</li><li>Hover a note and click the flag in its bottom corner. Once on, the note takes a border in the flag's colour, so you can find it from across the room; click again to take it off.</li><li>Click an epic's label and the board becomes that epic: a strip under the top bar shows a progress bar, <code>4 of 11 done</code>, and the way back out. It survives a reload.</li><li>In List, click a row and the story opens <strong>beside it</strong> — its rounds, decisions, plan, checklist and log — so the rows you were comparing stay on screen.</li><li>Drag a row to reorder it, or onto another epic to move it there.</li><li>Open a story with the pencil to keep <strong>notes</strong> on it: they show on the post-it when it opens, and are never sent to Claude Code.</li></ul>
 <h2>Small print</h2>
 <p>Progress counts the epic's stories and is not weighted: eleven stories with one done is 1 of 11.
 Dragging never changes state — states move from the terminal and the Done button. And the two views
