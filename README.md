@@ -299,6 +299,20 @@ are still one counter for the whole board rather than one per repository, kept o
 
 ### The board
 
+**A note at rest is small on purpose**: the story's key and how long it has been in its state on
+the top line, the title, and one thin line under it — *session closed*, the mark that says it waits
+on something, and the arrow, sun and flag at its right end. The repository's name is not on it: it
+is written at the top of the column the note stands in. That is what lets a column hold twice the
+notes it used to.
+
+**Stop the pointer on a note and it opens**: what it is about (its notes and the prompt), its epic
+and its buttons come out, and the notes below move down to make room. It stays open for as long as
+the pointer is in that column — move down to the next note and the first one stays as it is, so
+the column does not bounce under you — and every note in the column closes when the pointer leaves
+it. Passing over a note in a hurry does not open it, and nothing opens while an arrow is being
+drawn, so the note it is aimed at does not slide away from it. The keyboard opens a note too, when
+one of its buttons has the focus.
+
 - **+** — at the left, next to k0, and next to every repository name on the board: that one opens
   a story with the repository already chosen. Two fields and no more: the repository and a title.
   Nothing is asked about what the story is for, because both ways out of the dialog open a terminal
@@ -669,9 +683,10 @@ under you.
 
 **Kanban is for working.** It is the board you already know — one column per repository, notes
 that reorder themselves by who is waiting for you. With a backlog behind it a note grows four
-marks and no more: its **key**; the **epic** it belongs to, as a small label in the epic's own
-colour, worked out from the key so there is nothing to choose and nothing to keep in step; a
-**flag** in the bottom corner; and a warning when something it **waits on** is not finished.
+marks and no more: its **key**, on the top line; the **epic** it belongs to, as a small label in
+the epic's own colour, worked out from the key so there is nothing to choose and nothing to keep in
+step — it comes out with the rest of the detail when the note is opened; a **flag** in the bottom
+corner; and a warning when something it **waits on** is not finished.
 
 The flag is put on and taken off **from the note itself** — it is the mark and the target both,
 and it mirrors the pencil at the other corner. It is invisible until the pointer is on the note,
@@ -1678,6 +1693,10 @@ In Driving the **text inside the terminals** goes from the profile's size to 22,
 17 to 22 pixels, and the **things you click** grow too — the `+`, the git lens, the corner pencil
 (which also stays visible instead of appearing only on hover), the zoom controls. They are in
 pixels, so they would not grow with the rest.
+
+The notes stay as small as they are at rest, and in Driving an opened note brings out its buttons
+and nothing else — no description, no epic. Driving is for seeing as much of the board as possible
+from where you are, and the detail is one click away in the editor.
 
 The one thing that changes and is not a measurement is the **order of the columns**: in Driving
 they reorder by urgency, reddest to the left. On a screen you glance at, two or three columns are

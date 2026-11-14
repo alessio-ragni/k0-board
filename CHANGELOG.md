@@ -8,6 +8,14 @@ All notable changes to this project are documented here. The format follows
 
 ### Changed
 
+- **Smaller notes, so a column holds many more.** At rest a note is its key and its age on the top
+  line, the title, and one thin line with *session closed*, the waiting mark and the arrow, sun
+  and flag. The repository's name is gone from the note — it is already at the top of the column —
+  and so is the blank band the hidden buttons used to keep. Stop the pointer on a note and its
+  description, epic and buttons come out while the notes below move down; it stays open while the
+  pointer is in that column, and they all close when it leaves. In Driving the notes stay small
+  and an opened one shows only its buttons.
+
 - **Done refused over a broken decision says so, and says what changed since.** The sentence now
   opens by saying it is the counter-check in the way, not an arrow. And when a story this one waits
   on has been finished after the run that found the decision broken, it names that story and tells

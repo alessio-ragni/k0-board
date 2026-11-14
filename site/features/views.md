@@ -6,7 +6,7 @@ kicker: same stories, two shapes
 home: yes
 order: 20
 since: 0.5.0
-updated: 2026-11-02
+updated: 2026-11-14
 related: backlog, statuses, always-on
 ---
 
@@ -17,10 +17,12 @@ of what you are looking at and never *what* you are looking at: the state pills,
 and the epic lane apply to both, so nothing appears or vanishes when you switch.
 
 **Kanban is for working.** The board you already know — one column per repository, notes that
-reorder themselves by who is waiting for you. With a [backlog](/features/backlog/) behind it a note
-grows four marks and no more: its **key**, like `K42`; its **epic**, as a small label in the epic's
-own colour; a **flag** in the bottom corner; and a warning when something it **waits on** is not
-finished.
+reorder themselves by who is waiting for you. A note at rest is small: its **key**, like `K42`, and
+how long it has been in its state on the top line, the title, and one thin line under it. The
+repository is not repeated on it — it is at the top of the column — so a column holds many more.
+With a [backlog](/features/backlog/) behind it a note carries four marks and no more: the key; its
+**epic**, as a small label in the epic's own colour; a **flag** in the bottom corner; and a warning
+when something it **waits on** is not finished.
 
 **List is for planning.** The same stories as rows, every repository at once: a heading per
 repository, epics that open and close with their progress bar, stories under them, and tasks
@@ -35,6 +37,9 @@ in what order*, and that wants everything at once, in rows you can run your eye 
 
 ## How to use it
 
+- Stop the pointer on a note and it opens: its notes, its epic and its buttons come out, and the
+  notes below move down. It stays open while the pointer is in that column; leave the column and
+  they all close.
 - Click **Kanban** or **List** in the top bar.
 - Hover a note and click the flag in its bottom corner. Once on, the note takes a border in the
   flag's colour, so you can find it from across the room; click again to take it off.
@@ -43,8 +48,8 @@ in what order*, and that wants everything at once, in rows you can run your eye 
 - In List, click a row and the story opens **beside it** — its rounds, decisions, plan, checklist
   and log — so the rows you were comparing stay on screen.
 - Drag a row to reorder it, or onto another epic to move it there.
-- Open a story with the pencil to keep **notes** on it: they sit on the post-it for you and are
-  never sent to Claude Code.
+- Open a story with the pencil to keep **notes** on it: they show on the post-it when it opens,
+  and are never sent to Claude Code.
 
 ## Small print
 

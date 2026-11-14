@@ -103,6 +103,9 @@ export function drawArrows(stories) {
   paint()
 }
 
+/** A note has opened or closed and the ones under it have moved: the arrows follow them. */
+export const repaintArrows = () => paint()
+
 /** The arrows on the board right now, for whoever has to count them. */
 export const currentEdges = () => edges
 
