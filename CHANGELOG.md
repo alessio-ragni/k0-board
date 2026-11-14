@@ -6,6 +6,12 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.12.0]
+
+The notes on the board are much smaller: key, age, the whole title and one thin line, with the
+rest coming out when the pointer stops on one. A Done refused by the counter-check now says that it
+is the counter-check and not an arrow, and a finished story can be resumed again.
+
 ### Changed
 
 - **Smaller notes, so a column holds many more.** At rest a note is its key and its age on the top
@@ -18,7 +24,6 @@ All notable changes to this project are documented here. The format follows
 - **A note's title is always shown whole**, on as many lines as it needs, instead of stopping at
   two with an ellipsis.
 - The views page of the site is rebuilt from its new text. Nothing you will notice on the board.
-
 - **Done refused over a broken decision says so, and says what changed since.** The sentence now
   opens by saying it is the counter-check in the way, not an arrow. And when a story this one waits
   on has been finished after the run that found the decision broken, it names that story and tells
