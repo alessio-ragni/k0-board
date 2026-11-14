@@ -15,6 +15,8 @@ All notable changes to this project are documented here. The format follows
   description, epic and buttons come out while the notes below move down; it stays open while the
   pointer is in that column, and they all close when it leaves. In Driving the notes stay small
   and an opened one shows only its buttons.
+- **A note's title is always shown whole**, on as many lines as it needs, instead of stopping at
+  two with an ellipsis.
 - The views page of the site is rebuilt from its new text. Nothing you will notice on the board.
 
 - **Done refused over a broken decision says so, and says what changed since.** The sentence now

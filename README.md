@@ -300,7 +300,7 @@ are still one counter for the whole board rather than one per repository, kept o
 ### The board
 
 **A note at rest is small on purpose**: the story's key and how long it has been in its state on
-the top line, the title, and one thin line under it — *session closed*, the mark that says it waits
+the top line, the title — always whole, on as many lines as it takes — and one thin line under it — *session closed*, the mark that says it waits
 on something, and the arrow, sun and flag at its right end. The repository's name is not on it: it
 is written at the top of the column the note stands in. That is what lets a column hold twice the
 notes it used to.

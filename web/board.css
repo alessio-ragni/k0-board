@@ -645,13 +645,10 @@ body {
   font-weight: 700;
   font-size: .94rem;
   letter-spacing: 0;
+  /* Always whole, however many lines it takes. The note keeps everything else for when it is
+     opened; the title is what you read the board by, and a name cut off with an ellipsis was the
+     one thing a compact note could not afford to lose. */
   word-break: break-word;
-  /* Two lines and an ellipsis. A session name is a name: if it does not fit in two lines of
-     monospace it was never going to be read at a glance anyway. */
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
 }
 /* What the card is about. On imported sessions it is the only thing that says what happened in
    there, so it sits right under the title — and in italics, so it is not mistaken for the prompt,
