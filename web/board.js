@@ -8,7 +8,7 @@ import { search as fuzzy } from '/fuzzy.js'
 import { whileVisible } from '/awake.js'
 import { rank, snippet } from '/finder.js'
 import { downstream, edgesFrom, ties } from '/arrows.js'
-import { drawArrows, initArrows, linking } from '/arrowboard.js'
+import { drawArrows, initArrows, linking, repaintArrows } from '/arrowboard.js'
 
 // ── Statuses ───────────────────────────────────────────────────────
 // The order is the attention priority inside a column: first whoever is waiting for you,
@@ -361,6 +361,58 @@ function currentEpic(data) {
   return found ?? null
 }
 
+// ── A note at rest, and a note opened ─────────────────────────────
+/**
+ * At rest a note is its key, its age, its title and one thin line: the most notes on one screen.
+ * The rest — what it is about, its epic, the buttons — comes out when the pointer stops on it, and
+ * the notes under it move down to make room.
+ *
+ * It stays out for as long as the pointer is in that column, even once it has moved on to the
+ * note below. Closing it the moment the pointer left would pull the note below back up under the
+ * pointer, open that one, and set the column bouncing; leaving the column closes them all at once.
+ * The short wait is for the pointer that is only passing over, and nothing opens while an arrow is
+ * being drawn — the note it is aimed at must not move away from it.
+ *
+ * Kept by id rather than on the element because the board is rebuilt every few seconds, and a
+ * redraw must not close what the pointer opened. In driving mode only the buttons come out: the
+ * description and the epic stay away, by the stylesheet.
+ */
+const opened = new Set()
+let openTimer = 0
+const OPEN_DELAY = 140
+
+function wireOpening(el, id) {
+  el.addEventListener('pointerenter', () => {
+    clearTimeout(openTimer)
+    if (opened.has(id) || linking()) return
+    openTimer = setTimeout(() => {
+      if (linking() || !el.isConnected) return
+      // Only one column holds open notes: the pointer cannot be in two.
+      const column = el.closest('.column')
+      for (const other of $('#board').querySelectorAll('.postit.open'))
+        if (other.closest('.column') !== column) closeNote(other)
+      opened.add(id)
+      el.classList.add('open')
+      repaintArrows()
+    }, OPEN_DELAY)
+  })
+  el.addEventListener('pointerleave', () => clearTimeout(openTimer))
+}
+
+function closeNote(el) {
+  opened.delete(Number(el.dataset.id))
+  el.classList.remove('open')
+}
+
+/** The pointer has left a column: every note it opened there closes. */
+function closeColumn(column) {
+  clearTimeout(openTimer)
+  const open = column.querySelectorAll('.postit.open')
+  if (!open.length) return
+  for (const el of open) closeNote(el)
+  repaintArrows()
+}
+
 function postit(story, now) {
   const el = document.createElement('article')
   el.className = `postit ${story.status}${backlogOn && story.starred ? ' flagged' : ''}${
@@ -386,46 +438,48 @@ function postit(story, now) {
 
   el.innerHTML = `
     <button class="${corner.cls}" title="${corner.label}" aria-label="${corner.label}">${corner.icon}</button>
-    <div class="head">${backlogOn ? keyMark(story) : ''}<span class="tag">${esc(story.project_name)}</span>${gitChip(
+    <div class="head">${backlogOn ? keyMark(story) : ''}${gitChip(
       story.git,
       // A session with a worktree of its own also has files of its own: that is the directory
       // to open. But only while the worktree really exists — `own` comes from the server,
       // which has just read that directory's git state.
       story.git?.own ? story.work_path : story.project_path,
       story.id
-    )}${loadChip(story)}</div>
+    )}${loadChip(story)}<span class="since" title="${LABEL[story.status]} for ${since(story.status_since, now)}">${since(
+      story.status_since,
+      now
+    )}</span></div>
     <div class="title">${esc(story.title)}</div>
-    ${
-      // Description and prompt travel together in one box, and that box is the only part of the
-      // story allowed to shrink: whatever the text does, the repository, the title, the age and
-      // the buttons stay where they are.
-      story.description || story.prompt
-        ? `<div class="body">
-             ${story.description ? `<div class="desc">${esc(story.description)}</div>` : ''}
-             ${story.prompt ? `<div class="prompt">${esc(story.prompt)}</div>` : ''}
-           </div>`
-        : ''
-    }
-    <div class="foot">
+    <div class="detail">
       ${
-        // The epic and what the story is waiting for: two marks on the line that was already there,
-        // rather than a row of their own. The flag is not among them — it is hung in the corner,
-        // where it can be seen without reading the note.
-        backlogOn ? `${epicChip(story)}${depMark(story)}` : ''
+        // Description and prompt travel together in one box, and that box is the only part of the
+        // story allowed to shrink: whatever the text does, the title, the age and the buttons stay
+        // where they are. No repository name anywhere on the note: it is written at the top of the
+        // column the note is standing in.
+        story.description || story.prompt
+          ? `<div class="body">
+               ${story.description ? `<div class="desc">${esc(story.description)}</div>` : ''}
+               ${story.prompt ? `<div class="prompt">${esc(story.prompt)}</div>` : ''}
+             </div>`
+          : ''
       }
+      ${backlogOn ? epicChip(story) : ''}
+      <div class="actions"></div>
+    </div>
+    <div class="foot">
       ${
         // Whoever shut the window, said in the same breath and the same weight — this line is
         // already only an italic, and it stays one. Which of the two it is does not need its own
         // place in the redraw signature: `auto_closed` never moves without `session_alive`
         // moving with it, and that one is in there.
         dead ? `<span class="dead">${story.auto_closed ? 'closed automatically' : 'session closed'}</span>` : ''
-      }
-      <span class="since" title="${LABEL[story.status]} for ${since(story.status_since, now)}">${since(story.status_since, now)}</span>
+      }${backlogOn ? depMark(story) : ''}
     </div>
-    <div class="actions"></div>
     ${backlogOn && !story.completed_at ? tieMark(story) : ''}
     ${keepMark(story)}
     ${backlogOn ? flagMark(story) : ''}`
+  if (opened.has(story.id)) el.classList.add('open')
+  wireOpening(el, story.id)
 
   // The only way to open the editor: clicking the story itself no longer does anything.
   el.querySelector('.corner').onclick = (e) => {
@@ -902,6 +956,7 @@ function render(data) {
     const globe = wrap.querySelector('.globe')
     if (globe) wireGlobe(globe, col.path, col.server)
     for (const c of stories) wrap.append(postit(c, data.now))
+    wrap.addEventListener('pointerleave', () => closeColumn(wrap))
     board.append(wrap)
   }
 

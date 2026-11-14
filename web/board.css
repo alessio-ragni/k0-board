@@ -572,13 +572,14 @@ body {
 /* ── Cards ───────────────────────────────────────────────────────────── */
 /* A square, at most. Text that keeps coming does not push the card taller — a post-it that grows
    with what is written on it stops being a post-it and becomes a page. Everything but the body is
-   `flex: none`, so the repository, the title, the age and the buttons are always there to read;
-   the body is what gives way. */
+   `flex: none`, so the key, the title, the age and the buttons are always there to read; the body
+   is what gives way. At rest the card is a good deal less than that: key and age, the title, and
+   one thin line — see `.detail` below for the rest. */
 .postit {
   background: var(--BACKLOG);
   border-radius: 2px;
-  padding: 13px 15px 12px;
-  margin-bottom: 16px;
+  padding: 9px 12px 7px;
+  margin-bottom: 12px;
   box-shadow: 2px 3px 8px rgba(0, 0, 0, .17);
   cursor: default;
   transition: transform .12s ease, box-shadow .12s ease;
@@ -624,25 +625,18 @@ body {
 }
 @keyframes breathe { 50% { opacity: 1; } }
 
-/* The repository's name and, beside it, how it is doing: the two read together. */
+/* The key, how the session is doing, and how long it has been like that, on one line. No
+   repository name: it is written at the top of the column the note stands in, and saying it again
+   on every note was a whole line spent on something already on the screen. The age takes the right
+   end, so a column of notes has one edge to read the ages down. */
 .postit .head {
   display: flex;
   align-items: center;
   gap: 7px;
+  min-height: 16px;
   margin-bottom: 3px;
-}
-/* The repository's name takes the room that is left, so everything after it — the git mark, the
-   memory chip — sits against the right edge of the note. The same shape as the heading of a
-   column, and for the same reason: hanging off the end of the name those marks landed in a
-   different place on every note, and a row of notes had no line to read down. */
-.postit .tag {
-  flex: 1;
-  font: 500 1.05rem/1 var(--hand);
+  font-size: .76rem;
   color: rgba(0, 0, 0, .5);
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
 }
 /* The name is the session's: it is in monospace like the k0 mark at the top.
    Monospace is heavier at the same size, which is why it drops to .94rem. */
@@ -686,16 +680,35 @@ body {
   -webkit-box-orient: vertical;
   overflow: hidden;
 }
+/* The one thin line under the title: who closed the window, whether it waits on something, and at
+   the right end the three marks hung there (arrow, sun, flag) — so it is as tall as they are and
+   leaves them their room. */
 .postit .foot {
   display: flex;
   align-items: center;
   gap: 8px;
-  margin-top: 10px;
+  margin-top: 4px;
+  padding-right: 84px;
   font-size: .76rem;
   color: rgba(0, 0, 0, .5);
-  min-height: 1em;
+  min-height: 20px;
 }
-.postit .since { margin-left: auto; }
+.postit .since { margin-left: auto; flex: none; white-space: nowrap; }
+
+/* What comes out when the pointer stops on a note: what it is about, its epic, the buttons. Not
+   drawn at all at rest — hidden but still there, the buttons used to keep a blank band at the
+   bottom of every note. board.js says which notes are open; the keyboard opens one as well. */
+.postit .detail { display: none; }
+.postit.open .detail, .postit:focus-within .detail {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  min-height: 0;
+  flex: 0 1 auto;
+}
+.postit .detail > * { flex: none; max-width: 100%; }
+.postit .detail .body { align-self: stretch; }
+.postit .detail .epic { margin-top: 7px; }
 .postit .dead { font-style: italic; }
 
 /* ── What the backlog adds to a note ──────────────────────────────────
@@ -823,9 +836,6 @@ body {
 .postit .keep.on .sun { fill: currentColor; }
 .postit.keep-alive { border: 2px dashed var(--keep); }
 .postit.flagged.keep-alive { border-color: var(--warn); }
-/* The room the flag needs. It sits over the row of buttons, which is empty space until you hover:
-   this is what stops the last of them running underneath it once they come out. */
-.postit .actions { padding-right: 74px; }
 
 /* The arrow: the third of the three, one place further left. Pressed and dragged onto another
    note it draws an arrow to it; clicked, it keeps this note's arrows showing. Lit, with the count
@@ -1015,7 +1025,6 @@ body {
    whichever is eating the most while the machine is struggling, which is the only one worth
    starting with. */
 .postit .load {
-  margin-left: auto;
   flex: none;
   font-size: .72rem;
   font-weight: 600;
@@ -1051,18 +1060,16 @@ body {
    git mark stays next to the repository name instead of next to the pencil. */
 .postit .head, .postit .title { padding-right: 26px; }
 
-/* The buttons stay hidden until you hover: the dashboard stays clean. The row wraps and the words
-   in it do not — a note is 268px wide and three buttons can outgrow that, but a label broken over
-   two lines reads as two buttons and made the post-it grow a row taller than the ones beside it. */
+/* The buttons come out with the rest of `.detail`. The row wraps and the words in it do not — a
+   note is 268px wide and three buttons can outgrow that, but a label broken over two lines reads
+   as two buttons. */
 .postit .actions {
   display: flex;
   flex-wrap: wrap;
   gap: 7px;
-  margin-top: 11px;
-  opacity: 0;
-  transition: opacity .12s ease;
+  margin-top: 9px;
 }
-.postit:hover .actions, .postit:focus-within .actions { opacity: 1; }
+.postit .actions:empty { display: none; }
 .postit .actions button {
   font-size: .84rem;
   font-weight: 600;
@@ -1215,6 +1222,12 @@ html[data-driving] .postit .flag svg { width: 21px; height: 21px; }
 html[data-driving] .postit .keep { width: 28px; height: 28px; right: 38px; }
 html[data-driving] .postit .keep.alone { right: 6px; }
 html[data-driving] .postit .keep svg { width: 22px; height: 22px; }
+
+/* Driving is for seeing as much as possible from across the room, and nothing else: an opened note
+   brings out its buttons and nothing more — no description, no epic. */
+html[data-driving] .postit .detail .body, html[data-driving] .postit .detail .epic { display: none; }
+html[data-driving] .postit .foot { padding-right: 110px; min-height: 30px; }
+html[data-driving] .postit .head { padding-right: 40px; }
 
 /* The card is in pixels too: with the text at 22 it would choke inside 268. And since the card is
    never taller than it is wide, raising this raises the ceiling with it. */
